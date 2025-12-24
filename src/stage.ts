@@ -50,8 +50,8 @@ import {
 } from "./scene/lighting";
 import {
   applyCameraSettings as applyCameraSettingsModule,
-  getCameraSettingsFromInputs
 } from "./scene/camera";
+import { initControls as initControlsModule, bindControls as bindControlsModule } from "./stage/controls";
 import {
   fallbackPlan as createFallbackPlan,
   randomItem,
@@ -781,151 +781,6 @@ const handleFile = async (file: File) => {
   updateStatus(els, "Audio loaded. Transcribe, then analyze to continue.");
 };
 
-const initControls = () => {
-  const presetOptions = Object.entries(lightPresets).map(([id, preset]) => {
-    const option = document.createElement("option");
-    option.value = id;
-    option.textContent = preset.label;
-    return option;
-  });
-  presetOptions.forEach((option) => els.lightPreset.appendChild(option));
-  els.lightPreset.value = state.lightPreset;
-  updateState({ lightPreset: state.lightPreset });
-
-  els.cameraView.value = state.cameraSettings.view;
-  els.cameraDistance.value = String(state.cameraSettings.distance);
-  els.cameraX.value = String(state.cameraSettings.x);
-  els.cameraY.value = String(state.cameraSettings.y);
-  els.cameraRotateX.value = String(state.cameraSettings.rotateX);
-  els.cameraRotateY.value = String(state.cameraSettings.rotateY);
-  els.autoRotate.checked = state.cameraSettings.autoRotate;
-  els.autoRotateSpeed.value = String(state.cameraSettings.autoRotateSpeed);
-  updateSliderReadoutsModule(els);
-};
-
-const bindControls = () => {
-  const applyCameraInputState = () => {
-    updateSliderReadoutsModule(els);
-    updateState({ cameraSettings: getCameraSettingsFromInputs(els) });
-  };
-
-  const cameraInputs = [
-    ["cameraView", els.cameraView],
-    ["cameraDistance", els.cameraDistance],
-    ["cameraX", els.cameraX],
-    ["cameraY", els.cameraY],
-    ["cameraRotateX", els.cameraRotateX],
-    ["cameraRotateY", els.cameraRotateY],
-    ["autoRotateSpeed", els.autoRotateSpeed]
-  ] as const;
-
-  cameraInputs.forEach(([, input]) => {
-    input.addEventListener("input", () => {
-      applyCameraInputState();
-    });
-  });
-
-  els.autoRotate.addEventListener("change", () => {
-    applyCameraInputState();
-  });
-
-  els.lightPreset.addEventListener("change", () => {
-    updateState({ lightPreset: els.lightPreset.value });
-  });
-
-  const lightInputs = [
-    els.ambientColor,
-    els.directColor,
-    els.spotColor,
-    els.ambientIntensity,
-    els.directIntensity,
-    els.spotIntensity
-  ];
-
-  lightInputs.forEach((input) => {
-    input.addEventListener("input", () => {
-      const lightColors = {
-        ambient: els.ambientColor.value,
-        direct: els.directColor.value,
-        spot: els.spotColor.value
-      };
-      const stageLightingBase = {
-        ambient: Number(els.ambientIntensity.value),
-        direct: Number(els.directIntensity.value),
-        spot: Number(els.spotIntensity.value)
-      };
-      updateState({ lightColors, stageLightingBase });
-      updateSliderReadoutsModule(els);
-    });
-  });
-
-  els.lightPulse.addEventListener("change", () => {
-    updateState({ lightPulse: els.lightPulse.checked });
-  });
-
-  els.directorModelSelect.addEventListener("change", () => {
-    const value = els.directorModelSelect.value;
-    if (value) {
-      config.directorModel = value;
-      setOverride("directorModel", value);
-      setChip(els.llmChip, "LLM", value);
-    }
-  });
-
-  els.llmModelSelect.addEventListener("change", () => {
-    const value = els.llmModelSelect.value;
-    if (value) {
-      config.llmModel = value;
-      setOverride("llmModel", value);
-      setChip(els.chatChip, "Chat", value);
-    }
-  });
-
-  els.sttModelSelect.addEventListener("change", () => {
-    const value = els.sttModelSelect.value;
-    if (value) {
-      config.sttModel = value;
-      setOverride("sttModel", value);
-      setChip(els.sttChip, "STT", value);
-    }
-  });
-
-  els.ttsModelSelect.addEventListener("change", () => {
-    const value = els.ttsModelSelect.value;
-    if (value) {
-      config.ttsModel = value;
-      setOverride("ttsModel", value);
-    }
-  });
-
-  els.llmRuntimeRefresh.addEventListener("click", () => {
-    refreshRuntimePanel().catch(() => {
-      setRuntimeStatusText("Failed to refresh LLM status.");
-    });
-  });
-
-  els.llmRuntimeUnload.addEventListener("click", () => {
-    unloadRuntimeModel().catch(() => {
-      setRuntimeStatusText("Failed to unload model.");
-    });
-  });
-
-  els.llmRuntimeLoad.addEventListener("click", () => {
-    loadRuntimeModel().catch(() => {
-      setRuntimeStatusText("Failed to load model.");
-    });
-  });
-
-  els.approveBtn.addEventListener("click", () => {
-    if (!state.plan) {
-      updateStatus(els, "Analyze a plan before approval.");
-      return;
-    }
-    applyPlanApproved(true);
-    updateStatus(els, "Plan approved. Ready to perform.");
-  });
-};
-
 const initStage = async () => {
   setHud(els, "Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Awaiting");
   setChip(els.sttChip, "STT", config.sttModel);
@@ -935,7 +790,7 @@ const initStage = async () => {
   setChip(els.audioChip, "Audio", "-");
   updateHero(els, undefined, undefined, "Awaiting Audio");
   applyPlanApproved(false);
-  initControls();
+  initControlsModule({ els, getState: () => state, updateState });
   await initModelSelectors();
   refreshRuntimePanel().catch(() => {
     setRuntimeStatusText("Failed to refresh LLM status.");
@@ -999,7 +854,20 @@ const initStage = async () => {
     stopPerformance();
   });
 
-  bindControls();
+  bindControlsModule({
+    els,
+    getState: () => state,
+    updateState,
+    config,
+    setOverride,
+    setChip,
+    updateStatus: (message) => updateStatus(els, message),
+    applyPlanApproved,
+    refreshRuntimePanel,
+    unloadRuntimeModel,
+    loadRuntimeModel,
+    setRuntimeStatusText
+  });
 };
 
 const init = async () => {
