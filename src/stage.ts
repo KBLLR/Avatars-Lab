@@ -2,17 +2,9 @@ import { TalkingHead } from "@met4citizen/talkinghead";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import { initLipsync, speakWithLipsync } from "./modules/lipsync";
 import { getMlxConfig, setOverride, readOverrides } from "./mlx-config";
-import {
-  DirectorOrchestrator,
-  createOrchestrator,
-  type PipelineResult
-} from "./pipeline/orchestrator";
+import { createAnalysisController } from "./stage/analysis";
 import type {
-  InputSection,
   MergedPlan,
-  ProgressEvent,
-  StreamChunkEvent,
-  DirectorStage,
   CameraView,
   Mood,
   LightPreset,
@@ -26,7 +18,6 @@ import {
   getElements,
   lightPresets,
   directorModelFallback,
-  directorMaxTokens,
   gestures,
   moods,
   cameraViews,
@@ -53,7 +44,6 @@ import {
   getCameraSettingsFromInputs
 } from "./scene/camera";
 import {
-  buildSectionsFromTimings,
   fallbackPlan as createFallbackPlan,
   randomItem,
   encodeWords
@@ -65,11 +55,7 @@ import {
   updateHero,
   setAnalysisOverlay,
   resetAnalysisThoughts,
-  appendAnalysisThought,
   truncateForVoice,
-  updateProgressBar,
-  updateStageBadges,
-  resetStageBadges,
   setPlanApproved,
   updatePlanDetails,
   createSelect,
@@ -131,6 +117,9 @@ const applyPlanDirty = () => {
     els.planStatus.textContent = "Awaiting approval";
   }
 };
+
+let analysisController: ReturnType<typeof createAnalysisController> | null = null;
+const analyzePerformance = () => analysisController?.analyzePerformance() ?? Promise.resolve();
 
 const ensureAudioContext = async (contextLabel: string) => {
   if (!state.head) return false;
@@ -737,7 +726,6 @@ const transcribeAudio = async () => {
   updateStatus(els, "Transcript ready. Analyze performance to stage the song.");
 };
 
-// buildSectionsFromTimings is imported from ./performance/index
 // fallbackPlan wrapper using imported createFallbackPlan
 const fallbackPlan = (durationMs: number, timings: WordTiming | null): MergedPlan =>
   createFallbackPlan(durationMs, timings, state.transcriptText);
@@ -825,272 +813,6 @@ const populateVoiceSelect = () => {
         if (v === current) op.selected = true;
         els.voiceSelect.appendChild(op);
     });
-};
-
-// ─────────────────────────────────────────────────────────────
-// Director Orchestration (using new modular pipeline)
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Initialize or get the orchestrator instance
- */
-const getOrchestrator = (): DirectorOrchestrator => {
-  const model = els.directorModelSelect.value || config.directorModel || directorModelFallback;
-  const style = els.directorStyle.value || "cinematic";
-  const seed = state.analysisSeed || new Date().toISOString();
-
-  if (!state.orchestrator) {
-    const orchestrator = createOrchestrator({
-      baseUrl: config.llmBaseUrl,
-      model,
-      style,
-      seed,
-      timeoutMs: 60000,
-      maxTokens: 1500,
-      retries: 2,
-      streaming: true,
-      enableChunking: true,
-      parallelStageCamera: true
-    });
-    updateState({ orchestrator });
-    return orchestrator;
-  } else {
-    // Update seed for fresh generation
-    state.orchestrator.updateSeed(seed);
-  }
-
-  return state.orchestrator;
-};
-
-/**
- * Cancel the running analysis
- */
-const cancelAnalysis = () => {
-  if (state.orchestrator && state.isAnalyzing) {
-    state.orchestrator.cancel();
-    updateAnalyzeButton(false);
-    setAnalysisOverlay(els, false);
-    updateStatus(els, "Analysis cancelled.");
-  }
-};
-
-/**
- * Update analyze button state (Analyze vs Cancel)
- */
-const updateAnalyzeButton = (isAnalyzing: boolean) => {
-  updateState({ isAnalyzing });
-  els.analyzeBtn.textContent = isAnalyzing ? "Cancel" : "Analyze";
-  els.analyzeBtn.classList.toggle("cancel-mode", isAnalyzing);
-};
-
-/**
- * Get stage display name
- */
-const getStageDisplayName = (stage: DirectorStage): string => {
-  const names: Record<DirectorStage, string> = {
-    performance: "Performance Director",
-    stage: "Stage Director",
-    camera: "Camera Director"
-  };
-  return names[stage];
-};
-
-/**
- * Main analysis function using the orchestrator
- */
-const analyzePerformance = async () => {
-  // If already analyzing, cancel instead
-  if (state.isAnalyzing) {
-    cancelAnalysis();
-    return;
-  }
-
-  // Validation
-  if (!state.audioBuffer) {
-    updateStatus(els, "Load audio before analyzing performance.");
-    return;
-  }
-  if (!state.transcriptText) {
-    updateStatus(els, "Transcript required. Run transcribe first.");
-    return;
-  }
-  if (!config.llmBaseUrl) {
-    updateStatus(els, "Missing VITE_MLX_LLM_BASE_URL.");
-    return;
-  }
-
-  const model = els.directorModelSelect.value || config.directorModel || directorModelFallback;
-  if (!model) {
-    updateStatus(els, "Missing VITE_MLX_DEFAULT_LLM_MODEL.");
-    return;
-  }
-
-  // Reset state
-  applyPlanApproved(false);
-  const analysisSeed = new Date().toISOString();
-  const directorNotes = "Performance Director: thinking...";
-  updateState({
-    analysisSeed,
-    directorNotes,
-    analysisVoiceQueue: Promise.resolve()
-  });
-  els.directorNotes.textContent = directorNotes;
-  updateAnalyzeButton(true);
-  setAnalysisOverlay(els, true, "Performance Director");
-  els.analysisHint.textContent = config.ttsModel
-    ? "Voiceover will play when available."
-    : "Voiceover disabled (missing TTS model).";
-  resetAnalysisThoughts(
-    els,
-    state,
-    `Creative seed: ${analysisSeed}\nPerformance Director: listening to the lyrics...`
-  );
-  renderPlan([]);
-
-  // Reset progress UI
-  updateProgressBar(els.analysisProgressBar, 0);
-  resetStageBadges(els);
-
-  try {
-    const durationMs = state.audioBuffer.duration * 1000;
-    const timings = state.wordTimings || buildWordTimings(encodeWords(state.transcriptText), durationMs);
-    const sections: InputSection[] = buildSectionsFromTimings(timings);
-
-    // Get or create orchestrator
-    const orchestrator = getOrchestrator();
-
-    updateStatus(els, "Director pipeline: analyzing performance...");
-
-    // Run the pipeline with callbacks
-    const result: PipelineResult = await orchestrator.run(
-      {
-        sections,
-        durationMs,
-        defaultLightPreset: state.lightPreset,
-        defaultCameraView: state.cameraSettings.view
-      },
-      {
-        // Progress callback - update UI overlay
-        onProgress: (event: ProgressEvent) => {
-          const stageName = getStageDisplayName(event.stage);
-          setAnalysisOverlay(els, true, stageName);
-
-          // Update stage badges based on current stage
-          if (event.status === "running") {
-            updateStageBadges(els, event.stage, "active");
-
-            // Calculate progress: performance=0-33%, stage=33-66%, camera=66-100%
-            const stageProgress: Record<DirectorStage, number> = {
-              performance: 10,
-              stage: 45,
-              camera: 78
-            };
-            updateProgressBar(els.analysisProgressBar, stageProgress[event.stage]);
-
-            const chunkInfo = event.chunk && event.totalChunks
-              ? ` (${event.chunk}/${event.totalChunks})`
-              : "";
-            updateStatus(els, `${stageName}${chunkInfo}: ${event.message || "analyzing..."}`);
-
-            if (event.thoughtsPreview) {
-              els.directorNotes.textContent = `${state.directorNotes}\n\n${stageName}: ${event.thoughtsPreview}`;
-            }
-          } else if (event.status === "complete") {
-            updateStageBadges(els, event.stage, "complete");
-
-            // Update progress bar for completed stages
-            const completedProgress: Record<DirectorStage, number> = {
-              performance: 33,
-              stage: 66,
-              camera: 100
-            };
-            updateProgressBar(els.analysisProgressBar, completedProgress[event.stage]);
-
-            appendAnalysisThought(els, state, `${stageName}: Complete`);
-          } else if (event.status === "failed") {
-            updateStageBadges(els, event.stage, "failed");
-            appendAnalysisThought(els, state, `${stageName}: ${event.message || "Failed"}`);
-          }
-        },
-
-        // Streaming chunk callback - show real-time progress
-        onChunk: (event: StreamChunkEvent) => {
-          // Could add character-by-character streaming display here
-          // For now, we rely on the progress callback
-        },
-
-        // Thoughts callback - display and queue voiceover
-        onThoughts: (stage: DirectorStage, thoughts: string) => {
-          const stageName = getStageDisplayName(stage);
-          const displayText = `${stageName}: ${thoughts}`;
-          appendAnalysisThought(els, state, displayText);
-          enqueueAnalysisVoice(`${stageName}. ${thoughts}`);
-
-          // Update director notes
-          const nextNotes = [state.directorNotes, displayText]
-            .filter(Boolean)
-            .join("\n\n");
-          updateState({ directorNotes: nextNotes });
-          els.directorNotes.textContent = nextNotes;
-        },
-
-        // Fallback callback
-        onFallback: (reason: string) => {
-          appendAnalysisThought(els, state, `Using fallback plan: ${reason}`);
-          updateStatus(els, `Fallback: ${reason}`);
-        }
-      }
-    );
-
-    // Process result
-    const plan = result.plan;
-
-    if (result.usedFallback) {
-      const fallbackNotes = "Fallback plan used because director output was invalid.";
-      updateState({ plan, planSource: "heuristic", directorNotes: fallbackNotes });
-      els.directorNotes.textContent = fallbackNotes;
-      updateStatus(els, "Using fallback staging plan.");
-    } else {
-      // Combine all director notes
-      const allNotes = [
-        result.plan.performanceNotes,
-        result.plan.stageNotes,
-        result.plan.cameraNotes
-      ].filter(Boolean).join("\n\n");
-
-      const nextNotes = allNotes || "Director pipeline completed.";
-      updateState({ plan, planSource: "llm", directorNotes: nextNotes });
-      els.directorNotes.textContent = nextNotes;
-      updateStatus(els, `Performance plan ready (${(result.totalDurationMs / 1000).toFixed(1)}s). Hit Perform.`);
-    }
-
-    renderPlan(plan.sections);
-    updateHero(
-      els,
-      undefined,
-      state.audioFile ? state.audioFile.name : undefined,
-      plan.title || "Performance Plan"
-    );
-    els.analysisHint.textContent = "Analysis complete.";
-    setAnalysisOverlay(els, false);
-    applyPlanApproved(false);
-
-  } catch (error) {
-    console.error("Analysis error:", error);
-    const message = error instanceof Error ? error.message : String(error);
-
-    // Check if it was a cancellation
-    if (message.includes("cancelled")) {
-      updateStatus(els, "Analysis cancelled by user.");
-    } else {
-      updateStatus(els, `Analysis failed: ${message}`);
-    }
-
-    setAnalysisOverlay(els, false);
-
-  } finally {
-    updateAnalyzeButton(false);
-  }
 };
 
 const renderPlan = (sections: PlanSection[]) => {
@@ -1813,6 +1535,17 @@ const init = async () => {
   // Initialize elements from the DOM
   els = getElements();
   bindStateUi();
+  analysisController = createAnalysisController({
+    els,
+    config,
+    getState: () => state,
+    updateState,
+    applyPlanApproved,
+    renderPlan,
+    enqueueAnalysisVoice,
+    buildWordTimings,
+    directorModelFallback
+  });
 
   // Initial fetches
   // TTS Disabled as per user request
