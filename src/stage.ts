@@ -60,7 +60,6 @@ import {
   updateStageBadges,
   resetStageBadges,
   setPlanApproved,
-  markPlanDirty,
   updatePlanDetails,
   createSelect,
   createInlineInput,
@@ -81,6 +80,45 @@ stateManager.subscribe((nextState) => {
   state = nextState;
 });
 const updateState = (partial: Partial<StageState>) => stateManager.update(partial);
+
+let stateUiBound = false;
+const bindStateUi = () => {
+  if (stateUiBound) return;
+  stateUiBound = true;
+  stateManager.subscribe((nextState, changed) => {
+    if (!els) return;
+    if (changed.planApproved !== undefined || changed.plan !== undefined) {
+      els.approveBtn.disabled = nextState.planApproved || !nextState.plan;
+      els.playBtn.disabled = !nextState.planApproved;
+      els.planStatus.textContent = nextState.planApproved
+        ? "Approved"
+        : nextState.plan
+        ? "Awaiting approval"
+        : "Pending analysis";
+    }
+    if (changed.directorNotes !== undefined) {
+      if (nextState.directorNotes) {
+        els.directorNotes.textContent = nextState.directorNotes;
+      } else if (nextState.plan) {
+        els.directorNotes.textContent = "Director notes unavailable.";
+      }
+    }
+  });
+};
+
+const applyPlanApproved = (approved: boolean) => {
+  updateState({ planApproved: approved });
+  setPlanApproved(els, state, approved);
+};
+
+const applyPlanDirty = () => {
+  if (!state.plan) return;
+  if (state.planApproved) {
+    applyPlanApproved(false);
+  } else {
+    els.planStatus.textContent = "Awaiting approval";
+  }
+};
 
 const ensureAudioContext = async (contextLabel: string) => {
   if (!state.head) return false;
@@ -165,26 +203,31 @@ const buildWordTimings = (words: string[], durationMs: number): WordTiming => {
 };
 
 const updateStageLighting = (head: TalkingHead, dt: number) => {
+  let pulseAmount = state.lightPulseAmount;
   if (!state.lightPulse) {
-    state.lightPulseAmount = 0;
+    pulseAmount = 0;
   } else {
     const analyser = head.audioAnalyzerNode;
     if (analyser) {
       const bins = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(bins);
       const avg = bins.reduce((sum, v) => sum + v, 0) / bins.length / 255;
-      state.lightPulseAmount = clamp(state.lightPulseAmount + (avg * 1.5 - state.lightPulseAmount) * (dt / 300), 0, 1.2);
+      pulseAmount = clamp(pulseAmount + (avg * 1.5 - pulseAmount) * (dt / 300), 0, 1.2);
     }
   }
 
+  if (pulseAmount !== state.lightPulseAmount) {
+    updateState({ lightPulseAmount: pulseAmount });
+  }
+
   if (head.lightAmbient) {
-    head.lightAmbient.intensity = state.stageLightingBase.ambient + state.lightPulseAmount * 0.6;
+    head.lightAmbient.intensity = state.stageLightingBase.ambient + pulseAmount * 0.6;
   }
   if (head.lightDirect) {
-    head.lightDirect.intensity = state.stageLightingBase.direct + state.lightPulseAmount * 10;
+    head.lightDirect.intensity = state.stageLightingBase.direct + pulseAmount * 10;
   }
   if (head.lightSpot) {
-    head.lightSpot.intensity = state.stageLightingBase.spot + state.lightPulseAmount * 14;
+    head.lightSpot.intensity = state.stageLightingBase.spot + pulseAmount * 14;
   }
 };
 
@@ -638,22 +681,28 @@ const updateLyricsOverlay = () => {
   const times = state.wordTimings.wtimes;
   const durations = state.wordTimings.wdurations;
 
-  while (state.lyricIndex < times.length - 1 && nowMs > times[state.lyricIndex] + durations[state.lyricIndex]) {
-    state.lyricIndex += 1;
+  let nextLyricIndex = state.lyricIndex;
+  while (nextLyricIndex < times.length - 1 && nowMs > times[nextLyricIndex] + durations[nextLyricIndex]) {
+    nextLyricIndex += 1;
+  }
+  if (nextLyricIndex !== state.lyricIndex) {
+    updateState({ lyricIndex: nextLyricIndex });
   }
 
   const windowSize = 6;
-  const start = Math.max(0, state.lyricIndex - 2);
+  const start = Math.max(0, nextLyricIndex - 2);
   const end = Math.min(words.length, start + windowSize);
   const line = words.slice(start, end).map((word, idx) => {
     const absoluteIndex = start + idx;
-    const cls = absoluteIndex === state.lyricIndex ? "current" : "word";
+    const cls = absoluteIndex === nextLyricIndex ? "current" : "word";
     return `<span class="${cls}">${word}</span>`;
   });
   els.heroLyrics.innerHTML = line.join(" ");
 
   if (nowMs > state.audioBuffer.duration * 1000 + 500) {
-    state.lyricActive = false;
+    if (state.lyricActive) {
+      updateState({ lyricActive: false });
+    }
   } else {
     requestAnimationFrame(updateLyricsOverlay);
   }
@@ -772,7 +821,7 @@ const transcribeAudio = async () => {
   setAnalysisOverlay(els, false);
   resetAnalysisThoughts(els, state, "Transcript ready. Analyze performance.");
   els.playBtn.disabled = true;
-  setPlanApproved(els, state, false);
+  applyPlanApproved(false);
   renderPlan([]);
   els.heroLyrics.textContent = "Transcript ready. Analyze performance.";
   updateHero(els, undefined, state.audioFile ? state.audioFile.name : undefined, "Transcript Ready");
@@ -975,7 +1024,7 @@ const analyzePerformance = async () => {
   }
 
   // Reset state
-  setPlanApproved(els, state, false);
+  applyPlanApproved(false);
   const analysisSeed = new Date().toISOString();
   const directorNotes = "Performance Director: thinking...";
   updateState({
@@ -1122,7 +1171,7 @@ const analyzePerformance = async () => {
     );
     els.analysisHint.textContent = "Analysis complete.";
     setAnalysisOverlay(els, false);
-    setPlanApproved(els, state, false);
+    applyPlanApproved(false);
 
   } catch (error) {
     console.error("Analysis error:", error);
@@ -1182,7 +1231,7 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].role = next as "solo" | "ensemble";
-        markPlanDirty(els, state);
+        applyPlanDirty();
         updatePlanDetails(els, state.plan.sections, state);
         renderPlan(state.plan.sections);
       }
@@ -1195,7 +1244,7 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].mood = next as Mood;
-        markPlanDirty(els, state);
+        applyPlanDirty();
         updatePlanDetails(els, state.plan.sections, state);
       }
     );
@@ -1207,7 +1256,7 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].camera = next as CameraView;
-        markPlanDirty(els, state);
+        applyPlanDirty();
         updatePlanDetails(els, state.plan.sections, state);
       }
     );
@@ -1219,7 +1268,7 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].light = next as LightPreset;
-        markPlanDirty(els, state);
+        applyPlanDirty();
         updatePlanDetails(els, state.plan.sections, state);
       }
     );
@@ -1243,7 +1292,7 @@ const renderPlan = (sections: PlanSection[]) => {
             if (!target) return;
               target.action = next;
               target.args = {};
-              markPlanDirty(els, state);
+              applyPlanDirty();
               renderPlan(state.plan.sections);
           }
         );
@@ -1260,7 +1309,7 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, mood: next as Mood };
-                markPlanDirty(els, state);
+                applyPlanDirty();
                 updatePlanDetails(els, state.plan.sections, state);
               }
             )
@@ -1276,7 +1325,7 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, gesture: next };
-                markPlanDirty(els, state);
+                applyPlanDirty();
                 updatePlanDetails(els, state.plan.sections, state);
               }
             )
@@ -1288,7 +1337,7 @@ const renderPlan = (sections: PlanSection[]) => {
               const target = state.plan.sections[index].actions?.[actionIndex];
               if (!target) return;
               target.args = { ...target.args, emoji: next };
-              markPlanDirty(els, state);
+              applyPlanDirty();
               updatePlanDetails(els, state.plan.sections, state);
             })
           );
@@ -1300,7 +1349,7 @@ const renderPlan = (sections: PlanSection[]) => {
               if (!target) return;
               const ms = Number(next);
               target.args = { ...target.args, duration_ms: Number.isFinite(ms) ? ms : 400 };
-              markPlanDirty(els, state);
+              applyPlanDirty();
               updatePlanDetails(els, state.plan.sections, state);
             })
           );
@@ -1315,7 +1364,7 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, view: next as CameraView };
-                markPlanDirty(els, state);
+                applyPlanDirty();
                 updatePlanDetails(els, state.plan.sections, state);
               }
             )
@@ -1331,7 +1380,7 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, preset: next as LightPreset };
-                markPlanDirty(els, state);
+                applyPlanDirty();
                 updatePlanDetails(els, state.plan.sections, state);
               }
             )
@@ -1613,7 +1662,7 @@ const handleFile = async (file: File) => {
   });
   els.playBtn.disabled = true;
   els.transcript.value = "";
-  setPlanApproved(els, state, false);
+  applyPlanApproved(false);
   setAnalysisOverlay(els, false);
   resetAnalysisThoughts(els, state, "Awaiting performance analysis.");
   renderPlan([]);
@@ -1773,7 +1822,7 @@ const bindControls = () => {
       updateStatus(els, "Analyze a plan before approval.");
       return;
     }
-    setPlanApproved(els, state, true);
+    applyPlanApproved(true);
     updateStatus(els, "Plan approved. Ready to perform.");
   });
 };
@@ -1786,7 +1835,7 @@ const initStage = async () => {
   setChip(els.llmChip, "LLM", defaultDirector);
   setChip(els.audioChip, "Audio", "-");
   updateHero(els, undefined, undefined, "Awaiting Audio");
-  setPlanApproved(els, state, false);
+  applyPlanApproved(false);
   initControls();
   await initModelSelectors();
   refreshRuntimePanel().catch(() => {
@@ -1855,6 +1904,7 @@ const initStage = async () => {
 const init = async () => {
   // Initialize elements from the DOM
   els = getElements();
+  bindStateUi();
 
   // Initial fetches
   // TTS Disabled as per user request
