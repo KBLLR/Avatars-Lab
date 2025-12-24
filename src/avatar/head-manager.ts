@@ -4,9 +4,9 @@ import type { HeadConfig, HeadAudioConfig, UpdateStageLightingFn } from "./types
 import { ensureLipsync } from "./lipsync-bridge";
 
 // @ts-expect-error static asset imports
-import workletUrl from "@nicoleverse/headaudio/dist/headworklet.min.mjs?url";
+import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 // @ts-expect-error static asset imports
-import modelUrl from "@nicoleverse/headaudio/dist/model-en-mixed.bin?url";
+import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 
 export const getDefaultHeadAudioConfig = (): HeadAudioConfig => ({
   workletUrl,

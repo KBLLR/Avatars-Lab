@@ -1,8 +1,5 @@
 import { TalkingHead } from "@met4citizen/talkinghead";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
-import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
-import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
-import lipsyncEnUrl from "@met4citizen/talkinghead/modules/lipsync-en.mjs?url";
 import { initLipsync, speakWithLipsync } from "./modules/lipsync";
 import { getMlxConfig, setOverride, readOverrides } from "./mlx-config";
 import {
@@ -24,358 +21,39 @@ import type {
   WordTiming
 } from "./directors/types";
 
-const els = {
-  status: document.getElementById("status") as HTMLElement,
-  avatar: document.getElementById("avatar") as HTMLElement,
-  analysisOverlay: document.getElementById("analysisOverlay") as HTMLElement,
-  analysisStepText: document.getElementById("analysisStepText") as HTMLElement,
-  analysisThoughts: document.getElementById("analysisThoughts") as HTMLElement,
-  analysisHint: document.getElementById("analysisHint") as HTMLElement,
-  avatarSelect: document.getElementById("avatarSelect") as HTMLSelectElement,
-  songInput: document.getElementById("songInput") as HTMLInputElement,
-  heroTitle: document.getElementById("heroTitle") as HTMLElement,
-  heroSubtitle: document.getElementById("heroSubtitle") as HTMLElement,
-  heroLyrics: document.getElementById("heroLyrics") as HTMLElement,
-  transcript: document.getElementById("transcript") as HTMLTextAreaElement,
-  transcribeBtn: document.getElementById("transcribeBtn") as HTMLButtonElement,
-  analyzeBtn: document.getElementById("analyzeBtn") as HTMLButtonElement,
-  playBtn: document.getElementById("playBtn") as HTMLButtonElement,
-  lipsyncBtn: document.getElementById("lipsyncBtn") as HTMLButtonElement,
-  stopBtn: document.getElementById("stopBtn") as HTMLButtonElement,
-  soloOnly: document.getElementById("soloOnly") as HTMLInputElement,
-  llmModelSelect: document.getElementById("llmModelSelect") as HTMLSelectElement,
-  directorModelSelect: document.getElementById("directorModelSelect") as HTMLSelectElement,
-  sttModelSelect: document.getElementById("sttModelSelect") as HTMLSelectElement,
-  ttsModelSelect: document.getElementById("ttsModelSelect") as HTMLSelectElement,
-  voiceSelect: document.getElementById("voiceSelect") as HTMLSelectElement,
-  llmRuntimeLoaded: document.getElementById("llmRuntimeLoaded") as HTMLElement,
-  llmRuntimeModel: document.getElementById("llmRuntimeModel") as HTMLElement,
-  llmRuntimeType: document.getElementById("llmRuntimeType") as HTMLElement,
-  llmRuntimeQueue: document.getElementById("llmRuntimeQueue") as HTMLElement,
-  llmRuntimeActive: document.getElementById("llmRuntimeActive") as HTMLElement,
-  llmRuntimeConfig: document.getElementById("llmRuntimeConfig") as HTMLElement,
-  llmRuntimeStatus: document.getElementById("llmRuntimeStatus") as HTMLElement,
-  llmRuntimeModelSelect: document.getElementById("llmRuntimeModelSelect") as HTMLSelectElement,
-  llmRuntimeRefresh: document.getElementById("llmRuntimeRefresh") as HTMLButtonElement,
-  llmRuntimeUnload: document.getElementById("llmRuntimeUnload") as HTMLButtonElement,
-  llmRuntimeLoad: document.getElementById("llmRuntimeLoad") as HTMLButtonElement,
-  llmRuntimeForce: document.getElementById("llmRuntimeForce") as HTMLInputElement,
-  directorStyle: document.getElementById("directorStyle") as HTMLSelectElement,
-  sttChip: document.getElementById("sttChip") as HTMLElement,
-  chatChip: document.getElementById("chatChip") as HTMLElement,
-  llmChip: document.getElementById("llmChip") as HTMLElement,
-  audioChip: document.getElementById("audioChip") as HTMLElement,
-  approveBtn: document.getElementById("approveBtn") as HTMLButtonElement,
-  planStatus: document.getElementById("planStatus") as HTMLElement,
-  planList: document.getElementById("planList") as HTMLElement,
-  planDetails: document.getElementById("planDetails") as HTMLElement,
-  directorNotes: document.getElementById("directorNotes") as HTMLElement,
-  hudScene: document.getElementById("hudScene") as HTMLElement,
-  hudCamera: document.getElementById("hudCamera") as HTMLElement,
-  hudLights: document.getElementById("hudLights") as HTMLElement,
-  hudMode: document.getElementById("hudMode") as HTMLElement,
-  cameraView: document.getElementById("cameraView") as HTMLSelectElement,
-  cameraDistance: document.getElementById("cameraDistance") as HTMLInputElement,
-  cameraX: document.getElementById("cameraX") as HTMLInputElement,
-  cameraY: document.getElementById("cameraY") as HTMLInputElement,
-  cameraRotateX: document.getElementById("cameraRotateX") as HTMLInputElement,
-  cameraRotateY: document.getElementById("cameraRotateY") as HTMLInputElement,
-  autoRotate: document.getElementById("autoRotate") as HTMLInputElement,
-  autoRotateSpeed: document.getElementById("autoRotateSpeed") as HTMLInputElement,
-  cameraDistanceVal: document.getElementById("cameraDistanceVal") as HTMLElement,
-  cameraXVal: document.getElementById("cameraXVal") as HTMLElement,
-  cameraYVal: document.getElementById("cameraYVal") as HTMLElement,
-  cameraRotateXVal: document.getElementById("cameraRotateXVal") as HTMLElement,
-  cameraRotateYVal: document.getElementById("cameraRotateYVal") as HTMLElement,
-  autoRotateSpeedVal: document.getElementById("autoRotateSpeedVal") as HTMLElement,
-  lightPreset: document.getElementById("lightPreset") as HTMLSelectElement,
-  ambientColor: document.getElementById("ambientColor") as HTMLInputElement,
-  directColor: document.getElementById("directColor") as HTMLInputElement,
-  spotColor: document.getElementById("spotColor") as HTMLInputElement,
-  ambientIntensity: document.getElementById("ambientIntensity") as HTMLInputElement,
-  directIntensity: document.getElementById("directIntensity") as HTMLInputElement,
-  spotIntensity: document.getElementById("spotIntensity") as HTMLInputElement,
-  ambientIntensityVal: document.getElementById("ambientIntensityVal") as HTMLElement,
-  directIntensityVal: document.getElementById("directIntensityVal") as HTMLElement,
-  spotIntensityVal: document.getElementById("spotIntensityVal") as HTMLElement,
-  lightPulse: document.getElementById("lightPulse") as HTMLInputElement,
-  // Progress UI elements
-  analysisProgressBar: document.getElementById("analysisProgressBar") as HTMLElement,
-  stageBadgePerformance: document.getElementById("stageBadgePerformance") as HTMLElement,
-  stageBadgeStage: document.getElementById("stageBadgeStage") as HTMLElement,
-  stageBadgeCamera: document.getElementById("stageBadgeCamera") as HTMLElement
-};
+// Stage modules
+import {
+  getElements,
+  lightPresets,
+  directorModelFallback,
+  directorMaxTokens,
+  gestures,
+  moods,
+  cameraViews,
+  stageFunctionDefs
+} from "./stage/index";
+import {
+  ensureLipsync,
+  buildVisemeTimings,
+  getDefaultHeadAudioConfig
+} from "./avatar/index";
+import {
+  updateStageLighting as updateStageLightingBase,
+  clamp
+} from "./scene/lighting";
+import {
+  buildSectionsFromTimings,
+  fallbackPlan as createFallbackPlan,
+  randomItem,
+  encodeWords
+} from "./performance/index";
+
+// Elements are lazily loaded via getElements() from stage module
+let els: ReturnType<typeof getElements>;
 
 const config = getMlxConfig();
 
-const directorModelFallback = "hf/mlx-community__gpt-oss-20b-MXFP4-Q8";
-const directorMaxTokens = 700;
-
-const lightPresets = {
-  neon: {
-    label: "Neon Drift",
-    ambient: 0.7,
-    direct: 18,
-    spot: 22,
-    ambientColor: "#fbd1ff",
-    directColor: "#ff5f7a",
-    spotColor: "#5bf2d6"
-  },
-  noir: {
-    label: "Noir Edge",
-    ambient: 0.3,
-    direct: 10,
-    spot: 6,
-    ambientColor: "#4d5a6a",
-    directColor: "#f5f0e7",
-    spotColor: "#5b7b9f"
-  },
-  sunset: {
-    label: "Sunset Pulse",
-    ambient: 1.0,
-    direct: 20,
-    spot: 16,
-    ambientColor: "#ffc998",
-    directColor: "#ff8c6a",
-    spotColor: "#ffb347"
-  },
-  frost: {
-    label: "Frost Lens",
-    ambient: 0.6,
-    direct: 14,
-    spot: 20,
-    ambientColor: "#b7d3ff",
-    directColor: "#6cc1ff",
-    spotColor: "#d3f7ff"
-  },
-  crimson: {
-    label: "Crimson Room",
-    ambient: 0.8,
-    direct: 22,
-    spot: 18,
-    ambientColor: "#ffb3c8",
-    directColor: "#ff405a",
-    spotColor: "#ff7f50"
-  }
-};
-
-const gestures = ["handup", "index", "ok", "thumbup", "thumbdown", "side", "shrug"] as const;
-const moods = ["neutral", "happy", "love", "fear", "sad", "angry"] as const;
-const cameraViews = ["full", "mid", "upper", "head"] as const;
-
-const stageFunctionDefs = [
-  {
-    type: "function",
-    name: "set_mood",
-    description: "Set the avatar mood (applies mood animations and morph baselines).",
-    parameters: {
-      type: "object",
-      properties: {
-        mood: {
-          type: "string",
-          enum: ["neutral", "happy", "angry", "sad", "fear", "disgust", "love", "sleep"],
-          description: "Mood name"
-        }
-      },
-      required: ["mood"]
-    }
-  },
-  {
-    type: "function",
-    name: "play_gesture",
-    description: "Play a named hand gesture or animated emoji.",
-    parameters: {
-      type: "object",
-      properties: {
-        gesture: {
-          type: "string",
-          description: "Gesture name or emoji (e.g. 'handup', 'index', 'ok', 'thumbup', 'thumbdown', 'side', 'shrug', 'namaste' or emoji character)"
-        },
-        duration: { type: "number", description: "Duration in seconds (optional)." },
-        mirror: { type: "boolean", description: "If true, mirror gesture to the other hand (optional)." },
-        ms: { type: "number", description: "Transition time in milliseconds (optional)." }
-      },
-      required: ["gesture"]
-    }
-  },
-  {
-    type: "function",
-    name: "stop_gesture",
-    description: "Stop current gesture (graceful transition).",
-    parameters: {
-      type: "object",
-      properties: {
-        ms: { type: "number", description: "Transition time in milliseconds (optional)." }
-      }
-    }
-  },
-  {
-    type: "function",
-    name: "make_facial_expression",
-    description: "Trigger a facial expression using an emoji template.",
-    parameters: {
-      type: "object",
-      properties: {
-        emoji: { type: "string", description: "Single face emoji or emoji name to play." },
-        duration: { type: "number", description: "Duration in seconds (optional)." }
-      },
-      required: ["emoji"]
-    }
-  },
-  {
-    type: "function",
-    name: "speak_break",
-    description: "Insert a pause/break into the speech/animation queue.",
-    parameters: {
-      type: "object",
-      properties: {
-        duration_ms: { type: "number", description: "Break length in milliseconds." }
-      },
-      required: ["duration_ms"]
-    }
-  },
-  {
-    type: "function",
-    name: "speak_marker",
-    description: "Insert a marker callback into the speech queue (useful for timing).",
-    parameters: {
-      type: "object",
-      properties: {
-        marker: { type: "string", description: "Marker id or name. Client will receive marker event." }
-      },
-      required: ["marker"]
-    }
-  },
-  {
-    type: "function",
-    name: "look_at",
-    description: "Make the avatar look at a screen position (x,y) for t milliseconds.",
-    parameters: {
-      type: "object",
-      properties: {
-        x: { type: "number", description: "Normalized screen X position (0..1) or pixel value depending on your UI." },
-        y: { type: "number", description: "Normalized screen Y position (0..1) or pixel value depending on your UI." },
-        t: { type: "number", description: "Duration in milliseconds (optional)." }
-      },
-      required: ["x", "y"]
-    }
-  },
-  {
-    type: "function",
-    name: "look_at_camera",
-    description: "Make the avatar look at the camera for t milliseconds.",
-    parameters: {
-      type: "object",
-      properties: {
-        t: { type: "number", description: "Duration in milliseconds." }
-      },
-      required: ["t"]
-    }
-  },
-  {
-    type: "function",
-    name: "make_eye_contact",
-    description: "Force the avatar to maintain eye contact for t milliseconds.",
-    parameters: {
-      type: "object",
-      properties: {
-        t: { type: "number", description: "Duration in milliseconds." }
-      },
-      required: ["t"]
-    }
-  },
-  {
-    type: "function",
-    name: "set_value",
-    description: "Set a morph-target (blendshape) or custom property value with optional transition.",
-    parameters: {
-      type: "object",
-      properties: {
-        mt: { type: "string", description: "Morph-target name or custom property (see allowed list)." },
-        value: { type: "number", description: "Target value." },
-        ms: { type: "number", description: "Transition time in milliseconds (optional)." }
-      },
-      required: ["mt", "value"]
-    }
-  },
-  {
-    type: "function",
-    name: "get_value",
-    description: "Read the current value of a morph-target or custom property.",
-    parameters: {
-      type: "object",
-      properties: {
-        mt: { type: "string", description: "Morph-target or custom property name." }
-      },
-      required: ["mt"]
-    }
-  },
-  {
-    type: "function",
-    name: "play_background_audio",
-    description: "Play looped background or ambient audio.",
-    parameters: {
-      type: "object",
-      properties: {
-        url: { type: "string", description: "Audio URL to play." },
-        volume: { type: "number", description: "Volume (0..1, optional)." }
-      },
-      required: ["url"]
-    }
-  },
-  {
-    type: "function",
-    name: "stop_background_audio",
-    description: "Stop background audio playback.",
-    parameters: {
-      type: "object",
-      properties: {}
-    }
-  },
-  {
-    type: "function",
-    name: "start",
-    description: "Start/restart the TalkingHead animation loop.",
-    parameters: {
-      type: "object",
-      properties: {}
-    }
-  },
-  {
-    type: "function",
-    name: "stop",
-    description: "Stop the TalkingHead animation loop.",
-    parameters: {
-      type: "object",
-      properties: {}
-    }
-  },
-  {
-    type: "function",
-    name: "start_listening",
-    description: "Begin VAD/listening using the client's analyser settings (server may just forward the command).",
-    parameters: {
-      type: "object",
-      properties: {
-        listeningSilenceThresholdLevel: { type: "number" },
-        listeningSilenceThresholdMs: { type: "number" },
-        listeningActiveThresholdLevel: { type: "number" },
-        listeningActiveThresholdMs: { type: "number" }
-      }
-    }
-  },
-  {
-    type: "function",
-    name: "stop_listening",
-    description: "Stop VAD/listening.",
-    parameters: {
-      type: "object",
-      properties: {}
-    }
-  }
-] as const;
-
-// Local type definitions removed in favor of imports from ./directors/types
+// Constants now imported from ./stage: lightPresets, gestures, moods, cameraViews, stageFunctionDefs, directorModelFallback, directorMaxTokens
 
 
 type PerformancePlan = MergedPlan;
@@ -420,7 +98,6 @@ const state = {
   head: null as TalkingHead | null,
   headaudio: null as HeadAudio | null,
   audioBuffer: null as AudioBuffer | null,
-  lipsyncReady: null as Promise<void> | null,
   orchestrator: null as DirectorOrchestrator | null,
   analysisVoiceQueue: Promise.resolve(),
   cameraSettings: {
@@ -594,15 +271,7 @@ const updateHero = (avatarName?: string, songName?: string, sectionLabel?: strin
   els.heroSubtitle.textContent = sectionLabel ? `${songLabel} · ${sectionLabel}` : songLabel;
 };
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-const randomItem = <T>(items: readonly T[]) => items[Math.floor(Math.random() * items.length)];
-
-const encodeWords = (text: string) =>
-  text
-    .split(/\s+/)
-    .map((word) => word.trim())
-    .filter(Boolean);
+// clamp, randomItem, encodeWords are now imported from modules
 
 const buildWordTimings = (words: string[], durationMs: number): WordTiming => {
   if (!words.length) {
@@ -638,89 +307,7 @@ const updateStageLighting = (head: TalkingHead, dt: number) => {
   }
 };
 
-const ensureLipsync = async (head: TalkingHead) => {
-  if (state.lipsyncReady) {
-    await state.lipsyncReady;
-    return;
-  }
-  state.lipsyncReady = (async () => {
-    try {
-      console.log("Loading lipsync module from:", lipsyncEnUrl);
-      const module = await import(/* @vite-ignore */ lipsyncEnUrl);
-      console.log("Lipsync module loaded:", Object.keys(module));
-      const target = head as unknown as { lipsync?: Record<string, unknown>; lipsyncs?: Record<string, unknown> };
-      if (!target.lipsync) target.lipsync = {};
-      if (!target.lipsyncs) target.lipsyncs = {};
-
-      const LipsyncClass = module.LipsyncEn || module.default;
-      if (!LipsyncClass) {
-        console.error("Failed to load LipsyncEn class from module:", module);
-        return;
-      }
-
-      console.log("Initializing LipsyncEn...");
-      const instance = new LipsyncClass();
-      target.lipsync.en = instance;
-      target.lipsyncs.en = instance;
-      console.log("LipsyncEn initialized and attached to head. lipsync keys:", Object.keys(target.lipsync));
-    } catch (e) {
-      console.error("Failed to load lipsync module:", e);
-    }
-  })();
-  await state.lipsyncReady;
-};
-
-const buildVisemeTimings = (head: TalkingHead, timings: WordTiming) => {
-  const visemes: string[] = [];
-  const vtimes: number[] = [];
-  const vdurations: number[] = [];
-  const target = head as unknown as {
-    lipsync?: Record<string, unknown>;
-    lipsyncPreProcessText?: (word: string, lang: string) => string;
-    lipsyncWordsToVisemes?: (word: string, lang: string) => {
-      visemes?: string[];
-      times?: number[];
-      durations?: number[];
-    };
-  };
-
-  // Check if lipsync module is loaded
-  if (!target.lipsync || Object.keys(target.lipsync).length === 0) {
-    console.warn("Lipsync module not loaded, skipping viseme generation");
-    return { visemes, vtimes, vdurations };
-  }
-
-  for (let i = 0; i < timings.words.length; i += 1) {
-    const word = timings.words[i] || "";
-    const time = timings.wtimes[i] ?? 0;
-    const duration = timings.wdurations[i] ?? 0;
-    if (!word || duration <= 0 || !target.lipsyncWordsToVisemes) {
-      continue;
-    }
-    try {
-      const processed = target.lipsyncPreProcessText ? target.lipsyncPreProcessText(word, "en") : word;
-      const val = target.lipsyncWordsToVisemes(processed, "en");
-      const localVisemes = val?.visemes || [];
-      const localTimes = val?.times || [];
-      const localDurations = val?.durations || [];
-      const lastIndex = localVisemes.length - 1;
-      if (lastIndex < 0) continue;
-      const dTotal = (localTimes[lastIndex] ?? 0) + (localDurations[lastIndex] ?? 0);
-      if (!dTotal) continue;
-      for (let j = 0; j < localVisemes.length; j += 1) {
-        const t = time + (localTimes[j] / dTotal) * duration;
-        const d = (localDurations[j] / dTotal) * duration;
-        visemes.push(localVisemes[j]);
-        vtimes.push(Math.max(0, Math.round(t)));
-        vdurations.push(Math.max(1, Math.round(d)));
-      }
-    } catch (e) {
-      console.warn("Viseme generation failed for word:", word, e);
-    }
-  }
-
-  return { visemes, vtimes, vdurations };
-};
+// ensureLipsync and buildVisemeTimings are now imported from ./avatar/index
 
 const createHead = () => {
   const head = new TalkingHead(els.avatar, {
@@ -1310,72 +897,10 @@ const decodeAudio = async () => {
   state.audioBuffer = await state.head.audioCtx.decodeAudioData(arrayBuffer.slice(0));
 };
 
-const buildSectionsFromTimings = (timings: WordTiming) => {
-  const sections: Array<{ start_ms: number; end_ms: number; text: string }> = [];
-  if (!timings.words.length) return sections;
-
-  let currentWords: string[] = [];
-  let startMs = timings.wtimes[0];
-  let endMs = timings.wtimes[0] + timings.wdurations[0];
-  let lastEnd = endMs;
-
-  for (let i = 0; i < timings.words.length; i += 1) {
-    const word = timings.words[i];
-    const wtime = timings.wtimes[i];
-    const wdur = timings.wdurations[i];
-    const gap = wtime - lastEnd;
-    const segmentDuration = endMs - startMs;
-    const shouldSplit = gap > 1300 || segmentDuration > 16000;
-
-    if (currentWords.length && shouldSplit) {
-      sections.push({
-        start_ms: Math.max(0, Math.round(startMs)),
-        end_ms: Math.max(0, Math.round(endMs)),
-        text: currentWords.join(" ")
-      });
-      currentWords = [];
-      startMs = wtime;
-    }
-
-    currentWords.push(word);
-    endMs = Math.max(endMs, wtime + wdur);
-    lastEnd = wtime + wdur;
-  }
-
-  if (currentWords.length) {
-    sections.push({
-      start_ms: Math.max(0, Math.round(startMs)),
-      end_ms: Math.max(0, Math.round(endMs)),
-      text: currentWords.join(" ")
-    });
-  }
-
-  return sections;
-};
-
-const fallbackPlan = (durationMs: number, timings: WordTiming | null): MergedPlan => {
-  const words = timings?.words?.length ? timings.words : encodeWords(state.transcriptText);
-  const segments = timings ? buildSectionsFromTimings(timings) : [];
-  const sectionCount = Math.max(3, Math.min(segments.length || 4, 6));
-  const step = durationMs / sectionCount;
-  const sections: PlanSection[] = [];
-
-  for (let i = 0; i < sectionCount; i += 1) {
-    const start_ms = Math.round(i * step);
-    const end_ms = Math.round((i + 1) * step);
-    sections.push({
-      label: i === 0 ? "Intro" : i === sectionCount - 1 ? "Outro" : `Section ${i + 1}`,
-      start_ms,
-      end_ms,
-      role: i % 2 === 0 ? "solo" : "ensemble",
-      mood: randomItem(moods) as Mood,
-      camera: cameraViews[i % cameraViews.length] as CameraView,
-      light: (Object.keys(lightPresets) as LightPreset[])[i % Object.keys(lightPresets).length] as LightPreset
-    });
-  }
-
-  return { title: "Auto Stage", sections, actions: [], source: "heuristic" as const };
-};
+// buildSectionsFromTimings is imported from ./performance/index
+// fallbackPlan wrapper using imported createFallbackPlan
+const fallbackPlan = (durationMs: number, timings: WordTiming | null): MergedPlan =>
+  createFallbackPlan(durationMs, timings, state.transcriptText);
 
 // ─────────────────────────────────────────────────────────────
 // Dynamic Configuration Fetching
@@ -2529,6 +2054,9 @@ const initStage = async () => {
 };
 
 const init = async () => {
+  // Initialize elements from the DOM
+  els = getElements();
+
   // Initial fetches
   // TTS Disabled as per user request
   // fetchTtsModels().then(() => {
