@@ -48,7 +48,8 @@ const getStageDisplayName = (stage: DirectorStage): string => {
   const names: Record<DirectorStage, string> = {
     performance: "Performance Director",
     stage: "Stage Director",
-    camera: "Camera Director"
+    camera: "Camera Director",
+    postfx: "PostFX Director"
   };
   return names[stage];
 };
@@ -227,7 +228,8 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
           sections,
           durationMs,
           defaultLightPreset: stateNow.lightPreset,
-          defaultCameraView: stateNow.cameraSettings.view
+          defaultCameraView: stateNow.cameraSettings.view,
+          enabledDirectors: stateNow.enabledDirectors
         },
         {
           onProgress: (event) => {
@@ -239,8 +241,9 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
 
               const stageProgress: Record<DirectorStage, number> = {
                 performance: 10,
-                stage: 45,
-                camera: 78
+                stage: 35,
+                camera: 60,
+                postfx: 85
               };
               updateProgressBar(els.analysisProgressBar, stageProgress[event.stage]);
 
@@ -257,9 +260,10 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
               updateStageBadges(els, event.stage, "complete");
 
               const completedProgress: Record<DirectorStage, number> = {
-                performance: 33,
-                stage: 66,
-                camera: 100
+                performance: 25,
+                stage: 50,
+                camera: 75,
+                postfx: 100
               };
               updateProgressBar(els.analysisProgressBar, completedProgress[event.stage]);
 
@@ -322,7 +326,8 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
         const allNotes = [
           result.plan.performanceNotes,
           result.plan.stageNotes,
-          result.plan.cameraNotes
+          result.plan.cameraNotes,
+          result.plan.postFxNotes
         ].filter(Boolean).join("\n\n");
 
         const nextNotes = allNotes || "Director pipeline completed.";

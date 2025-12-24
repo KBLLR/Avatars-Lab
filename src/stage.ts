@@ -1,5 +1,6 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
 import { initLipsync, speakWithLipsync } from "./modules/lipsync";
+import { effectsManager } from "./effects/manager";
 import { getMlxConfig, setOverride, readOverrides } from "./mlx-config";
 import { createAnalysisController } from "./stage/analysis";
 import { createAudioController } from "./stage/audio";
@@ -662,6 +663,7 @@ const init = async () => {
   });
   performanceController = createPerformanceController({
     els,
+    effectsManager,
     getState: () => state,
     updateState,
     ensureAudioContext: audioController.ensureAudioContext,

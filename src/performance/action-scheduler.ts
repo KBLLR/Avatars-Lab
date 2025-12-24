@@ -4,6 +4,9 @@ import {
   type DollyConfig, type PanConfig, type TiltConfig,
   type OrbitConfig, type ShakeConfig, type PunchConfig, type SweepConfig
 } from "../camera";
+import { applyEnvironment, getEnvironmentPreset } from "../environments";
+import type { Environment } from "../environments";
+import type { EffectsManager } from "../effects/manager";
 import type { PlanSection, PlanAction, Mood, CameraView } from "../directors/types";
 import type { ScheduledMarkers } from "./types";
 import { gestures } from "../stage/constants";
@@ -30,6 +33,7 @@ export interface SchedulerContext {
   updateStatus: UpdateStatusFn;
   applyCameraSettings: ApplyCameraSettingsFn;
   applyLightPreset: ApplyLightPresetFn;
+  effectsManager?: EffectsManager;
 }
 
 export const scheduleAction = (
@@ -149,6 +153,65 @@ export const scheduleAction = (
         break;
       case "camera_sweep":
         sweep(head, args as unknown as SweepConfig);
+        break;
+      // Environment Actions
+      case "set_environment":
+        if (args.preset) {
+          const preset = getEnvironmentPreset(args.preset as string);
+          if (preset) {
+            applyEnvironment(head, preset.environment);
+            ctx.updateStatus(`Env: ${preset.name}`);
+          }
+        }
+        break;
+      case "set_background":
+        // args matches Environment (Solid, Gradient, Transparent) structure
+        applyEnvironment(head, args as unknown as Environment);
+        break;
+      // PostFX Actions
+      case "post_bloom":
+        if (ctx.effectsManager) {
+          ctx.effectsManager.setBloom(
+            typeof args.strength === "number" ? args.strength : 1.5,
+            typeof args.radius === "number" ? args.radius : 0.4,
+            typeof args.threshold === "number" ? args.threshold : 0.85
+          );
+        }
+        break;
+      case "post_vignette":
+        if (ctx.effectsManager) {
+          ctx.effectsManager.setVignette(
+            typeof args.offset === "number" ? args.offset : 1.0,
+            typeof args.darkness === "number" ? args.darkness : 1.0
+          );
+        }
+        break;
+      case "post_chromatic_aberration":
+        if (ctx.effectsManager) {
+          ctx.effectsManager.setChromaticAberration(
+            typeof args.offset === "number" ? args.offset : 0.005
+          );
+        }
+        break;
+      case "post_pixelation":
+        if (ctx.effectsManager) {
+          ctx.effectsManager.setPixelation(
+            typeof args.pixelSize === "number" ? args.pixelSize : 1.0
+          );
+        }
+        break;
+      case "post_glitch":
+        if (ctx.effectsManager) {
+          ctx.effectsManager.setGlitch(
+             Boolean(args.active ?? true),
+             Boolean(args.wild ?? false)
+          );
+        }
+        break;
+      case "post_reset_effects":
+        if (ctx.effectsManager) {
+          ctx.effectsManager.resetEffects();
+        }
         break;
       default:
         break;

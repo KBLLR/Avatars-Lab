@@ -1,7 +1,7 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
 import type { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import type { DirectorOrchestrator } from "../pipeline/orchestrator";
-import type { MergedPlan, WordTiming } from "../directors/types";
+import type { MergedPlan, WordTiming, DirectorStage } from "../directors/types";
 
 export type PerformancePlan = MergedPlan;
 
@@ -100,6 +100,7 @@ export interface StageState {
   avatarBaseUrl: string | null;
   lastDirectorModel?: string;
   lastDirectorStyle?: string;
+  enabledDirectors: DirectorStage[];
 }
 
 export const createInitialState = (): StageState => ({
@@ -151,5 +152,6 @@ export const createInitialState = (): StageState => ({
   performing: false,
   avatarBaseUrl: null,
   lastDirectorModel: undefined,
-  lastDirectorStyle: undefined
+  lastDirectorStyle: undefined,
+  enabledDirectors: ["performance", "stage", "camera", "postfx"]
 });

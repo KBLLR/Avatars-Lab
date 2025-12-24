@@ -32,6 +32,11 @@ export const initControls = ({ els, getState, updateState }: InitControlsDeps): 
   els.autoRotate.checked = state.cameraSettings.autoRotate;
   els.autoRotateSpeed.value = String(state.cameraSettings.autoRotateSpeed);
   updateSliderReadouts(els);
+  
+  els.directorEnablePerformance.checked = true; // Always true
+  els.directorEnableStage.checked = state.enabledDirectors.includes("stage");
+  els.directorEnableCamera.checked = state.enabledDirectors.includes("camera");
+  els.directorEnablePostFx.checked = state.enabledDirectors.includes("postfx");
 };
 
 export interface BindControlsDeps {
@@ -193,5 +198,24 @@ export const bindControls = ({
     }
     applyPlanApproved(true);
     updateStatus("Plan approved. Ready to perform.");
+  });
+
+  // Director Toggles
+  const updateDirectorState = (stage: "stage" | "camera" | "postfx", enabled: boolean) => {
+    const current = getState().enabledDirectors.filter(d => d !== stage);
+    if (enabled) current.push(stage);
+    updateState({ enabledDirectors: current });
+  };
+
+  els.directorEnableStage.addEventListener("change", () => {
+    updateDirectorState("stage", els.directorEnableStage.checked);
+  });
+
+  els.directorEnableCamera.addEventListener("change", () => {
+    updateDirectorState("camera", els.directorEnableCamera.checked);
+  });
+
+  els.directorEnablePostFx.addEventListener("change", () => {
+    updateDirectorState("postfx", els.directorEnablePostFx.checked);
   });
 };

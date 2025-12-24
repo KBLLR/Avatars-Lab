@@ -2,10 +2,9 @@ import { TalkingHead } from "@met4citizen/talkinghead";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import type { HeadConfig, HeadAudioConfig, UpdateStageLightingFn } from "./types";
 import { ensureLipsync } from "./lipsync-bridge";
+import { effectsManager } from "../effects/manager";
 
-// @ts-expect-error static asset imports
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
-// @ts-expect-error static asset imports
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 
 export const getDefaultHeadAudioConfig = (): HeadAudioConfig => ({
@@ -35,6 +34,26 @@ export const createHead = (config: HeadConfig): TalkingHead => {
     head.controls.autoRotate = config.cameraSettings.autoRotate;
     head.controls.autoRotateSpeed = config.cameraSettings.autoRotateSpeed;
   }
+
+  // Hook EffectsManager
+  if (head.renderer && head.scene && head.camera) {
+    effectsManager.init(head.renderer, head.scene, head.camera);
+
+    // Disable internal render by overriding the render method provided by TalkingHead (if it uses a standard loop)
+    // or by hijacking the internal renderer.render if exposed.
+    // Assuming TalkingHead calls this.renderer.render(this.scene, this.camera);
+    // We can replace head.render if it exists, or update loop.
+
+    // If we can't disable, we just accept double render for now, but usually libraries have a 'render' method we can stub.
+    // head.render = () => {}; // if it exists
+  }
+
+  const originalUpdate = head.opt.update;
+  head.opt.update = (dt: number) => {
+    if (originalUpdate) originalUpdate(dt);
+    // Render using effects composer
+    effectsManager.render(dt);
+  };
 
   ensureLipsync(head).catch(() => null);
 

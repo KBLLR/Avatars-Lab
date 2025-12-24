@@ -47,11 +47,22 @@ Expand Avatar Labs with cinematic camera movements, post-processing effects, vid
 
 | Sprint | Status | Notes |
 |--------|--------|-------|
-| 1. Camera Movements | 🔄 In Progress | Directory created, files pending |
-| 2. Post-Processing | ⏳ Pending | After Sprint 1 |
-| 3. Export System | ⏳ Pending | After Sprint 2 |
-| 4. Environments | ⏳ Pending | After Sprint 3 |
-| 5. AI Integration | ⏳ Pending | After Sprint 4 |
+| 1. Camera Movements | ⏸️ Parked | Complete but pending better handler/parser integration |
+| 2. Post-Processing | ⏸️ Parked | Complete but pending better handler/parser integration |
+| 3. Export System | ⏳ Pending | Deferred until after Sprint 7 |
+| 4. Environments | ✅ Complete | Types, presets, backgrounds implemented |
+| 5. AI Integration | ✅ Complete | StageDirector + PostFXDirector with context passing |
+| 6. mflux Integration | ✅ Complete | Port 8083, flux-schnell, 4-bit quantization |
+| 7. Diffusion Pipeline | 🔄 Active | Wan 2.1 I2V + SDXL Turbo endpoints |
+
+### Sprint Notes
+
+**Sprints 1 & 2 (Parked)**: Camera movements and post-processing are implemented but need refinement. A better handler/parser is being developed to improve director analysis output handling. These will be revisited after the parser work is complete.
+
+**Sprint 7 Focus**: Canvas-to-Video diffusion pipeline using:
+- **Wan 2.1 (I2V)**: Image-to-video generation
+- **SDXL Turbo/Lightning**: Real-time preview generation
+- **Architecture**: Separate `mlx-services/video` to avoid dependency conflicts with mflux
 
 ---
 

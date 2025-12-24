@@ -165,6 +165,35 @@ export interface StopPoseAction extends PlanAction {
   action: "stop_pose";
 }
 
+export interface PostBloomAction extends PlanAction {
+  action: "post_bloom";
+  args: { intensity: number; duration_ms: number };
+}
+
+export interface PostVignetteAction extends PlanAction {
+  action: "post_vignette";
+  args: { darkness: number; duration_ms: number };
+}
+
+export interface PostResetAction extends PlanAction {
+  action: "post_reset";
+  args: { duration_ms: number };
+}
+
+export interface SetEnvironmentAction extends PlanAction {
+  action: "set_environment";
+  args: { preset: string };
+}
+
+export interface SetBackgroundAction extends PlanAction {
+  action: "set_background";
+  args: {
+    type: "solid" | "gradient" | "transparent";
+    color?: string;
+    colors?: [string, string];
+  };
+}
+
 export type TypedPlanAction =
   | SetMoodAction
   | PlayGestureAction
@@ -188,6 +217,11 @@ export type TypedPlanAction =
   | SetLightPresetAction
   | PlayPoseAction
   | StopPoseAction
+  | PostBloomAction
+  | PostVignetteAction
+  | PostResetAction
+  | SetEnvironmentAction
+  | SetBackgroundAction
   | PlanAction;
 
 // ─────────────────────────────────────────────────────────────
@@ -230,6 +264,7 @@ export interface MergedPlan extends DirectorPlan {
   performanceNotes?: string;
   stageNotes?: string;
   cameraNotes?: string;
+  postFxNotes?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -266,7 +301,7 @@ export const DEFAULT_DIRECTOR_CONFIG: Partial<DirectorConfig> = {
 // Progress & Event Types
 // ─────────────────────────────────────────────────────────────
 
-export type DirectorStage = "performance" | "stage" | "camera";
+export type DirectorStage = "performance" | "stage" | "camera" | "postfx";
 export type StageStatus = "pending" | "running" | "complete" | "failed" | "cancelled";
 
 export interface ProgressEvent {
@@ -331,6 +366,8 @@ export const PERFORMANCE_ACTIONS_COMPACT = [
 
 export const STAGE_ACTIONS_COMPACT = [
   "set_light_preset(preset: neon|noir|sunset|frost|crimson)",
+  "set_environment(preset: string)",
+  "set_background(type: solid|gradient|transparent, color?: hex, colors?: [hex, hex])",
   "play_background_audio(url: string, volume?: 0-1)",
   "stop_background_audio()",
   "set_view(view: full|mid|upper|head, cameraDistance?: number, cameraX?: number, cameraY?: number)"
@@ -351,6 +388,12 @@ export const CAMERA_MOVEMENT_ACTIONS = [
   "camera_shake(intensity: 0-1, duration_ms: number)",
   "camera_punch(factor: number, duration_ms: number)",
   "camera_sweep(startAngle: number, endAngle: number, duration_ms: number, easing?: string)"
+] as const;
+
+export const POSTPROCESSING_ACTIONS = [
+  "post_bloom(intensity: 0.0-3.0, duration_ms: number)",
+  "post_vignette(darkness: 0.0-2.0, duration_ms: number)",
+  "post_reset(duration_ms: number)"
 ] as const;
 
 // ─────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@
 import { PerformanceDirector } from "../directors/performance-director";
 import { StageDirector, StageDirectorContext } from "../directors/stage-director";
 import { CameraDirector, CameraDirectorContext } from "../directors/camera-director";
+import { PostFXDirector } from "../directors/postfx-director";
 import { DirectorOptions, AnalyzeOptions, DirectorResult } from "../directors/base-director";
 import {
   DirectorPlan,
@@ -53,6 +54,7 @@ export interface PipelineInput {
   durationMs: number;
   defaultLightPreset?: string;
   defaultCameraView?: string;
+  enabledDirectors?: DirectorStage[];
 }
 
 export interface PipelineResult {
@@ -72,6 +74,7 @@ export class DirectorOrchestrator {
   private performanceDirector: PerformanceDirector;
   private stageDirector: StageDirector;
   private cameraDirector: CameraDirector;
+  private postFxDirector: PostFXDirector;
   private abortController: AbortController | null = null;
   private options: OrchestratorOptions;
 
@@ -92,6 +95,7 @@ export class DirectorOrchestrator {
     this.performanceDirector = new PerformanceDirector(directorOpts);
     this.stageDirector = new StageDirector(directorOpts);
     this.cameraDirector = new CameraDirector(directorOpts);
+    this.postFxDirector = new PostFXDirector(directorOpts);
   }
 
   /**
@@ -113,6 +117,7 @@ export class DirectorOrchestrator {
     this.performanceDirector = new PerformanceDirector(directorOpts);
     this.stageDirector = new StageDirector(directorOpts);
     this.cameraDirector = new CameraDirector(directorOpts);
+    this.postFxDirector = new PostFXDirector(directorOpts);
   }
 
   /**
@@ -126,12 +131,19 @@ export class DirectorOrchestrator {
     this.abortController = new AbortController();
     const { signal } = this.abortController;
 
-    const { sections, durationMs, defaultLightPreset = "neon", defaultCameraView = "upper" } = input;
+    const {
+      sections,
+      durationMs,
+      defaultLightPreset = "neon",
+      defaultCameraView = "upper",
+      enabledDirectors = ["performance", "stage", "camera", "postfx"]
+    } = input;
     const { onProgress, onChunk, onThoughts, onStageComplete, onFallback } = callbacks || {};
 
     let performanceResult: DirectorResult | undefined;
     let stageResult: DirectorResult | undefined;
     let cameraResult: DirectorResult | undefined;
+    let postFxResult: DirectorResult | undefined;
     let usedFallback = false;
 
     try {
@@ -174,7 +186,7 @@ export class DirectorOrchestrator {
       }
 
       // ─────────────────────────────────────────────────────────
-      // Stage 2 & 3: Stage + Camera Directors
+      // Stage 2 & 3 & 4: Stage + Camera + PostFX Directors
       // ─────────────────────────────────────────────────────────
 
       const stageContext: StageDirectorContext = {
@@ -182,28 +194,50 @@ export class DirectorOrchestrator {
       };
 
       if (this.options.parallelStageCamera !== false) {
-        // Run Stage and Camera in parallel for speed
-        const [stageSettled, cameraSettled] = await Promise.allSettled([
-          this.stageDirector.analyze(sections, durationMs, stageContext, {
-            signal,
-            onProgress,
-            onChunk,
-            onThoughts: (thoughts) => onThoughts?.("stage", thoughts)
-          }),
-          // Camera gets performance plan, stage will be null since parallel
-          this.cameraDirector.analyze(sections, durationMs, {
-            performancePlan: performanceResult.plan,
-            stagePlan: null
-          } as CameraDirectorContext, {
-            signal,
-            onProgress,
-            onChunk,
-            onThoughts: (thoughts) => onThoughts?.("camera", thoughts)
-          })
-        ]);
+        // Run Stage, Camera, and PostFX in parallel for speed if enabled
+        const promises: Promise<DirectorResult | undefined>[] = [
+          // Stage Director
+          enabledDirectors.includes("stage")
+            ? this.stageDirector.analyze(sections, durationMs, stageContext, {
+                signal,
+                onProgress,
+                onChunk,
+                onThoughts: (thoughts) => onThoughts?.("stage", thoughts)
+              })
+            : Promise.resolve(undefined),
+          // Camera Director
+          enabledDirectors.includes("camera")
+            ? this.cameraDirector.analyze(sections, durationMs, {
+                performancePlan: performanceResult.plan,
+                stagePlan: null
+              } as CameraDirectorContext, {
+                signal,
+                onProgress,
+                onChunk,
+                onThoughts: (thoughts) => onThoughts?.("camera", thoughts)
+              })
+            : Promise.resolve(undefined),
+          // PostFX Director
+          enabledDirectors.includes("postfx")
+            ? this.postFxDirector.analyze(
+                sections,
+                durationMs,
+                { performancePlan: performanceResult.plan },
+                {
+                  signal,
+                  onProgress,
+                  onChunk,
+                  onThoughts: (thoughts) => onThoughts?.("postfx", thoughts)
+                }
+              )
+            : Promise.resolve(undefined)
+        ];
+
+        const [stageSettled, cameraSettled, postFxSettled] = await Promise.allSettled(promises);
 
         stageResult = stageSettled.status === "fulfilled" ? stageSettled.value : undefined;
         cameraResult = cameraSettled.status === "fulfilled" ? cameraSettled.value : undefined;
+        postFxResult = postFxSettled.status === "fulfilled" ? postFxSettled.value : undefined;
 
         if (stageSettled.status === "rejected") {
           console.warn("Stage director failed:", stageSettled.reason);
@@ -211,45 +245,72 @@ export class DirectorOrchestrator {
         if (cameraSettled.status === "rejected") {
           console.warn("Camera director failed:", cameraSettled.reason);
         }
+        if (postFxSettled.status === "rejected") {
+          console.warn("PostFX director failed:", postFxSettled.reason);
+        }
       } else {
-        // Run sequentially (Stage first, then Camera with stage context)
-        try {
-          stageResult = await this.stageDirector.analyze(
-            sections,
-            durationMs,
-            stageContext,
-            {
-              signal,
-              onProgress,
-              onChunk,
-              onThoughts: (thoughts) => onThoughts?.("stage", thoughts)
-            }
-          );
-          onStageComplete?.("stage", stageResult);
-        } catch (err) {
-          console.warn("Stage director failed:", err);
+        // Run sequentially (Stage -> Camera -> PostFX)
+        if (enabledDirectors.includes("stage")) {
+          try {
+            stageResult = await this.stageDirector.analyze(
+              sections,
+              durationMs,
+              stageContext,
+              {
+                signal,
+                onProgress,
+                onChunk,
+                onThoughts: (thoughts) => onThoughts?.("stage", thoughts)
+              }
+            );
+            onStageComplete?.("stage", stageResult);
+          } catch (err) {
+            console.warn("Stage director failed:", err);
+          }
         }
 
-        try {
-          const cameraContext: CameraDirectorContext = {
-            performancePlan: performanceResult.plan,
-            stagePlan: stageResult?.plan || null
-          };
+        if (enabledDirectors.includes("camera")) {
+          try {
+            const cameraContext: CameraDirectorContext = {
+              performancePlan: performanceResult.plan,
+              stagePlan: stageResult?.plan || null
+            };
 
-          cameraResult = await this.cameraDirector.analyze(
-            sections,
-            durationMs,
-            cameraContext,
-            {
-              signal,
-              onProgress,
-              onChunk,
-              onThoughts: (thoughts) => onThoughts?.("camera", thoughts)
-            }
-          );
-          onStageComplete?.("camera", cameraResult);
-        } catch (err) {
-          console.warn("Camera director failed:", err);
+            cameraResult = await this.cameraDirector.analyze(
+              sections,
+              durationMs,
+              cameraContext,
+              {
+                signal,
+                onProgress,
+                onChunk,
+                onThoughts: (thoughts) => onThoughts?.("camera", thoughts)
+              }
+            );
+            onStageComplete?.("camera", cameraResult);
+          } catch (err) {
+            console.warn("Camera director failed:", err);
+          }
+        }
+
+        if (enabledDirectors.includes("postfx")) {
+          try {
+            // PostFX runs last
+            postFxResult = await this.postFxDirector.analyze(
+              sections,
+              durationMs,
+              { performancePlan: performanceResult.plan },
+              {
+                signal,
+                onProgress,
+                onChunk,
+                onThoughts: (thoughts) => onThoughts?.("postfx", thoughts)
+              }
+            );
+            onStageComplete?.("postfx", postFxResult);
+          } catch (err) {
+            console.warn("PostFX director failed:", err);
+          }
         }
       }
 
@@ -261,6 +322,7 @@ export class DirectorOrchestrator {
         performanceResult.plan,
         stageResult?.plan || null,
         cameraResult?.plan || null,
+        postFxResult?.plan || null,
         defaultLightPreset,
         defaultCameraView
       );
@@ -383,31 +445,35 @@ export class DirectorOrchestrator {
   }
 
   /**
-   * Merge plans from all three directors
+   * Merge plans from all four directors
    */
   private mergePlans(
     performancePlan: DirectorPlan,
     stagePlan: DirectorPlan | null,
     cameraPlan: DirectorPlan | null,
+    postFxPlan: DirectorPlan | null,
     defaultLight: string,
     defaultCamera: string
   ): MergedPlan {
     const sections: PlanSection[] = performancePlan.sections.map((section, index) => {
       const stageSection = stagePlan?.sections[index];
       const cameraSection = cameraPlan?.sections[index];
+      const postFxSection = postFxPlan?.sections[index];
 
       // Merge notes from all directors
       const notes = [
         section.notes,
         stageSection?.notes,
-        cameraSection?.notes
+        cameraSection?.notes,
+        postFxSection?.notes
       ].filter(Boolean).join(" | ");
 
       // Merge actions from all directors
       const actions = [
         ...(section.actions || []),
         ...(stageSection?.actions || []),
-        ...(cameraSection?.actions || [])
+        ...(cameraSection?.actions || []),
+        ...(postFxSection?.actions || [])
       ].sort((a, b) => a.time_ms - b.time_ms);
 
       return {
@@ -423,7 +489,8 @@ export class DirectorOrchestrator {
     const actions = [
       ...(performancePlan.actions || []),
       ...(stagePlan?.actions || []),
-      ...(cameraPlan?.actions || [])
+      ...(cameraPlan?.actions || []),
+      ...(postFxPlan?.actions || [])
     ].sort((a, b) => a.time_ms - b.time_ms);
 
     return {

@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Labs Multimodal</title>
+    <style>
+      :root {
+        --bg: #05070d;
+        --panel: #0f1624;
+        --accent: #ffb347;
+        --accent-2: #ff5f7a;
+        --accent-3: #5bf2d6;
+        --text: #f8f4ee;
+        --muted: #9aa9c2;
+        --card: rgba(15, 25, 40, 0.9);
+        --line: rgba(255, 255, 255, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
+        color: var(--text);
+        background: radial-gradient(
+            circle at 15% 20%,
+            #1a2434 0%,
+            transparent 55%
+          ),
+          radial-gradient(circle at 85% 10%, #281329 0%, transparent 60%),
+          linear-gradient(150deg, #05070d, #0b1322 70%, #0f0b18);
+        overflow: hidden;
+      }
+
+      #app {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 420px;
+        min-height: 100vh;
+        padding: 20px;
+        gap: 20px;
+      }
+
+      #stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(5, 8, 14, 0.6);
+      }
+
+      #avatar {
+        position: absolute;
+        inset: 0;
+      }
+
+      #spotlights {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+            circle at 20% 10%,
+            rgba(255, 179, 71, 0.3),
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(255, 95, 122, 0.25),
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 50% 80%,
+            rgba(91, 242, 214, 0.2),
+            transparent 55%
+          );
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      #analysisOverlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(5, 8, 14, 0.55);
+        backdrop-filter: blur(14px) saturate(1.1);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 4;
+      }
+
+      #analysisOverlay.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #analysisCard {
+        width: min(520px, 90%);
+        padding: 18px 20px;
+        border-radius: 16px;
+        background: rgba(10, 14, 22, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      }
+
+      .analysis-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      #analysisStep {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+
+      .analysis-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(255, 179, 71, 0.7);
+        animation: pulse 1.2s ease-in-out infinite;
+      }
+
+      .analysis-progress {
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+
+      .analysis-progress-bar {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--accent),
+          var(--accent-2),
+          var(--accent-3)
+        );
+        background-size: 200% 100%;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+        animation: progress-shimmer 2s ease-in-out infinite;
+      }
+
+      @keyframes progress-shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+
+      .analysis-stages {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .analysis-stage-badge {
+        flex: 1;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .analysis-stage-badge.active {
+        background: rgba(255, 179, 71, 0.15);
+        border-color: rgba(255, 179, 71, 0.4);
+        color: var(--accent);
+      }
+
+      .analysis-stage-badge.complete {
+        background: rgba(91, 242, 214, 0.12);
+        border-color: rgba(91, 242, 214, 0.3);
+        color: var(--accent-3);
+      }
+
+      .analysis-stage-badge.failed {
+        background: rgba(255, 95, 122, 0.12);
+        border-color: rgba(255, 95, 122, 0.3);
+        color: var(--accent-2);
+      }
+
+      #analysisThoughts {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text);
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 10px;
+        scroll-behavior: smooth;
+      }
+
+      #analysisThoughts::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      #analysisThoughts::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 2px;
+      }
+
+      #analysisThoughts::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+      }
+
+      .streaming-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 14px;
+        background: var(--accent);
+        animation: blink 0.8s step-end infinite;
+        margin-left: 2px;
+        vertical-align: middle;
+      }
+
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      #analysisHint {
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .analysis-timer {
+        font-variant-numeric: tabular-nums;
+        color: var(--accent);
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 0.8;
+        }
+        50% {
+          transform: scale(1.4);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 0.8;
+        }
+      }
+
+      #stageHud {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: rgba(7, 11, 20, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(8px);
+        min-width: 220px;
+      }
+
+      #hero {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: rgba(5, 8, 14, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        text-align: right;
+        max-width: 320px;
+      }
+
+      #heroTitle {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      #heroSubtitle {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+      }
+
+      #heroLyrics {
+        margin-top: 10px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #f8f4ee;
+      }
+
+      #heroLyrics .current {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .hud-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .hud-row strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      #panel {
+        padding: 22px;
+        background: linear-gradient(
+          180deg,
+          rgba(15, 22, 36, 0.98),
+          rgba(10, 14, 24, 0.98)
+        );
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        display: grid;
+        gap: 14px;
+        overflow-y: auto;
+        height: calc(100vh - 40px);
+        align-content: start;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      h1 span {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+      }
+
+      .status {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .card {
+        padding: 14px;
+        border-radius: 14px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        display: grid;
+        gap: 10px;
+      }
+
+      .card-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+
+      label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      select,
+      input[type="text"],
+      input[type="number"],
+      input[type="color"],
+      textarea {
+        width: 100%;
+        padding: 9px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(15, 25, 40, 0.9);
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      textarea {
+        min-height: 130px;
+        resize: vertical;
+      }
+
+      input[type="range"] {
+        width: 100%;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .triple {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .slider-row {
+        display: grid;
+        grid-template-columns: 1fr 48px;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .slider-row.icon {
+        grid-template-columns: 34px 1fr 48px;
+      }
+
+      .slider-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 24px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      button {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        padding: 9px 14px;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      button.primary {
+        background: linear-gradient(120deg, #ffb347, #ff5f7a);
+        color: #1a0f18;
+        border: none;
+      }
+
+      button.ghost {
+        background: transparent;
+      }
+
+      button.cancel-mode {
+        background: linear-gradient(120deg, #ff5f7a, #ff3355);
+        color: white;
+        border: none;
+        animation: cancel-pulse 0.8s ease-in-out infinite;
+      }
+
+      @keyframes cancel-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(255, 95, 122, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 12px 4px rgba(255, 95, 122, 0.3);
+        }
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .runtime-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .runtime-item {
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(10, 14, 22, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        min-height: 58px;
+      }
+
+      .runtime-item span {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .runtime-value {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        word-break: break-all;
+      }
+
+      .runtime-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .runtime-status {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .plan {
+        display: grid;
+        gap: 8px;
+        max-height: 260px;
+        overflow-y: auto;
+      }
+
+      .plan-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .plan-status {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .plan-details {
+        font-size: 12px;
+        color: var(--muted);
+        background: rgba(6, 10, 20, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 10px;
+        min-height: 120px;
+        white-space: pre-wrap;
+      }
+
+      .plan-item {
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(6, 10, 20, 0.6);
+        font-size: 12px;
+      }
+
+      .plan-item strong {
+        color: var(--accent-3);
+      }
+
+      .plan-section {
+        display: grid;
+        gap: 6px;
+      }
+
+      .plan-meta {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .plan-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip-select {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 18, 32, 0.9);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+      }
+
+      .chip-select.mood {
+        border-color: rgba(91, 242, 214, 0.4);
+      }
+      .chip-select.gesture {
+        border-color: rgba(255, 179, 71, 0.5);
+      }
+      .chip-select.camera {
+        border-color: rgba(255, 95, 122, 0.5);
+      }
+      .chip-select.light {
+        border-color: rgba(120, 180, 255, 0.5);
+      }
+      .chip-select.role {
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+      .chip-select.action {
+        border-color: rgba(173, 130, 255, 0.4);
+      }
+
+      .chip-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(12, 18, 32, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 11px;
+      }
+
+      .chip-inline input {
+        width: 110px;
+        border: none;
+        background: transparent;
+        color: var(--text);
+        font-size: 11px;
+      }
+
+      @media (max-width: 1100px) {
+        #app {
+          grid-template-columns: 1fr;
+          padding: 12px;
+          gap: 12px;
+        }
+        #stage {
+          min-height: 50vh;
+        }
+        #panel {
+          height: auto;
+          overflow-y: visible;
+        }
+        body {
+          overflow: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <div id="avatar"></div>
+        <div id="spotlights"></div>
+        <div id="analysisOverlay">
+          <div id="analysisCard">
+            <div class="analysis-title">Director Feed</div>
+            <div id="analysisStep">
+              <span class="analysis-dot"></span
+              ><span id="analysisStepText">Idle</span>
+            </div>
+            <div class="analysis-progress">
+              <div
+                class="analysis-progress-bar"
+                id="analysisProgressBar"
+                style="width: 0%"
+              ></div>
+            </div>
+            <div class="analysis-stages">
+              <div class="analysis-stage-badge" id="stageBadgePerformance">
+                Performance
+              </div>
+              <div class="analysis-stage-badge" id="stageBadgeStage">Stage</div>
+              <div class="analysis-stage-badge" id="stageBadgeCamera">
+                Camera
+              </div>
+              <div class="analysis-stage-badge" id="stageBadgePostFx">
+                PostFX
+              </div>
+            </div>
+            <div id="analysisThoughts">Awaiting performance analysis.</div>
+            <div id="analysisHint">Voiceover will play when available.</div>
+          </div>
+        </div>
+        <div id="hero">
+          <div id="heroTitle">Stage Ready</div>
+          <div id="heroSubtitle">Awaiting Audio</div>
+          <div id="heroLyrics">Upload a song to render timed lyrics.</div>
+        </div>
+        <div id="stageHud">
+          <div class="hud-row">
+            <span>Scene</span><strong id="hudScene">Idle</strong>
+          </div>
+          <div class="hud-row">
+            <span>Camera</span><strong id="hudCamera">Upper</strong>
+          </div>
+          <div class="hud-row">
+            <span>Lights</span><strong id="hudLights">Neon</strong>
+          </div>
+          <div class="hud-row">
+            <span>Mode</span><strong id="hudMode">Awaiting</strong>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel">
+        <h1>Multimodal Chat <span>Avatar Labs</span></h1>
+        <div class="status" id="status">Upload a song to begin staging.</div>
+
+        <div class="card">
+          <div class="card-title">Conversation Controls</div>
+          <div class="row">
+             <button id="startSessionBtn" class="primary">Start Session</button>
+             <button id="stopSessionBtn" disabled>Stop Session</button>
+          </div>
+          <div class="row">
+             <button id="pushModeBtn" class="primary">Push to Talk</button>
+             <button id="vadModeBtn">Auto VAD</button>
+          </div>
+          <div class="section">
+             <button id="recordBtn" disabled>Hold to Talk</button>
+          </div>
+           <div class="section">
+             <div class="slider-row">
+               <label>VAD Thresh</label>
+               <input id="vadThreshold" type="range" min="-100" max="0" step="1" value="-48" />
+             </div>
+              <div class="slider-row">
+               <label>Silence Ms</label>
+               <input id="vadSilence" type="range" min="100" max="2000" step="100" value="600" />
+             </div>
+          </div>
+           <div class="section">
+              <label>Level</label>
+              <div style="background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; overflow:hidden;">
+                 <div id="levelMeter" style="width: 0%; height: 100%; background: var(--accent);"></div>
+              </div>
+           </div>
+           <div class="section">
+              <label>Log</label>
+              <div id="chatLog" style="height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></div>
+           </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Audio & Transcript</div>
+          <div class="section">
+            <label>Avatar</label>
+            <select id="avatarSelect"></select>
+          </div>
+          <div class="section">
+            <label>Song File</label>
+            <input
+              id="songInput"
+              type="file"
+              accept=".m4a,.mp3,.webm,.mp4,.mpga,.wav,.mpeg"
+            />
+          </div>
+          <div class="row">
+            <button id="transcribeBtn">Transcribe</button>
+            <button id="analyzeBtn">Analyze Performance</button>
+          </div>
+          <label>Transcript</label>
+          <textarea id="transcript" readonly></textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Director Setup</div>
+          <div class="plan-section">
+             <label>Director Style</label>
+             <select id="directorStyle">
+                <option value="cinematic">Cinematic</option>
+                <option value="intimate">Intimate</option>
+                <option value="hype">Hype</option>
+                <option value="minimal">Minimal</option>
+                <option value="experimental">Experimental</option>
+             </select>
+             <div class="toggle">
+               <input id="directorEnablePerformance" type="checkbox" checked disabled />
+               <label>Perf</label>
+               <input id="directorEnableStage" type="checkbox" checked disabled />
+               <label>Stage</label>
+               <input id="directorEnableCamera" type="checkbox" checked />
+               <label>Cam</label>
+               <input id="directorEnablePostFX" type="checkbox" checked />
+               <label>FX</label>
+             </div>
+             <label for="visionEnable">
+                 <input type="checkbox" id="visionEnable" />
+                 Enable Vision (VLM)
+             </label>
+             <label for="directorReasoningEnable">
+                 <input type="checkbox" id="directorReasoningEnable" />
+                 Show Reasoning
+             </label>
+             <label>Manual Prompt</label>
+             <textarea id="directorPrompt" placeholder="Override director instructions..."></textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Staged Plan</div>
+          <div class="plan-toolbar">
+              <span class="plan-status" id="planStatus">Pending analysis</span>
+              <div class="row" style="width: auto; gap: 6px;">
+                 <button id="playBtn" class="primary" disabled>Play Round</button>
+                 <button id="stopBtn">Stop</button>
+              </div>
+          </div>
+          <div class="row">
+             <button id="approveBtn" class="primary" disabled>Approve Plan</button>
+             <button id="clearPlanBtn" class="ghost">Clear</button>
+          </div>
+          <div class="plan-section">
+             <div id="planList" class="plan"></div>
+          </div>
+          <div class="plan-details" id="directorNotes">Director notes unavailable.</div>
+        </div>
+
+        <div class="card">
+           <div class="card-title">Runtime & Config</div>
+           <div class="runtime-grid">
+              <div class="runtime-item">
+                 <span>Current Model</span>
+                 <div class="runtime-value" id="currentModelDisplay">-</div>
+              </div>
+              <div class="runtime-item">
+                 <span>Status</span>
+                 <div class="runtime-value" id="runtimeStatusText">Unknown</div>
+              </div>
+           </div>
+           <div class="runtime-actions">
+              <button id="refreshRuntimeBtn" class="ghost">Ping</button>
+              <button id="unloadModelBtn" class="ghost">Unload</button>
+              <button id="loadModelBtn" class="primary">Load</button>
+           </div>
+           <div class="chips">
+              <span class="chip" id="sttChip">STT:-</span>
+              <span class="chip" id="chatChip">Chat:-</span>
+              <span class="chip" id="vlmChip">VLM:-</span>
+              <span class="chip" id="llmChip">LLM:-</span>
+              <span class="chip" id="embedChip">Embed:-</span>
+           </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Model Selection</div>
+          
+          <div class="section">
+             <label>LLM (Chat/Director)</label>
+             <select id="llmModelSelect"></select>
+          </div>
+
+          <div class="section">
+             <label>VLM (Vision)</label>
+             <select id="vlmModelSelect"></select>
+          </div>
+
+          <div class="section">
+             <label>Helper LLM (Director Aux)</label>
+             <select id="directorModelSelect"></select>
+          </div>
+
+          <div class="section">
+             <label>STT (Whisper)</label>
+             <select id="sttModelSelect"></select>
+          </div>
+
+          <div class="section">
+             <label>TTS (Speech)</label>
+             <select id="ttsModelSelect"></select>
+          </div>
+
+           <div class="section">
+             <label>Embedding</label>
+             <select id="embedModelSelect"></select>
+          </div>
+
+           <div class="section">
+             <label>Runtime Load</label>
+             <select id="llmRuntimeModelSelect"></select>
+          </div>
+        </div>
+
+         <div class="card">
+            <div class="card-title">Stage Controls</div>
+            <div class="slider-row">
+               <label>Pulse</label>
+               <input id="lightPulse" type="range" min="0" max="2" step="0.1" value="0" />
+               <span id="lightPulseVal">0</span>
+            </div>
+            <div class="slider-row icon">
+               <div class="slider-icon">AMB</div>
+               <input id="lightAmbient" type="range" min="0" max="3" step="0.1" value="0.5" />
+               <span id="lightAmbientVal">0.5</span>
+            </div>
+            <div class="slider-row icon">
+               <div class="slider-icon">DIR</div>
+               <input id="lightDirect" type="range" min="0" max="5" step="0.1" value="2.0" />
+               <span id="lightDirectVal">2.0</span>
+            </div>
+            <div class="slider-row icon">
+               <div class="slider-icon">SPT</div>
+               <input id="lightSpot" type="range" min="0" max="10" step="0.1" value="5.0" />
+               <span id="lightSpotVal">5.0</span>
+            </div>
+            <div class="triple">
+               <input id="colorAmbient" type="color" value="#ffffff" />
+               <input id="colorDirect" type="color" value="#ffffff" />
+               <input id="colorSpot" type="color" value="#ffffff" />
+            </div>
+         </div>
+
+         <div class="card">
+             <div class="card-title">Camera</div>
+             <div class="slider-row">
+               <label>Distance</label>
+               <input id="camDistance" type="range" min="0.1" max="3.0" step="0.1" value="1.0" />
+               <span id="camDistanceVal">1.0</span>
+            </div>
+            <div class="slider-row">
+               <label>Height</label>
+               <input id="camHeight" type="range" min="-1.0" max="2.0" step="0.1" value="0.0" />
+               <span id="camHeightVal">0.0</span>
+            </div>
+            <div class="slider-row">
+               <label>FOV</label>
+               <input id="camFov" type="range" min="10" max="90" step="1" value="45" />
+               <span id="camFovVal">45</span>
+            </div>
+             <div class="slider-row">
+               <label>Drift</label>
+               <input id="camDrift" type="range" min="0" max="1" step="0.01" value="0" />
+               <span id="camDriftVal">0</span>
+            </div>
+         </div>
+      </div>
+    </div>
+    <script type="module" src="/src/multi-modal.ts"></script>
+  </body>
+</html>

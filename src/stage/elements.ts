@@ -88,6 +88,11 @@ export interface StageElements {
   stageBadgePerformance: HTMLElement;
   stageBadgeStage: HTMLElement;
   stageBadgeCamera: HTMLElement;
+  stageBadgePostFx: HTMLElement;
+  directorEnablePerformance: HTMLInputElement;
+  directorEnableStage: HTMLInputElement;
+  directorEnableCamera: HTMLInputElement;
+  directorEnablePostFx: HTMLInputElement;
 }
 
 let cachedElements: StageElements | null = null;
@@ -184,7 +189,12 @@ export const getElements = (): StageElements => {
     analysisProgressBar: document.getElementById("analysisProgressBar") as HTMLElement,
     stageBadgePerformance: document.getElementById("stageBadgePerformance") as HTMLElement,
     stageBadgeStage: document.getElementById("stageBadgeStage") as HTMLElement,
-    stageBadgeCamera: document.getElementById("stageBadgeCamera") as HTMLElement
+    stageBadgeCamera: document.getElementById("stageBadgeCamera") as HTMLElement,
+    stageBadgePostFx: document.getElementById("stageBadgePostFx") as HTMLElement,
+    directorEnablePerformance: document.getElementById("directorEnablePerformance") as HTMLInputElement,
+    directorEnableStage: document.getElementById("directorEnableStage") as HTMLInputElement,
+    directorEnableCamera: document.getElementById("directorEnableCamera") as HTMLInputElement,
+    directorEnablePostFx: document.getElementById("directorEnablePostFx") as HTMLInputElement
   };
 
   return cachedElements;

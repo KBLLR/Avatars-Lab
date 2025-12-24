@@ -40,11 +40,16 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr) 420px;
         min-height: 100vh;
+        padding: 20px;
+        gap: 20px;
       }
 
       #stage {
         position: relative;
         overflow: hidden;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(5, 8, 14, 0.6);
       }
 
       #avatar {
@@ -343,11 +348,13 @@
           rgba(15, 22, 36, 0.98),
           rgba(10, 14, 24, 0.98)
         );
-        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
         display: grid;
         gap: 14px;
         overflow-y: auto;
-        height: 100vh;
+        height: calc(100vh - 40px);
+        align-content: start;
       }
 
       h1 {
@@ -680,10 +687,13 @@
       @media (max-width: 1100px) {
         #app {
           grid-template-columns: 1fr;
+          padding: 12px;
+          gap: 12px;
+        }
+        #stage {
+          min-height: 50vh;
         }
         #panel {
-          border-left: none;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
           height: auto;
           overflow-y: visible;
         }
@@ -719,6 +729,9 @@
               <div class="analysis-stage-badge" id="stageBadgeStage">Stage</div>
               <div class="analysis-stage-badge" id="stageBadgeCamera">
                 Camera
+              </div>
+              <div class="analysis-stage-badge" id="stageBadgePostFx">
+                PostFX
               </div>
             </div>
             <div id="analysisThoughts">Awaiting performance analysis.</div>
@@ -773,6 +786,36 @@
         </div>
 
         <div class="card">
+          <div class="card-title">Director Setup</div>
+          <div class="plan-section">
+             <label>Director Style</label>
+             <select id="directorStyle">
+                <option value="cinematic">Cinematic</option>
+                <option value="intimate">Intimate</option>
+                <option value="hype">Hype</option>
+                <option value="minimal">Minimal</option>
+                <option value="experimental">Experimental</option>
+             </select>
+             <div class="toggle">
+               <input id="directorEnablePerformance" type="checkbox" checked disabled />
+               <label for="directorEnablePerformance" style="opacity: 0.7">Performance (Base)</label>
+             </div>
+             <div class="toggle">
+               <input id="directorEnableStage" type="checkbox" checked />
+               <label for="directorEnableStage">Stage Director</label>
+             </div>
+             <div class="toggle">
+               <input id="directorEnableCamera" type="checkbox" checked />
+               <label for="directorEnableCamera">Camera Director</label>
+             </div>
+             <div class="toggle">
+               <input id="directorEnablePostFx" type="checkbox" checked />
+               <label for="directorEnablePostFx">PostFX Director</label>
+             </div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title">Performance Controls</div>
           <div class="row">
             <button id="playBtn" class="primary" disabled>AI Perform</button>
@@ -783,20 +826,17 @@
             <input id="soloOnly" type="checkbox" checked />
             <label for="soloOnly">Solo-only lip sync</label>
           </div>
-          <label>Director Style</label>
-          <select id="directorStyle">
-            <option value="cinematic">Cinematic</option>
-            <option value="intimate">Intimate</option>
-            <option value="hype">Hype</option>
-            <option value="minimal">Minimal</option>
-            <option value="experimental">Experimental</option>
-          </select>
+
         </div>
 
         <div class="card">
           <div class="card-title">Performance Library</div>
           <label>Title</label>
-          <input id="dataPoolTitle" type="text" placeholder="Name this performance" />
+          <input
+            id="dataPoolTitle"
+            type="text"
+            placeholder="Name this performance"
+          />
           <div class="toggle">
             <input id="dataPoolIncludeAudio" type="checkbox" checked />
             <label for="dataPoolIncludeAudio">Include audio (base64)</label>

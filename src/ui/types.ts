@@ -45,7 +45,8 @@ export interface BadgeElements {
   stageBadgePerformance: HTMLElement;
   stageBadgeStage: HTMLElement;
   stageBadgeCamera: HTMLElement;
+  stageBadgePostFx: HTMLElement;
 }
 
-export type DirectorStage = "performance" | "stage" | "camera";
+export type DirectorStage = "performance" | "stage" | "camera" | "postfx";
 export type BadgeStatus = "pending" | "active" | "complete" | "failed";

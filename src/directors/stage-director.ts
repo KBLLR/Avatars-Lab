@@ -53,6 +53,14 @@ LIGHT PRESETS: ${LIGHT_PRESETS.join(", ")}
 - frost: cool, ethereal, blue-white
 - crimson: intense, passionate, red
 
+- crimson: intense, passionate, red
+
+ENVIRONMENT PRESETS: studio, outdoor, neon-city, void, transparent, sunset-gradient
+- Use 'set_environment(preset: "name")' to change background.
+- "void" or "transparent" for minimal looks.
+- "neon-city" for cyberpunk/energetic.
+- "sunset-gradient" for warm/moody.
+
 STAGE ACTIONS:
 ${STAGE_ACTIONS_COMPACT.join("\n")}
 

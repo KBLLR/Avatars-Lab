@@ -14,6 +14,7 @@ declare module '@met4citizen/headaudio/dist/headaudio.min.mjs' {
     loadModel(url: string): Promise<void>;
     update(dt: number): void;
     onvalue: (key: string, value: number) => void;
+    onstarted: (() => void) | null;
   }
 }
 
