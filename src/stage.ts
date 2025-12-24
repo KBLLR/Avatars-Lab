@@ -39,7 +39,8 @@ import {
 import {
   ensureLipsync,
   buildVisemeTimings,
-  decodeAudio as decodeAudioFile
+  decodeAudio as decodeAudioFile,
+  transcribeAudio as transcribeAudioFile
 } from "./avatar/index";
 import {
   updateStageLighting as updateStageLightingModule,
@@ -708,46 +709,18 @@ const transcribeAudio = async () => {
     return;
   }
 
-  updateStatus(els, "Transcribing with MLX STT...");
-  const form = new FormData();
-  form.append("file", state.audioFile);
-  form.append("model", config.sttModel);
-  form.append("language", "en");
-  form.append("word_timestamps", "true");
-
-  const response = await fetch(`${config.audioBaseUrl}/v1/audio/transcriptions`, {
-    method: "POST",
-    body: form
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`STT error (${response.status}): ${detail}`);
-  }
-
-  const payload = await response.json();
-  const text = payload?.text || "";
-  if (!text) {
-    updateStatus(els, "STT returned empty transcript.");
-    return;
-  }
-
-  const nextWordTimings =
-    Array.isArray(payload?.words) &&
-    Array.isArray(payload?.wtimes) &&
-    Array.isArray(payload?.wdurations) &&
-    payload.words.length === payload.wtimes.length &&
-    payload.words.length === payload.wdurations.length
-      ? {
-          words: payload.words,
-          wtimes: payload.wtimes,
-          wdurations: payload.wdurations
-        }
-      : null;
+  const { text, wordTimings } = await transcribeAudioFile(
+    state.audioFile,
+    {
+      audioBaseUrl: config.audioBaseUrl,
+      sttModel: config.sttModel
+    },
+    (msg) => updateStatus(els, msg)
+  );
 
   updateState({
     transcriptText: text,
-    wordTimings: nextWordTimings,
+    wordTimings,
     plan: null,
     planSource: "none",
     directorNotes: ""
