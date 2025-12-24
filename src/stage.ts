@@ -9,7 +9,6 @@ import type {
   Mood,
   LightPreset,
   PlanSection,
-  PlanAction,
   WordTiming
 } from "./directors/types";
 
@@ -46,7 +45,8 @@ import {
 import {
   fallbackPlan as createFallbackPlan,
   randomItem,
-  encodeWords
+  encodeWords,
+  createPerformanceController
 } from "./performance/index";
 import {
   updateStatus,
@@ -120,6 +120,9 @@ const applyPlanDirty = () => {
 
 let analysisController: ReturnType<typeof createAnalysisController> | null = null;
 const analyzePerformance = () => analysisController?.analyzePerformance() ?? Promise.resolve();
+let performanceController: ReturnType<typeof createPerformanceController> | null = null;
+const performSong = () => performanceController?.performSong() ?? Promise.resolve();
+const stopPerformance = () => performanceController?.stopPerformance();
 
 const ensureAudioContext = async (contextLabel: string) => {
   if (!state.head) return false;
@@ -1030,256 +1033,6 @@ const renderPlan = (sections: PlanSection[]) => {
   updatePlanDetails(els, sections, state);
 };
 
-const filterWordsForSolo = (timings: WordTiming, sections: PlanSection[]) => {
-  if (!sections.length) return timings;
-  const soloSegments = sections.filter((section) => section.role === "solo");
-  if (!soloSegments.length) return timings;
-
-  const soloWords: string[] = [];
-  const soloTimes: number[] = [];
-  const soloDurations: number[] = [];
-
-  for (let i = 0; i < timings.words.length; i += 1) {
-    const time = timings.wtimes[i];
-    const segment = soloSegments.find((section) => time >= section.start_ms && time <= section.end_ms);
-    if (segment) {
-      soloWords.push(timings.words[i]);
-      soloTimes.push(time);
-      soloDurations.push(timings.wdurations[i]);
-    }
-  }
-
-  return { words: soloWords, wtimes: soloTimes, wdurations: soloDurations };
-};
-
-const scheduleAction = (action: PlanAction, markers: Array<() => void>, mtimes: number[]) => {
-  const time = Math.max(0, Math.round(action.time_ms));
-  markers.push(() => {
-    if (!state.head) return;
-    const args = action.args || {};
-    const gesture = args.gesture || args.name;
-    switch (action.action) {
-      case "set_mood":
-        if (args.mood) state.head.setMood(args.mood as Mood);
-        break;
-      case "play_gesture":
-        if (gesture) {
-          state.head.playGesture(gesture as string, args.duration ?? 2.5, args.mirror ?? false, args.ms ?? 800);
-        }
-        break;
-      case "stop_gesture":
-        state.head.stopGesture(args.ms ?? 800);
-        break;
-      case "speak_emoji":
-      case "make_facial_expression":
-        if (args.emoji) state.head.speakEmoji(args.emoji as string);
-        break;
-      case "speak_break":
-        if (typeof args.duration_ms === "number") {
-          state.head.speakBreak(args.duration_ms);
-        }
-        break;
-      case "speak_marker":
-        if (args.marker) {
-          updateStatus(els, `Marker: ${args.marker}`);
-        }
-        break;
-      case "look_at":
-        if (typeof args.x === "number" && typeof args.y === "number") {
-          state.head.lookAt(args.x, args.y, args.t ?? 600);
-        }
-        break;
-      case "look_at_camera":
-      case "make_eye_contact":
-        state.head.lookAtCamera(args.ms ?? args.t ?? 600);
-        break;
-      case "set_value":
-        if (args.mt && typeof args.value === "number") {
-          state.head.setValue(args.mt as string, args.value, typeof args.ms === "number" ? args.ms : null);
-        }
-        break;
-      case "get_value":
-        if (args.mt) {
-          const value = state.head.getValue(args.mt as string);
-          updateStatus(els, `Value ${args.mt}: ${value ?? "n/a"}`);
-        }
-        break;
-      case "play_background_audio":
-        if (args.url) {
-          state.head.audioCtx.resume().catch(() => null);
-          state.head.playBackgroundAudio(args.url as string);
-          if (typeof args.volume === "number") {
-            const vol = Math.min(1, Math.max(0, args.volume));
-            state.head.setMixerGain(null, vol);
-          }
-        }
-        break;
-      case "stop_background_audio":
-        state.head.stopBackgroundAudio();
-        break;
-      case "start":
-        state.head.audioCtx.resume().catch(() => null);
-        state.head.start();
-        break;
-      case "stop":
-        state.head.stop();
-        break;
-      case "start_listening":
-      case "stop_listening":
-        break;
-      case "set_view":
-        if (args.view) {
-          state.cameraSettings.view = args.view as CameraView;
-          if (typeof args.cameraDistance === "number") state.cameraSettings.distance = args.cameraDistance;
-          if (typeof args.cameraX === "number") state.cameraSettings.x = args.cameraX;
-          if (typeof args.cameraY === "number") state.cameraSettings.y = args.cameraY;
-          if (typeof args.cameraRotateX === "number") state.cameraSettings.rotateX = args.cameraRotateX;
-          if (typeof args.cameraRotateY === "number") state.cameraSettings.rotateY = args.cameraRotateY;
-          applyCameraSettings();
-        }
-        break;
-      case "set_light_preset":
-          if (args.preset) applyLightPreset(args.preset as string);
-        break;
-      default:
-        break;
-    }
-  });
-  mtimes.push(time);
-};
-
-const buildMarkersFromPlan = (plan: { sections: PlanSection[]; actions?: PlanAction[] }, durationMs: number) => {
-  const markers: Array<() => void> = [];
-  const mtimes: number[] = [];
-
-  plan.sections.forEach((section) => {
-    scheduleAction(
-      {
-        time_ms: section.start_ms,
-        action: "set_mood",
-        args: { mood: section.mood || "neutral" }
-      },
-      markers,
-      mtimes
-    );
-    scheduleAction(
-      {
-        time_ms: section.start_ms,
-        action: "set_view",
-        args: { view: section.camera || state.cameraSettings.view }
-      },
-      markers,
-      mtimes
-    );
-    scheduleAction(
-      {
-        time_ms: section.start_ms,
-        action: "set_light_preset",
-        args: { preset: section.light || state.lightPreset }
-      },
-      markers,
-      mtimes
-    );
-
-    const actionCount = Math.min(3, Math.max(1, Math.floor((section.end_ms - section.start_ms) / 8000)));
-    for (let i = 0; i < actionCount; i += 1) {
-      const time = section.start_ms + (i + 1) * ((section.end_ms - section.start_ms) / (actionCount + 1));
-      scheduleAction(
-        {
-          time_ms: time,
-          action: "play_gesture",
-          args: { gesture: randomItem(gestures), duration: 2.5 }
-        },
-        markers,
-        mtimes
-      );
-    }
-
-    if (section.actions) {
-      section.actions.forEach((action) => scheduleAction(action, markers, mtimes));
-    }
-  });
-
-  plan.actions?.forEach((action) => scheduleAction(action, markers, mtimes));
-
-  return { markers, mtimes };
-};
-
-const performSong = async () => {
-  if (!state.head || !state.audioBuffer) return;
-  if (!state.transcriptText) {
-    updateStatus(els, "Transcript required. Run transcribe first.");
-    return;
-  }
-  if (!state.plan || !state.planApproved) {
-    updateStatus(els, "Approve the performance plan before performing.");
-    return;
-  }
-
-  const unlocked = await ensureAudioContext("Perform");
-  if (!unlocked) {
-    return;
-  }
-
-  await ensureLipsync(state.head);
-  state.head.start();
-  const durationMs = state.audioBuffer.duration * 1000;
-  const baseTimings =
-    state.wordTimings || buildWordTimings(encodeWords(state.transcriptText), durationMs);
-  const activePlan = state.plan || fallbackPlan(durationMs, baseTimings);
-  let planSource = state.planSource;
-  if (planSource === "none") {
-    planSource = "heuristic";
-    renderPlan(activePlan.sections);
-  }
-  updateState({ plan: activePlan, planSource });
-
-  const timings = els.soloOnly.checked ? filterWordsForSolo(baseTimings, activePlan.sections) : baseTimings;
-  const visemeTimings = buildVisemeTimings(state.head, timings);
-  const markers = buildMarkersFromPlan(activePlan, durationMs);
-  const hasVisemes = visemeTimings.visemes.length > 0;
-
-  const audio = {
-    audio: state.audioBuffer,
-    words: timings.words,
-    wtimes: timings.wtimes,
-    wdurations: timings.wdurations,
-    visemes: hasVisemes ? visemeTimings.visemes : [],
-    vtimes: hasVisemes ? visemeTimings.vtimes : [],
-    vdurations: hasVisemes ? visemeTimings.vdurations : [],
-    markers: markers.markers,
-    mtimes: markers.mtimes
-  };
-
-  const playbackStart = state.head.audioCtx.currentTime;
-  const lyricActive = Boolean(state.wordTimings?.words.length);
-  updateState({
-    performing: true,
-    playbackStart,
-    lyricIndex: 0,
-    lyricActive
-  });
-  setHud(els, activePlan.title || "Performance", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Performing");
-  updateStatus(els, "Performance started...");
-  if (lyricActive) {
-    updateLyricsOverlay(
-      () => state,
-      els,
-      (partial) => updateState(partial)
-    );
-  }
-  updateHero(els, undefined, state.audioFile ? state.audioFile.name : undefined, activePlan.title || "Performance");
-  state.head.speakAudio(audio);
-};
-
-const stopPerformance = () => {
-  if (!state.head) return;
-  state.head.stop();
-  updateState({ performing: false, lyricActive: false });
-  setHud(els, els.hudScene.textContent || "Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Stopped");
-  updateStatus(els, "Performance stopped.");
-};
-
 const handleFile = async (file: File) => {
   updateState({
     audioFile: file,
@@ -1545,6 +1298,35 @@ const init = async () => {
     enqueueAnalysisVoice,
     buildWordTimings,
     directorModelFallback
+  });
+  performanceController = createPerformanceController({
+    els,
+    getState: () => state,
+    updateState,
+    ensureAudioContext,
+    ensureLipsync,
+    buildVisemeTimings,
+    buildWordTimings,
+    encodeWords,
+    fallbackPlan,
+    renderPlan,
+    updateStatus: (message) => updateStatus(els, message),
+    updateHero: (avatarName, songName, sectionLabel) =>
+      updateHero(els, avatarName, songName, sectionLabel),
+    setHud: (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode),
+    startLyricsOverlay: () =>
+      updateLyricsOverlay(
+        () => state,
+        els,
+        (partial) => updateState(partial)
+      ),
+    randomItem,
+    gestures,
+    lightPresets,
+    applyLightPreset,
+    applyCameraSettings,
+    updateCameraSettings: (partial) =>
+      updateState({ cameraSettings: { ...state.cameraSettings, ...partial } })
   });
 
   // Initial fetches
