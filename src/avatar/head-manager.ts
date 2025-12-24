@@ -18,7 +18,7 @@ export const createHead = (config: HeadConfig): TalkingHead => {
     ttsEndpoint: "N/A",
     lipsyncLang: "en",
     lipsyncModules: [],
-    cameraView: "upper",
+    cameraView: config.cameraSettings.view,
     cameraDistance: config.cameraSettings.distance,
     cameraX: config.cameraSettings.x,
     cameraY: config.cameraSettings.y,

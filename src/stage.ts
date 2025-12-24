@@ -1,5 +1,4 @@
-import { TalkingHead } from "@met4citizen/talkinghead";
-import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
+import type { TalkingHead } from "@met4citizen/talkinghead";
 import { initLipsync, speakWithLipsync } from "./modules/lipsync";
 import { getMlxConfig, setOverride, readOverrides } from "./mlx-config";
 import { createAnalysisController } from "./stage/analysis";
@@ -30,7 +29,13 @@ import {
   ensureLipsync,
   buildVisemeTimings,
   decodeAudio as decodeAudioFile,
-  transcribeAudio as transcribeAudioFile
+  transcribeAudio as transcribeAudioFile,
+  createHead as createHeadModule,
+  disposeHead,
+  initHeadAudio as initHeadAudioModule,
+  getDefaultHeadAudioConfig,
+  loadAvatar as loadAvatarModule,
+  loadAvatarList as loadAvatarListModule
 } from "./avatar/index";
 import {
   updateStageLighting as updateStageLightingModule,
@@ -245,36 +250,16 @@ const updateStageLighting = (head: TalkingHead, dt: number) => {
   }
 };
 
-// ensureLipsync and buildVisemeTimings are now imported from ./avatar/index
-
-const createHead = () => {
-  const head = new TalkingHead(els.avatar, {
-    ttsEndpoint: "N/A",
-    lipsyncLang: "en",
-    lipsyncModules: [],
-    cameraView: state.cameraSettings.view,
-    cameraDistance: state.cameraSettings.distance,
-    cameraX: state.cameraSettings.x,
-    cameraY: state.cameraSettings.y,
-    cameraRotateX: state.cameraSettings.rotateX,
-    cameraRotateY: state.cameraSettings.rotateY,
-    cameraRotateEnable: true,
-    mixerGainSpeech: 3,
-    lightAmbientIntensity: state.stageLightingBase.ambient,
-    lightDirectIntensity: state.stageLightingBase.direct,
-    lightSpotIntensity: state.stageLightingBase.spot
+const createHead = () =>
+  createHeadModule({
+    avatarElement: els.avatar,
+    cameraSettings: state.cameraSettings,
+    lightingBase: state.stageLightingBase
   });
-  if (head.controls) {
-    head.controls.autoRotate = state.cameraSettings.autoRotate;
-    head.controls.autoRotateSpeed = state.cameraSettings.autoRotateSpeed;
-  }
-  ensureLipsync(head).catch(() => null);
-  return head;
-};
 
 const resetHead = () => {
-  if (state.head && typeof state.head.dispose === "function") {
-    state.head.dispose();
+  if (state.head) {
+    disposeHead(state.head);
   }
   const head = createHead();
   updateState({ head, headaudio: null, audioBuffer: null });
@@ -283,31 +268,12 @@ const resetHead = () => {
 const initHeadAudio = async () => {
   const head = state.head;
   if (!head || state.headaudio) return;
-  await head.audioCtx.audioWorklet.addModule(workletUrl);
-  const headaudio = new HeadAudio(head.audioCtx, {
-    processorOptions: {
-      visemeEventsEnabled: true
-    }
-  });
+  const headaudio = await initHeadAudioModule(
+    head,
+    getDefaultHeadAudioConfig(),
+    updateStageLighting
+  );
   updateState({ headaudio });
-  await headaudio.loadModel(modelUrl);
-  head.audioSpeechGainNode.connect(headaudio);
-  headaudio.onvalue = (key, value) => {
-    if (head.mtAvatar?.[key]) {
-      Object.assign(head.mtAvatar[key], { newvalue: value, needsUpdate: true });
-    }
-  };
-
-  const originalUpdate = head.opt.update;
-  head.opt.update = (dt: number) => {
-    if (state.headaudio) {
-      state.headaudio.update(dt);
-    }
-    if (originalUpdate) {
-      originalUpdate(dt);
-    }
-    updateStageLighting(head, dt);
-  };
 };
 
 const applyLightSettings = () => {
@@ -365,25 +331,6 @@ const loadModelRegistry = async () => {
 const modelLabel = (model: RegistryModel) => {
   const desc = model.description ? ` - ${model.description}` : "";
   return `${model.id}${desc}`;
-};
-
-const buildAvatarManifestCandidates = (): string[] => {
-  const override = import.meta.env.VITE_AVATAR_MANIFEST_URL as string | undefined;
-  const base = import.meta.env.BASE_URL || "/";
-  const candidates = [
-    override,
-    `${base}avatars/manifest.json`,
-    "avatars/manifest.json",
-    "/avatars/manifest.json"
-  ].filter((value): value is string => Boolean(value));
-  return candidates.map((path) => new URL(path, window.location.href).toString());
-};
-
-const resolveAvatarUrl = (name: string) => {
-  if (state.avatarBaseUrl) {
-    return new URL(name, state.avatarBaseUrl).toString();
-  }
-  return new URL(`avatars/${name}`, window.location.href).toString();
 };
 
 const trimModelId = (value?: string | null) => {
@@ -650,41 +597,9 @@ const loadRuntimeModel = async () => {
 };
 
 const loadAvatarList = async () => {
-  const manifestUrls = buildAvatarManifestCandidates();
-  let response: Response | null = null;
-  let manifestUrl = "";
-
-  for (const candidate of manifestUrls) {
-    try {
-      const attempt = await fetch(candidate, { cache: "no-store" });
-      if (attempt.ok) {
-        response = attempt;
-        manifestUrl = candidate;
-        break;
-      }
-    } catch {
-      // Try next candidate.
-    }
-  }
-
-  if (!response) {
-    throw new Error(`Failed to load avatar manifest. Tried: ${manifestUrls.join(", ")}`);
-  }
-
-  const data = await response.json();
-  const avatars = Array.isArray(data.avatars) ? data.avatars : [];
-  els.avatarSelect.innerHTML = "";
-  avatars.forEach((name: string) => {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name.replace(/\.glb$/i, "");
-    els.avatarSelect.appendChild(option);
-  });
-  if (avatars.length) {
-    els.avatarSelect.value = avatars[0];
-  }
-  if (manifestUrl) {
-    updateState({ avatarBaseUrl: new URL(".", manifestUrl).toString() });
+  const { baseUrl } = await loadAvatarListModule(els.avatarSelect);
+  if (baseUrl) {
+    updateState({ avatarBaseUrl: baseUrl });
   }
 };
 
@@ -692,15 +607,14 @@ const loadAvatar = async () => {
   if (!state.head) return;
   const name = els.avatarSelect.value;
   if (!name) return;
-  updateStatus(els, `Loading avatar: ${name}`);
-  await state.head.showAvatar({
-    url: resolveAvatarUrl(name),
-    body: "F",
-    avatarMood: "neutral"
-  });
-  state.head.setMood("happy");
-  updateHero(els, name, state.audioFile ? state.audioFile.name : undefined);
-  updateStatus(els, "Avatar ready. Upload a song to begin.");
+  await loadAvatarModule(
+    state.head,
+    name,
+    state.avatarBaseUrl,
+    (message) => updateStatus(els, message),
+    (avatarName, songName, status) => updateHero(els, avatarName, songName, status),
+    state.audioFile ? state.audioFile.name : undefined
+  );
 };
 
 const transcribeAudio = async () => {
