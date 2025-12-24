@@ -17,6 +17,7 @@ export interface RuntimePanelElements {
 
 export interface ModelSelectorElements {
   llmModelSelect: HTMLSelectElement;
+  vlmModelSelect: HTMLSelectElement;
   directorModelSelect: HTMLSelectElement;
   sttModelSelect: HTMLSelectElement;
   ttsModelSelect: HTMLSelectElement;
@@ -24,6 +25,7 @@ export interface ModelSelectorElements {
   llmRuntimeModelSelect: HTMLSelectElement;
   sttChip: HTMLElement;
   chatChip: HTMLElement;
+  vlmChip: HTMLElement;
   llmChip: HTMLElement;
   embedChip: HTMLElement;
 }
@@ -31,8 +33,10 @@ export interface ModelSelectorElements {
 export interface MlxConfig {
   llmBaseUrl?: string;
   audioBaseUrl?: string;
+  vlmBaseUrl?: string;
   dataLakeUrl?: string;
   llmModel?: string;
+  vlmModel?: string;
   sttModel?: string;
   ttsModel?: string;
   directorModel?: string;

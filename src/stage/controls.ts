@@ -140,6 +140,15 @@ export const bindControls = ({
     }
   });
 
+  els.vlmModelSelect.addEventListener("change", () => {
+    const value = els.vlmModelSelect.value;
+    if (value) {
+      config.vlmModel = value;
+      setOverride("vlmModel", value);
+      setChip(els.vlmChip, "VLM", value);
+    }
+  });
+
   els.sttModelSelect.addEventListener("change", () => {
     const value = els.sttModelSelect.value;
     if (value) {

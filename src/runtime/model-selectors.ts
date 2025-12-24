@@ -11,6 +11,7 @@ import {
 
 export interface MlxOverrides {
   llmModel?: string;
+  vlmModel?: string;
   sttModel?: string;
   ttsModel?: string;
   directorModel?: string;
@@ -20,6 +21,7 @@ export interface MlxOverrides {
 export interface InitModelSelectorsResult {
   registry: RegistryModel[];
   llmModels: RegistryModel[];
+  vlmModels: RegistryModel[];
   sttModels: RegistryModel[];
   ttsModels: RegistryModel[];
   embedModels: RegistryModel[];
@@ -36,6 +38,26 @@ export const initModelSelectors = async (
   const registry = await loadModelRegistry();
 
   const llmModels = filterModels(registry, "chat");
+  const vlmModels = dedupeModels([
+    ...filterModels(registry, "vision"),
+    ...filterModels(registry, "vlm"),
+    ...registry.filter((model) => {
+      const type = (model.type || "").toLowerCase();
+      const id = (model.id || "").toLowerCase();
+      const caps = Array.isArray(model.capabilities)
+        ? model.capabilities.map((cap) => cap.toLowerCase())
+        : [];
+      return (
+        type.includes("vlm") ||
+        type.includes("vision") ||
+        caps.includes("vision") ||
+        caps.includes("image") ||
+        id.includes("vlm") ||
+        id.includes("llava") ||
+        id.includes("clip")
+      );
+    })
+  ]);
   const sttModels = dedupeModels([
     ...filterModels(registry, "audio-transcribe"),
     ...registry.filter((model) => isWhisperModel(model))
@@ -48,12 +70,14 @@ export const initModelSelectors = async (
   ]);
 
   const llmDefault = overrides.llmModel || config.llmModel || "";
+  const vlmDefault = overrides.vlmModel || config.vlmModel || "";
   const directorDefault = overrides.directorModel || config.directorModel || directorModelFallback;
   const sttDefault = overrides.sttModel || config.sttModel || "";
   const ttsDefault = overrides.ttsModel || config.ttsModel || "";
   const embedDefault = overrides.embedModel || config.embedModel || "";
 
   populateModelSelect(els.llmModelSelect, llmModels, llmDefault);
+  populateModelSelect(els.vlmModelSelect, vlmModels.length ? vlmModels : llmModels, vlmDefault);
   populateModelSelect(els.directorModelSelect, llmModels, directorDefault);
   populateModelSelect(els.llmRuntimeModelSelect, llmModels, directorDefault || llmDefault);
   populateModelSelect(els.sttModelSelect, sttModels, sttDefault);
@@ -62,6 +86,10 @@ export const initModelSelectors = async (
   if (llmDefault) {
     config.llmModel = llmDefault;
     setChip(els.chatChip, "Chat", llmDefault);
+  }
+  if (vlmDefault) {
+    config.vlmModel = vlmDefault;
+    setChip(els.vlmChip, "VLM", vlmDefault);
   }
   if (directorDefault) {
     config.directorModel = directorDefault;
@@ -79,5 +107,5 @@ export const initModelSelectors = async (
     setChip(els.embedChip, "Embed", embedDefault);
   }
 
-  return { registry, llmModels, sttModels, ttsModels, embedModels };
+  return { registry, llmModels, vlmModels, sttModels, ttsModels, embedModels };
 };

@@ -2,6 +2,7 @@ import type { MergedPlan, WordTiming } from "../directors/types";
 
 export interface PerformanceModels {
   llmModel?: string;
+  vlmModel?: string;
   directorModel?: string;
   sttModel?: string;
   ttsModel?: string;

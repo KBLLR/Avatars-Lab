@@ -18,6 +18,7 @@ export interface StageElements {
   stopBtn: HTMLButtonElement;
   soloOnly: HTMLInputElement;
   llmModelSelect: HTMLSelectElement;
+  vlmModelSelect: HTMLSelectElement;
   directorModelSelect: HTMLSelectElement;
   sttModelSelect: HTMLSelectElement;
   ttsModelSelect: HTMLSelectElement;
@@ -45,6 +46,7 @@ export interface StageElements {
   dataPoolStatus: HTMLElement;
   sttChip: HTMLElement;
   chatChip: HTMLElement;
+  vlmChip: HTMLElement;
   llmChip: HTMLElement;
   embedChip: HTMLElement;
   audioChip: HTMLElement;
@@ -113,6 +115,7 @@ export const getElements = (): StageElements => {
     stopBtn: document.getElementById("stopBtn") as HTMLButtonElement,
     soloOnly: document.getElementById("soloOnly") as HTMLInputElement,
     llmModelSelect: document.getElementById("llmModelSelect") as HTMLSelectElement,
+    vlmModelSelect: document.getElementById("vlmModelSelect") as HTMLSelectElement,
     directorModelSelect: document.getElementById("directorModelSelect") as HTMLSelectElement,
     sttModelSelect: document.getElementById("sttModelSelect") as HTMLSelectElement,
     ttsModelSelect: document.getElementById("ttsModelSelect") as HTMLSelectElement,
@@ -140,6 +143,7 @@ export const getElements = (): StageElements => {
     dataPoolStatus: document.getElementById("dataPoolStatus") as HTMLElement,
     sttChip: document.getElementById("sttChip") as HTMLElement,
     chatChip: document.getElementById("chatChip") as HTMLElement,
+    vlmChip: document.getElementById("vlmChip") as HTMLElement,
     llmChip: document.getElementById("llmChip") as HTMLElement,
     embedChip: document.getElementById("embedChip") as HTMLElement,
     audioChip: document.getElementById("audioChip") as HTMLElement,

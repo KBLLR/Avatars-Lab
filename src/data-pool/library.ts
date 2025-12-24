@@ -144,6 +144,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
       directorStyle: deps.els.directorStyle.value,
       models: {
         llmModel: deps.config.llmModel,
+        vlmModel: deps.config.vlmModel,
         directorModel: deps.config.directorModel,
         sttModel: deps.config.sttModel,
         ttsModel: deps.config.ttsModel,
@@ -206,6 +207,11 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         deps.config.llmModel = next;
         deps.setOverride("llmModel", next);
         deps.setChip(deps.els.chatChip, "Chat", next);
+      });
+      applyModelValue(deps.els.vlmModelSelect, record.models?.vlmModel, (next) => {
+        deps.config.vlmModel = next;
+        deps.setOverride("vlmModel", next);
+        deps.setChip(deps.els.vlmChip, "VLM", next);
       });
       applyModelValue(deps.els.directorModelSelect, record.models?.directorModel, (next) => {
         deps.config.directorModel = next;

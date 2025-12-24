@@ -258,6 +258,7 @@ const initModelSelectors = async () => {
   const { registry } = await initModelSelectorsModule(
     {
       llmModelSelect: els.llmModelSelect,
+      vlmModelSelect: els.vlmModelSelect,
       directorModelSelect: els.directorModelSelect,
       sttModelSelect: els.sttModelSelect,
       ttsModelSelect: els.ttsModelSelect,
@@ -265,6 +266,7 @@ const initModelSelectors = async () => {
       llmRuntimeModelSelect: els.llmRuntimeModelSelect,
       sttChip: els.sttChip,
       chatChip: els.chatChip,
+      vlmChip: els.vlmChip,
       llmChip: els.llmChip,
       embedChip: els.embedChip
     },

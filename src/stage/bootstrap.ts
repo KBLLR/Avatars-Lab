@@ -68,6 +68,7 @@ export const bootstrapStage = async ({
   setHud("Idle", state.cameraSettings.view, getLightLabel(state.lightPreset), "Awaiting");
   setChip(els.sttChip, "STT", config.sttModel || "-");
   setChip(els.chatChip, "Chat", config.llmModel || "-");
+  setChip(els.vlmChip, "VLM", config.vlmModel || "-");
   const defaultDirector = config.directorModel || directorModelFallback;
   setChip(els.llmChip, "LLM", defaultDirector);
   setChip(els.embedChip, "Embed", config.embedModel || "-");
