@@ -101,6 +101,28 @@ const bindStateUi = () => {
         els.directorNotes.textContent = "Director notes unavailable.";
       }
     }
+    if (changed.cameraSettings !== undefined && nextState.head) {
+      applyCameraSettings();
+    }
+    if (
+      (changed.lightPreset !== undefined ||
+        changed.lightColors !== undefined ||
+        changed.stageLightingBase !== undefined) &&
+      nextState.head
+    ) {
+      applyLightSettings();
+      updateSliderReadoutsModule(els);
+      if (changed.lightPreset !== undefined) {
+        const label = lightPresets[nextState.lightPreset]?.label || nextState.lightPreset;
+        setHud(
+          els,
+          els.hudScene.textContent || "Idle",
+          els.hudCamera.textContent || "Upper",
+          label,
+          els.hudMode.textContent || "Awaiting"
+        );
+      }
+    }
   });
 };
 
@@ -299,32 +321,22 @@ const applyLightSettings = () => {
   });
 };
 
-const updateSliderReadouts = () => {
-  updateSliderReadoutsModule(els);
-};
-
 const applyLightPreset = (presetId: string) => {
-  const result = applyLightPresetModule(
-    presetId,
-    state.head,
-    els,
-    {
-      lightPulse: state.lightPulse,
-      lightPulseAmount: state.lightPulseAmount,
-      stageLightingBase: state.stageLightingBase,
-      lightColors: state.lightColors,
-      lightPreset: state.lightPreset
+  const preset = lightPresets[presetId];
+  if (!preset) return;
+  updateState({
+    lightPreset: presetId,
+    stageLightingBase: {
+      ambient: preset.ambient,
+      direct: preset.direct,
+      spot: preset.spot
     },
-    () => updateSliderReadoutsModule(els),
-    (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode)
-  );
-  if (result) {
-    updateState({
-      lightPreset: result.lightPreset,
-      stageLightingBase: result.stageLightingBase,
-      lightColors: result.lightColors
-    });
-  }
+    lightColors: {
+      ambient: preset.ambientColor,
+      direct: preset.directColor,
+      spot: preset.spotColor
+    }
+  });
 };
 
 const applyCameraSettings = () => {
@@ -1115,7 +1127,7 @@ const initControls = () => {
   });
   presetOptions.forEach((option) => els.lightPreset.appendChild(option));
   els.lightPreset.value = state.lightPreset;
-  applyLightPreset(state.lightPreset);
+  updateState({ lightPreset: state.lightPreset });
 
   els.cameraView.value = state.cameraSettings.view;
   els.cameraDistance.value = String(state.cameraSettings.distance);
@@ -1125,14 +1137,13 @@ const initControls = () => {
   els.cameraRotateY.value = String(state.cameraSettings.rotateY);
   els.autoRotate.checked = state.cameraSettings.autoRotate;
   els.autoRotateSpeed.value = String(state.cameraSettings.autoRotateSpeed);
-  updateSliderReadouts();
+  updateSliderReadoutsModule(els);
 };
 
 const bindControls = () => {
   const applyCameraInputState = () => {
-    updateSliderReadouts();
+    updateSliderReadoutsModule(els);
     updateState({ cameraSettings: getCameraSettingsFromInputs(els) });
-    if (state.head) applyCameraSettings();
   };
 
   const cameraInputs = [
@@ -1156,7 +1167,7 @@ const bindControls = () => {
   });
 
   els.lightPreset.addEventListener("change", () => {
-    applyLightPreset(els.lightPreset.value);
+    updateState({ lightPreset: els.lightPreset.value });
   });
 
   const lightInputs = [
@@ -1181,8 +1192,7 @@ const bindControls = () => {
         spot: Number(els.spotIntensity.value)
       };
       updateState({ lightColors, stageLightingBase });
-      updateSliderReadouts();
-      applyLightSettings();
+      updateSliderReadoutsModule(els);
     });
   });
 

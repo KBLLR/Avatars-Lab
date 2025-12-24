@@ -30,8 +30,8 @@ export interface PerformanceDeps {
   updateHero: (avatarName?: string, songName?: string, sectionLabel?: string) => void;
   setHud: (scene: string, camera: string, lights: string, mode: string) => void;
   startLyricsOverlay: () => void;
-  randomItem: <T>(items: T[]) => T;
-  gestures: string[];
+  randomItem: <T>(items: readonly T[]) => T;
+  gestures: readonly string[];
   lightPresets: Record<string, { label: string }>;
   applyLightPreset: (presetId: string) => void;
   applyCameraSettings: () => void;
