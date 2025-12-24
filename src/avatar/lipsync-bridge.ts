@@ -1,8 +1,7 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
 import type { WordTiming } from "./types";
 
-// @ts-expect-error dynamic import URL
-const lipsyncEnUrl = new URL("@nicoleverse/lipsync-en/dist/lipsync-en.mjs", import.meta.url).href;
+const lipsyncModuleId = "@nicoleverse/lipsync-en/dist/lipsync-en.mjs";
 
 let lipsyncReadyPromise: Promise<void> | null = null;
 
@@ -14,8 +13,8 @@ export const ensureLipsync = async (head: TalkingHead): Promise<void> => {
 
   lipsyncReadyPromise = (async () => {
     try {
-      console.log("Loading lipsync module from:", lipsyncEnUrl);
-      const module = await import(/* @vite-ignore */ lipsyncEnUrl);
+      console.log("Loading lipsync module from:", lipsyncModuleId);
+      const module = await import(lipsyncModuleId);
       console.log("Lipsync module loaded:", Object.keys(module));
 
       const target = head as unknown as {
