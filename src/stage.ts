@@ -21,10 +21,15 @@ import {
   cameraViews,
   stageFunctionDefs,
   createStateManager,
-  type RegistryModel,
-  type ModelRuntimeStatus,
   type StageState
 } from "./stage/index";
+import {
+  initModelSelectors as initModelSelectorsModule,
+  refreshRuntimePanel as refreshRuntimePanelModule,
+  loadRuntimeModel as loadRuntimeModelModule,
+  unloadRuntimeModel as unloadRuntimeModelModule,
+  setRuntimeStatusText as setRuntimeStatusTextModule
+} from "./runtime/index";
 import {
   ensureLipsync,
   buildVisemeTimings,
@@ -74,7 +79,7 @@ let els: ReturnType<typeof getElements>;
 
 const config = getMlxConfig();
 
-// Types now imported from ./stage/types: RegistryModel, ModelRuntimeStatus, StageState
+// Types now imported from ./stage/types: StageState
 
 // State manager for staged migration off direct state mutations
 const stateManager = createStateManager();
@@ -315,286 +320,30 @@ const applyCameraSettings = () => {
   );
 };
 
-const loadModelRegistry = async () => {
-  try {
-    const response = await fetch("/models/registry.json");
-    if (!response.ok) return [];
-    const payload = await response.json();
-    const models = Array.isArray(payload.models) ? payload.models : [];
-    updateState({ modelRegistry: models });
-    return models;
-  } catch {
-    return [];
-  }
-};
-
-const modelLabel = (model: RegistryModel) => {
-  const desc = model.description ? ` - ${model.description}` : "";
-  return `${model.id}${desc}`;
-};
-
-const trimModelId = (value?: string | null) => {
-  if (!value) return "-";
-  if (value.length <= 52) return value;
-  return `${value.slice(0, 24)}...${value.slice(-18)}`;
-};
-
-const setRuntimeStatusText = (text: string) => {
-  els.llmRuntimeStatus.textContent = text;
-};
-
-const setRuntimeValue = (el: HTMLElement, value: string, title?: string | null) => {
-  el.textContent = value;
-  if (title) {
-    el.title = title;
-  } else {
-    el.removeAttribute("title");
-  }
-};
-
-const filterModels = (capability: string) =>
-  state.modelRegistry.filter((model) => Array.isArray(model.capabilities) && model.capabilities.includes(capability));
-
-const isWhisperModel = (model: RegistryModel) => {
-  const id = (model.id || "").toLowerCase();
-  const desc = (model.description || "").toLowerCase();
-  return id.includes("whisper") || desc.includes("whisper");
-};
-
-const isTtsModel = (model: RegistryModel) => {
-  const id = (model.id || "").toLowerCase();
-  const type = (model.type || "").toLowerCase();
-  const desc = (model.description || "").toLowerCase();
-  if (type.includes("text-to-speech") || desc.includes("text-to-speech")) {
-    return true;
-  }
-  return id.includes("tts") || id.includes("chatterbox") || id.includes("kokoro");
-};
-
-const dedupeModels = (models: RegistryModel[]) => {
-  const seen = new Set<string>();
-  return models.filter((model) => {
-    if (seen.has(model.id)) return false;
-    seen.add(model.id);
-    return true;
-  });
-};
-
-const populateModelSelect = (select: HTMLSelectElement, models: RegistryModel[], selected?: string) => {
-  select.innerHTML = "";
-  if (!models.length) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "No models found";
-    select.appendChild(option);
-    return;
-  }
-  models.forEach((model) => {
-    const option = document.createElement("option");
-    option.value = model.id;
-    option.textContent = modelLabel(model);
-    select.appendChild(option);
-  });
-  if (selected) {
-    const match = models.find((model) => model.id === selected);
-    if (match) {
-      select.value = selected;
-    }
-  }
-};
-
 const initModelSelectors = async () => {
-  await loadModelRegistry();
   const overrides = readOverrides();
-  const llmModels = filterModels("chat");
-  const sttModels = dedupeModels([
-    ...filterModels("audio-transcribe"),
-    ...state.modelRegistry.filter((model) => isWhisperModel(model))
-  ]);
-  const ttsCandidates = filterModels("audio-generate");
-  const ttsModels = ttsCandidates.filter((model) => isTtsModel(model));
-
-  const llmDefault = overrides.llmModel || config.llmModel || "";
-  const directorDefault = overrides.directorModel || config.directorModel || directorModelFallback;
-  const sttDefault = overrides.sttModel || config.sttModel || "";
-  const ttsDefault = overrides.ttsModel || config.ttsModel || "";
-
-  populateModelSelect(els.llmModelSelect, llmModels, llmDefault);
-  populateModelSelect(els.directorModelSelect, llmModels, directorDefault);
-  populateModelSelect(els.llmRuntimeModelSelect, llmModels, directorDefault || llmDefault);
-  populateModelSelect(els.sttModelSelect, sttModels, sttDefault);
-  // populateModelSelect(els.ttsModelSelect, ttsModels, ttsDefault); // This will be handled by new fetchTtsModels/populateModelSelect
-
-  if (llmDefault) {
-    config.llmModel = llmDefault;
-    setChip(els.chatChip, "Chat", llmDefault);
-  }
-  if (directorDefault) {
-    config.directorModel = directorDefault;
-    setChip(els.llmChip, "LLM", directorDefault);
-  }
-  if (sttDefault) {
-    config.sttModel = sttDefault;
-    setChip(els.sttChip, "STT", sttDefault);
-  }
-  if (ttsDefault) {
-    config.ttsModel = ttsDefault;
-  }
+  const { registry } = await initModelSelectorsModule(
+    {
+      llmModelSelect: els.llmModelSelect,
+      directorModelSelect: els.directorModelSelect,
+      sttModelSelect: els.sttModelSelect,
+      ttsModelSelect: els.ttsModelSelect,
+      llmRuntimeModelSelect: els.llmRuntimeModelSelect,
+      sttChip: els.sttChip,
+      chatChip: els.chatChip,
+      llmChip: els.llmChip
+    },
+    config,
+    overrides,
+    (chip, label, value) => setChip(chip, label, value)
+  );
+  updateState({ modelRegistry: registry });
 };
 
-const fetchModelRuntimeStatus = async (): Promise<ModelRuntimeStatus | null> => {
-  if (!config.llmBaseUrl) return null;
-  const statusUrl = `${config.llmBaseUrl}/internal/models/status`;
-  const diagnosticsUrl = `${config.llmBaseUrl}/internal/diagnostics`;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(statusUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (response.ok) {
-      return await response.json();
-    }
-    if (response.status !== 404) {
-      throw new Error(`Status endpoint error (${response.status})`);
-    }
-  } catch {
-    // fall through to diagnostics
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(diagnosticsUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      throw new Error(`Diagnostics endpoint error (${response.status})`);
-    }
-    const diagnostics = await response.json();
-    return {
-      status: diagnostics.status,
-      loaded: diagnostics.handler_initialized,
-      model_id: diagnostics.loaded_model?.model_id,
-      model_path: diagnostics.loaded_model?.model_path,
-      model_type: diagnostics.loaded_model?.model_type,
-      queue: diagnostics.queue || null,
-      config: diagnostics.config || null
-    };
-  } catch {
-    return null;
-  }
-};
-
-const updateRuntimePanel = (status: ModelRuntimeStatus | null) => {
-  if (!status) {
-    setRuntimeValue(els.llmRuntimeLoaded, "Unavailable");
-    setRuntimeValue(els.llmRuntimeType, "-");
-    setRuntimeValue(els.llmRuntimeModel, "-");
-    setRuntimeValue(els.llmRuntimeQueue, "-");
-    setRuntimeValue(els.llmRuntimeActive, "-");
-    setRuntimeValue(els.llmRuntimeConfig, "-");
-    setRuntimeStatusText("LLM diagnostics unavailable.");
-    return;
-  }
-
-  const loaded = status.loaded ? "Loaded" : "Not loaded";
-  const modelId = status.model_id || status.model_path || "";
-  const modelType = status.model_type || "-";
-  const queueStats = status.queue?.queue_stats;
-  const activeRequests = queueStats?.active_requests ?? 0;
-  const queued = queueStats?.queue_size ?? 0;
-  const activeStreams = status.queue?.active_streams ?? 0;
-  const configBits = [];
-
-  if (status.config?.max_concurrency != null) {
-    configBits.push(`max:${status.config.max_concurrency}`);
-  }
-  if (status.config?.queue_size != null) {
-    configBits.push(`q:${status.config.queue_size}`);
-  }
-  if (status.config?.queue_timeout != null) {
-    configBits.push(`timeout:${status.config.queue_timeout}s`);
-  }
-  if (typeof status.config?.mlx_warmup === "boolean") {
-    configBits.push(status.config.mlx_warmup ? "warmup:on" : "warmup:off");
-  }
-
-  setRuntimeValue(els.llmRuntimeLoaded, loaded);
-  setRuntimeValue(els.llmRuntimeType, modelType);
-  setRuntimeValue(els.llmRuntimeModel, trimModelId(modelId), modelId || null);
-  setRuntimeValue(els.llmRuntimeQueue, `${activeRequests} active / ${queued} queued`);
-  setRuntimeValue(els.llmRuntimeActive, `${activeStreams} streams`);
-  setRuntimeValue(els.llmRuntimeConfig, configBits.length ? configBits.join(" | ") : "-");
-  setRuntimeStatusText("LLM status updated.");
-};
-
-const setRuntimeBusy = (busy: boolean) => {
-  els.llmRuntimeRefresh.disabled = busy;
-  els.llmRuntimeUnload.disabled = busy;
-  els.llmRuntimeLoad.disabled = busy;
-};
-
-const refreshRuntimePanel = async () => {
-  if (!config.llmBaseUrl) {
-    updateRuntimePanel(null);
-    setRuntimeStatusText("Missing LLM base URL.");
-    return;
-  }
-  setRuntimeBusy(true);
-  setRuntimeStatusText("Refreshing...");
-  const status = await fetchModelRuntimeStatus();
-  updateRuntimePanel(status);
-  setRuntimeBusy(false);
-};
-
-const unloadRuntimeModel = async () => {
-  if (!config.llmBaseUrl) {
-    setRuntimeStatusText("Missing LLM base URL.");
-    return;
-  }
-  setRuntimeBusy(true);
-  setRuntimeStatusText("Unloading model...");
-  const response = await fetch(`${config.llmBaseUrl}/internal/models/unload`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ force: els.llmRuntimeForce.checked })
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    setRuntimeStatusText(`Unload failed (${response.status}): ${detail}`);
-    setRuntimeBusy(false);
-    return;
-  }
-  await refreshRuntimePanel();
-  setRuntimeBusy(false);
-};
-
-const loadRuntimeModel = async () => {
-  if (!config.llmBaseUrl) {
-    setRuntimeStatusText("Missing LLM base URL.");
-    return;
-  }
-  const modelId = els.llmRuntimeModelSelect.value;
-  if (!modelId) {
-    setRuntimeStatusText("Select a model to load.");
-    return;
-  }
-  setRuntimeBusy(true);
-  setRuntimeStatusText(`Loading ${modelId}...`);
-  const response = await fetch(`${config.llmBaseUrl}/internal/models/load`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model_id: modelId, force: els.llmRuntimeForce.checked })
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    setRuntimeStatusText(`Load failed (${response.status}): ${detail}`);
-    setRuntimeBusy(false);
-    return;
-  }
-  await refreshRuntimePanel();
-  setRuntimeBusy(false);
-};
+const setRuntimeStatusText = (text: string) => setRuntimeStatusTextModule(els, text);
+const refreshRuntimePanel = () => refreshRuntimePanelModule(els, config.llmBaseUrl);
+const unloadRuntimeModel = () => unloadRuntimeModelModule(els, config.llmBaseUrl);
+const loadRuntimeModel = () => loadRuntimeModelModule(els, config.llmBaseUrl);
 
 const loadAvatarList = async () => {
   const { baseUrl } = await loadAvatarListModule(els.avatarSelect);
