@@ -78,7 +78,6 @@ export interface StageState {
   head: TalkingHead | null;
   headaudio: HeadAudio | null;
   audioBuffer: AudioBuffer | null;
-  lipsyncReady: Promise<void> | null;
   orchestrator: DirectorOrchestrator | null;
   analysisVoiceQueue: Promise<void>;
   cameraSettings: CameraSettings;
@@ -112,7 +111,6 @@ export const createInitialState = (): StageState => ({
   head: null,
   headaudio: null,
   audioBuffer: null,
-  lipsyncReady: null,
   orchestrator: null,
   analysisVoiceQueue: Promise.resolve(),
   cameraSettings: {

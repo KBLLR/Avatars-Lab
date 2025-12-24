@@ -30,17 +30,17 @@ import {
   gestures,
   moods,
   cameraViews,
-  stageFunctionDefs
+  stageFunctionDefs,
+  createInitialState,
+  type RegistryModel,
+  type ModelRuntimeStatus,
+  type StageState
 } from "./stage/index";
 import {
   ensureLipsync,
-  buildVisemeTimings,
-  getDefaultHeadAudioConfig
+  buildVisemeTimings
 } from "./avatar/index";
-import {
-  updateStageLighting as updateStageLightingBase,
-  clamp
-} from "./scene/lighting";
+import { clamp } from "./scene/lighting";
 import {
   buildSectionsFromTimings,
   fallbackPlan as createFallbackPlan,
@@ -53,91 +53,10 @@ let els: ReturnType<typeof getElements>;
 
 const config = getMlxConfig();
 
-// Constants now imported from ./stage: lightPresets, gestures, moods, cameraViews, stageFunctionDefs, directorModelFallback, directorMaxTokens
+// Types now imported from ./stage/types: RegistryModel, ModelRuntimeStatus, StageState
 
-
-type PerformancePlan = MergedPlan;
-
-type RegistryModel = {
-  id: string;
-  capabilities?: string[];
-  description?: string | null;
-  type?: string | null;
-  tags?: string[];
-};
-
-type ModelRuntimeStatus = {
-  status?: string;
-  loaded?: boolean;
-  model_id?: string | null;
-  model_path?: string | null;
-  model_type?: string | null;
-  queue?: {
-    queue_stats?: {
-      active_requests?: number;
-      queue_size?: number;
-    };
-    active_streams?: number;
-  } | null;
-  config?: {
-    max_concurrency?: number | null;
-    queue_timeout?: number | null;
-    queue_size?: number | null;
-    mlx_warmup?: boolean | null;
-  } | null;
-};
-
-const state = {
-  isAnalyzing: false,
-  isPlaying: false,
-  audioFile: null as File | null,
-  transcriptText: "",
-  plan: null as PerformancePlan | null,
-  planApproved: false,
-  analysisSeed: null as string | null,
-  head: null as TalkingHead | null,
-  headaudio: null as HeadAudio | null,
-  audioBuffer: null as AudioBuffer | null,
-  orchestrator: null as DirectorOrchestrator | null,
-  analysisVoiceQueue: Promise.resolve(),
-  cameraSettings: {
-    view: "upper",
-    distance: 2.5,
-    x: 0,
-    y: 1.6,
-    rotateX: 0,
-    rotateY: 0,
-    autoRotate: true,
-    autoRotateSpeed: 0.1
-  },
-  stageLightingBase: {
-    ambient: 0.5,
-    direct: 0.8,
-    spot: 2.0
-  },
-  lightPreset: "neon",
-  lightColors: {
-    ambient: "#ffffff",
-    direct: "#ffffff",
-    spot: "#ffffff"
-  },
-  lightPulse: true,
-  lightPulseAmount: 0,
-  directorNotes: "",
-  
-  // Cache for models/voices
-  availableTtsModels: [] as {id: string}[],
-  availableVoices: [] as string[],
-  wordTimings: null as WordTiming | null,
-  planSource: "none" as "none" | "heuristic" | "llm",
-  modelRegistry: [] as RegistryModel[],
-  analysisSegments: [] as string[],
-  playbackStart: null as number | null,
-  lyricIndex: 0,
-  lyricActive: false,
-  performing: false,
-  avatarBaseUrl: null as string | null
-};
+// State object using createInitialState from stage module
+const state: StageState = createInitialState();
 
 const updateStatus = (text: string) => {
   els.status.textContent = text;
