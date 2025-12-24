@@ -252,7 +252,7 @@ const createHead = () => {
     ttsEndpoint: "N/A",
     lipsyncLang: "en",
     lipsyncModules: [],
-    cameraView: "upper",
+    cameraView: state.cameraSettings.view,
     cameraDistance: state.cameraSettings.distance,
     cameraX: state.cameraSettings.x,
     cameraY: state.cameraSettings.y,

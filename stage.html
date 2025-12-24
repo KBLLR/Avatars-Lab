@@ -438,6 +438,26 @@
         gap: 8px;
       }
 
+      .slider-row.icon {
+        grid-template-columns: 34px 1fr 48px;
+      }
+
+      .slider-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 24px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
       button {
         border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 999px;
@@ -837,10 +857,11 @@
           <select id="cameraView">
             <option value="full">Full</option>
             <option value="mid">Mid</option>
-            <option value="upper" selected>Upper</option>
-            <option value="head">Head</option>
+            <option value="upper">Upper</option>
+            <option value="head" selected>Head</option>
           </select>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Distance">Dst</span>
             <input
               id="cameraDistance"
               type="range"
@@ -850,15 +871,18 @@
             />
             <span id="cameraDistanceVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="X Offset">X</span>
             <input id="cameraX" type="range" min="-1" max="1" step="0.05" />
             <span id="cameraXVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Y Offset">Y</span>
             <input id="cameraY" type="range" min="-1" max="1" step="0.05" />
             <span id="cameraYVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Rotate X">RX</span>
             <input
               id="cameraRotateX"
               type="range"
@@ -868,7 +892,8 @@
             />
             <span id="cameraRotateXVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Rotate Y">RY</span>
             <input
               id="cameraRotateY"
               type="range"
@@ -883,7 +908,8 @@
               <input id="autoRotate" type="checkbox" />
               <label for="autoRotate">Auto Rotate</label>
             </div>
-            <div class="slider-row">
+            <div class="slider-row icon">
+              <span class="slider-icon" title="Auto Rotate Speed">AR</span>
               <input
                 id="autoRotateSpeed"
                 type="range"

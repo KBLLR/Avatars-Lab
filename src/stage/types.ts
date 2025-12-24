@@ -114,14 +114,14 @@ export const createInitialState = (): StageState => ({
   orchestrator: null,
   analysisVoiceQueue: Promise.resolve(),
   cameraSettings: {
-    view: "upper",
-    distance: 2.5,
+    view: "head",
+    distance: 0.5,
     x: 0,
-    y: 1.6,
+    y: 0,
     rotateX: 0,
     rotateY: 0,
     autoRotate: true,
-    autoRotateSpeed: 0.1
+    autoRotateSpeed: 0
   },
   stageLightingBase: {
     ambient: 0.5,
