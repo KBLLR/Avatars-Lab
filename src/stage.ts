@@ -38,7 +38,8 @@ import {
 } from "./stage/index";
 import {
   ensureLipsync,
-  buildVisemeTimings
+  buildVisemeTimings,
+  decodeAudio as decodeAudioFile
 } from "./avatar/index";
 import {
   updateStageLighting as updateStageLightingModule,
@@ -72,7 +73,8 @@ import {
   updatePlanDetails,
   createSelect,
   createInlineInput,
-  clearPlan
+  clearPlan,
+  updateLyricsOverlay
 } from "./ui/index";
 
 // Elements are lazily loaded via getElements() from stage module
@@ -642,41 +644,6 @@ const loadRuntimeModel = async () => {
   setRuntimeBusy(false);
 };
 
-const updateLyricsOverlay = () => {
-  if (!state.lyricActive || !state.audioBuffer || !state.head || !state.wordTimings) return;
-  if (state.playbackStart === null) return;
-  const nowMs = (state.head.audioCtx.currentTime - state.playbackStart) * 1000;
-  const words = state.wordTimings.words;
-  const times = state.wordTimings.wtimes;
-  const durations = state.wordTimings.wdurations;
-
-  let nextLyricIndex = state.lyricIndex;
-  while (nextLyricIndex < times.length - 1 && nowMs > times[nextLyricIndex] + durations[nextLyricIndex]) {
-    nextLyricIndex += 1;
-  }
-  if (nextLyricIndex !== state.lyricIndex) {
-    updateState({ lyricIndex: nextLyricIndex });
-  }
-
-  const windowSize = 6;
-  const start = Math.max(0, nextLyricIndex - 2);
-  const end = Math.min(words.length, start + windowSize);
-  const line = words.slice(start, end).map((word, idx) => {
-    const absoluteIndex = start + idx;
-    const cls = absoluteIndex === nextLyricIndex ? "current" : "word";
-    return `<span class="${cls}">${word}</span>`;
-  });
-  els.heroLyrics.innerHTML = line.join(" ");
-
-  if (nowMs > state.audioBuffer.duration * 1000 + 500) {
-    if (state.lyricActive) {
-      updateState({ lyricActive: false });
-    }
-  } else {
-    requestAnimationFrame(updateLyricsOverlay);
-  }
-};
-
 const loadAvatarList = async () => {
   const manifestUrls = buildAvatarManifestCandidates();
   let response: Response | null = null;
@@ -795,13 +762,6 @@ const transcribeAudio = async () => {
   els.heroLyrics.textContent = "Transcript ready. Analyze performance.";
   updateHero(els, undefined, state.audioFile ? state.audioFile.name : undefined, "Transcript Ready");
   updateStatus(els, "Transcript ready. Analyze performance to stage the song.");
-};
-
-const decodeAudio = async () => {
-  if (!state.audioFile || !state.head) return;
-  const arrayBuffer = await state.audioFile.arrayBuffer();
-  const audioBuffer = await state.head.audioCtx.decodeAudioData(arrayBuffer.slice(0));
-  updateState({ audioBuffer });
 };
 
 // buildSectionsFromTimings is imported from ./performance/index
@@ -1607,7 +1567,11 @@ const performSong = async () => {
   setHud(els, activePlan.title || "Performance", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Performing");
   updateStatus(els, "Performance started...");
   if (lyricActive) {
-    requestAnimationFrame(updateLyricsOverlay);
+    updateLyricsOverlay(
+      () => state,
+      els,
+      (partial) => updateState(partial)
+    );
   }
   updateHero(els, undefined, state.audioFile ? state.audioFile.name : undefined, activePlan.title || "Performance");
   state.head.speakAudio(audio);
@@ -1639,7 +1603,10 @@ const handleFile = async (file: File) => {
   resetHead();
   await loadAvatar();
   await initHeadAudio();
-  await decodeAudio();
+  if (state.head) {
+    const audioBuffer = await decodeAudioFile(file, state.head.audioCtx);
+    updateState({ audioBuffer });
+  }
   setChip(els.audioChip, "Audio", `${file.name}`);
   updateHero(els, undefined, file.name);
   els.heroLyrics.textContent = "Audio loaded. Transcribe, then analyze to enable performance.";
@@ -1827,10 +1794,12 @@ const initStage = async () => {
     resetHead();
     loadAvatar()
       .then(initHeadAudio)
-      .then(() => {
+      .then(async () => {
         initLipsync(state.head);
         if (state.audioFile) {
-          return decodeAudio();
+          const audioBuffer = await decodeAudioFile(state.audioFile, state.head.audioCtx);
+          updateState({ audioBuffer });
+          return null;
         }
         return null;
       })

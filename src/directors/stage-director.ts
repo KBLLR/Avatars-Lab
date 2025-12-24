@@ -60,7 +60,7 @@ ${this.buildSchemaInstruction().replace(/mood.*\|.*angry/g, 'light: "neon" | "no
 
 Note: In your output, include "light" instead of "mood" for each section.
 
-STYLE: ${this.style}
+${this.buildStylePrompt()}
 SEED: ${this.seed}
 DURATION: ${Math.round(durationMs)}ms
 

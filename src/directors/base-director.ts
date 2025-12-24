@@ -15,6 +15,7 @@ import type {
   StreamChunkEvent,
   DEFAULT_DIRECTOR_CONFIG
 } from "./types";
+import { formatDirectorStylePrompt } from "./style-templates";
 
 export interface DirectorOptions {
   baseUrl: string;
@@ -89,6 +90,10 @@ export abstract class BaseDirector {
       camera: "Camera Director"
     };
     return names[this.stage];
+  }
+
+  protected buildStylePrompt(): string {
+    return formatDirectorStylePrompt(this.style);
   }
 
   /**

@@ -69,7 +69,7 @@ ${this.buildSchemaInstruction().replace(/mood.*\|.*angry/g, 'camera: "full" | "m
 
 Note: In your output, include "camera" instead of "mood" for each section.
 
-STYLE: ${this.style}
+${this.buildStylePrompt()}
 SEED: ${this.seed}
 DURATION: ${Math.round(durationMs)}ms
 

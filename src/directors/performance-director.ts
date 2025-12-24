@@ -43,7 +43,7 @@ ${PERFORMANCE_ACTIONS_COMPACT.join("\n")}
 
 ${this.buildSchemaInstruction()}
 
-STYLE: ${this.style}
+${this.buildStylePrompt()}
 SEED: ${this.seed}
 DURATION: ${Math.round(durationMs)}ms
 
