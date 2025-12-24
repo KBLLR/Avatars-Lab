@@ -147,6 +147,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         directorModel: deps.config.directorModel,
         sttModel: deps.config.sttModel,
         ttsModel: deps.config.ttsModel,
+        embedModel: deps.config.embedModel,
         ttsVoice: deps.config.ttsVoice
       },
       audio
@@ -215,6 +216,11 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         deps.config.sttModel = next;
         deps.setOverride("sttModel", next);
         deps.setChip(deps.els.sttChip, "STT", next);
+      });
+      applyModelValue(deps.els.embedModelSelect, record.models?.embedModel, (next) => {
+        deps.config.embedModel = next;
+        deps.setOverride("embedModel", next);
+        deps.setChip(deps.els.embedChip, "Embed", next);
       });
       applyModelValue(deps.els.ttsModelSelect, record.models?.ttsModel, (next) => {
         deps.config.ttsModel = next;

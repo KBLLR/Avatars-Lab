@@ -14,6 +14,7 @@ export interface MlxOverrides {
   sttModel?: string;
   ttsModel?: string;
   directorModel?: string;
+  embedModel?: string;
 }
 
 export interface InitModelSelectorsResult {
@@ -21,6 +22,7 @@ export interface InitModelSelectorsResult {
   llmModels: RegistryModel[];
   sttModels: RegistryModel[];
   ttsModels: RegistryModel[];
+  embedModels: RegistryModel[];
 }
 
 export type SetChipFn = (chip: HTMLElement, label: string, value: string) => void;
@@ -40,16 +42,22 @@ export const initModelSelectors = async (
   ]);
   const ttsCandidates = filterModels(registry, "audio-generate");
   const ttsModels = ttsCandidates.filter((model) => isTtsModel(model));
+  const embedModels = dedupeModels([
+    ...filterModels(registry, "embedding"),
+    ...registry.filter((model) => (model.type || "").toLowerCase() === "embedding")
+  ]);
 
   const llmDefault = overrides.llmModel || config.llmModel || "";
   const directorDefault = overrides.directorModel || config.directorModel || directorModelFallback;
   const sttDefault = overrides.sttModel || config.sttModel || "";
   const ttsDefault = overrides.ttsModel || config.ttsModel || "";
+  const embedDefault = overrides.embedModel || config.embedModel || "";
 
   populateModelSelect(els.llmModelSelect, llmModels, llmDefault);
   populateModelSelect(els.directorModelSelect, llmModels, directorDefault);
   populateModelSelect(els.llmRuntimeModelSelect, llmModels, directorDefault || llmDefault);
   populateModelSelect(els.sttModelSelect, sttModels, sttDefault);
+  populateModelSelect(els.embedModelSelect, embedModels, embedDefault);
 
   if (llmDefault) {
     config.llmModel = llmDefault;
@@ -66,6 +74,10 @@ export const initModelSelectors = async (
   if (ttsDefault) {
     config.ttsModel = ttsDefault;
   }
+  if (embedDefault) {
+    config.embedModel = embedDefault;
+    setChip(els.embedChip, "Embed", embedDefault);
+  }
 
-  return { registry, llmModels, sttModels, ttsModels };
+  return { registry, llmModels, sttModels, ttsModels, embedModels };
 };

@@ -261,10 +261,12 @@ const initModelSelectors = async () => {
       directorModelSelect: els.directorModelSelect,
       sttModelSelect: els.sttModelSelect,
       ttsModelSelect: els.ttsModelSelect,
+      embedModelSelect: els.embedModelSelect,
       llmRuntimeModelSelect: els.llmRuntimeModelSelect,
       sttChip: els.sttChip,
       chatChip: els.chatChip,
-      llmChip: els.llmChip
+      llmChip: els.llmChip,
+      embedChip: els.embedChip
     },
     config,
     overrides,

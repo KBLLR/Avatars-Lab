@@ -20,10 +20,12 @@ export interface ModelSelectorElements {
   directorModelSelect: HTMLSelectElement;
   sttModelSelect: HTMLSelectElement;
   ttsModelSelect: HTMLSelectElement;
+  embedModelSelect: HTMLSelectElement;
   llmRuntimeModelSelect: HTMLSelectElement;
   sttChip: HTMLElement;
   chatChip: HTMLElement;
   llmChip: HTMLElement;
+  embedChip: HTMLElement;
 }
 
 export interface MlxConfig {
@@ -34,5 +36,6 @@ export interface MlxConfig {
   sttModel?: string;
   ttsModel?: string;
   directorModel?: string;
+  embedModel?: string;
   ttsVoice?: string;
 }

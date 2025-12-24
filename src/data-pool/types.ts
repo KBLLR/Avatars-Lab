@@ -5,6 +5,7 @@ export interface PerformanceModels {
   directorModel?: string;
   sttModel?: string;
   ttsModel?: string;
+  embedModel?: string;
   ttsVoice?: string;
 }
 

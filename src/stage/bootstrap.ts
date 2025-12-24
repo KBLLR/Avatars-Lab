@@ -70,6 +70,7 @@ export const bootstrapStage = async ({
   setChip(els.chatChip, "Chat", config.llmModel || "-");
   const defaultDirector = config.directorModel || directorModelFallback;
   setChip(els.llmChip, "LLM", defaultDirector);
+  setChip(els.embedChip, "Embed", config.embedModel || "-");
   setChip(els.audioChip, "Audio", "-");
   updateHero(undefined, undefined, "Awaiting Audio");
   applyPlanApproved(false);

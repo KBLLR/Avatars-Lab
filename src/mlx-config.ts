@@ -3,6 +3,7 @@ type MlxOverrides = {
   sttModel?: string;
   ttsModel?: string;
   directorModel?: string;
+  embedModel?: string;
 };
 
 const STORAGE_KEY = "avatarLabs.mlxOverrides";
@@ -38,6 +39,7 @@ const getMlxConfig = () => {
   const sttModel = overrides.sttModel || import.meta.env.VITE_MLX_DEFAULT_STT_MODEL;
   const ttsModel = overrides.ttsModel || import.meta.env.VITE_MLX_DEFAULT_TTS_MODEL;
   const directorModel = overrides.directorModel || llmModel;
+  const embedModel = overrides.embedModel || import.meta.env.VITE_MLX_DEFAULT_EMBED_MODEL;
 
   return {
     llmBaseUrl: import.meta.env.VITE_MLX_LLM_BASE_URL,
@@ -50,6 +52,7 @@ const getMlxConfig = () => {
     sttModel,
     ttsModel,
     directorModel,
+    embedModel,
     ttsVoice: import.meta.env.VITE_MLX_DEFAULT_TTS_VOICE || "default"
   };
 };

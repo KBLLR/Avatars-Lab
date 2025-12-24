@@ -21,6 +21,7 @@ export interface StageElements {
   directorModelSelect: HTMLSelectElement;
   sttModelSelect: HTMLSelectElement;
   ttsModelSelect: HTMLSelectElement;
+  embedModelSelect: HTMLSelectElement;
   voiceSelect: HTMLSelectElement;
   llmRuntimeLoaded: HTMLElement;
   llmRuntimeModel: HTMLElement;
@@ -45,6 +46,7 @@ export interface StageElements {
   sttChip: HTMLElement;
   chatChip: HTMLElement;
   llmChip: HTMLElement;
+  embedChip: HTMLElement;
   audioChip: HTMLElement;
   approveBtn: HTMLButtonElement;
   planStatus: HTMLElement;
@@ -114,6 +116,7 @@ export const getElements = (): StageElements => {
     directorModelSelect: document.getElementById("directorModelSelect") as HTMLSelectElement,
     sttModelSelect: document.getElementById("sttModelSelect") as HTMLSelectElement,
     ttsModelSelect: document.getElementById("ttsModelSelect") as HTMLSelectElement,
+    embedModelSelect: document.getElementById("embedModelSelect") as HTMLSelectElement,
     voiceSelect: document.getElementById("voiceSelect") as HTMLSelectElement,
     llmRuntimeLoaded: document.getElementById("llmRuntimeLoaded") as HTMLElement,
     llmRuntimeModel: document.getElementById("llmRuntimeModel") as HTMLElement,
@@ -138,6 +141,7 @@ export const getElements = (): StageElements => {
     sttChip: document.getElementById("sttChip") as HTMLElement,
     chatChip: document.getElementById("chatChip") as HTMLElement,
     llmChip: document.getElementById("llmChip") as HTMLElement,
+    embedChip: document.getElementById("embedChip") as HTMLElement,
     audioChip: document.getElementById("audioChip") as HTMLElement,
     approveBtn: document.getElementById("approveBtn") as HTMLButtonElement,
     planStatus: document.getElementById("planStatus") as HTMLElement,

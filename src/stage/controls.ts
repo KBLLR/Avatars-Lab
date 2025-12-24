@@ -149,6 +149,15 @@ export const bindControls = ({
     }
   });
 
+  els.embedModelSelect.addEventListener("change", () => {
+    const value = els.embedModelSelect.value;
+    if (value) {
+      config.embedModel = value;
+      setOverride("embedModel", value);
+      setChip(els.embedChip, "Embed", value);
+    }
+  });
+
   els.llmRuntimeRefresh.addEventListener("click", () => {
     refreshRuntimePanel().catch(() => {
       setRuntimeStatusText("Failed to refresh LLM status.");
