@@ -32,6 +32,51 @@ export interface ModelParserConfig {
 }
 
 /**
+ * Find all JSON objects in a string
+ * Returns array of matched object strings
+ */
+function findAllJsonObjects(text: string): string[] {
+  const objects: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === "\\") {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (char === "{") {
+      if (depth === 0) {
+        start = i;
+      }
+      depth++;
+    } else if (char === "}") {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        objects.push(text.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+
+  return objects;
+}
+
+/**
  * Default parser configurations for known models
  */
 export const MODEL_PARSERS: ModelParserConfig[] = [
@@ -42,16 +87,41 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
     stripPreamble: true,
     lenientStructure: true,
     preprocess: (raw) => {
-      // GPT-OSS sometimes adds explanation before JSON
       let cleaned = raw;
 
-      // Remove any text before the first { or [
-      const jsonStart = Math.min(
-        cleaned.indexOf("{") >= 0 ? cleaned.indexOf("{") : Infinity,
-        cleaned.indexOf("[") >= 0 ? cleaned.indexOf("[") : Infinity
-      );
-      if (jsonStart > 0 && jsonStart < Infinity) {
-        cleaned = cleaned.slice(jsonStart);
+      // Strip special tokens: <|channel|>, <|message|>, <|end|>, etc.
+      cleaned = cleaned.replace(/<\|[^|]+\|>/g, " ");
+
+      // Strip any remaining < followed by | patterns that might be malformed
+      cleaned = cleaned.replace(/<\|[^>]*>/g, " ");
+
+      // GPT-OSS sometimes outputs small JSON fragments first, then the real response
+      // Look for the main response object containing "thoughts_summary" or "plan" or "sections"
+      const mainResponsePatterns = [
+        /\{\s*"thoughts_summary"/,
+        /\{\s*"plan"\s*:/,
+        /\{\s*"sections"\s*:/,
+        /\{\s*"analysis"\s*:/
+      ];
+
+      for (const pattern of mainResponsePatterns) {
+        const match = cleaned.match(pattern);
+        if (match && match.index !== undefined) {
+          cleaned = cleaned.slice(match.index);
+          break;
+        }
+      }
+
+      // If no main response pattern found, fall back to finding the largest JSON object
+      if (!mainResponsePatterns.some(p => p.test(cleaned))) {
+        const allObjects = findAllJsonObjects(cleaned);
+        if (allObjects.length > 0) {
+          // Pick the largest object (most likely the full response)
+          const largest = allObjects.reduce((a, b) =>
+            a.length > b.length ? a : b
+          );
+          cleaned = largest;
+        }
       }
 
       // GPT-OSS sometimes uses single quotes - convert to double
@@ -60,7 +130,7 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
 
       return cleaned;
     },
-    notes: "GPT-OSS models may add preamble and use inconsistent quoting"
+    notes: "GPT-OSS models may output fragments first, use special tokens, and inconsistent quoting"
   },
   {
     pattern: /jinx/i,
@@ -70,14 +140,41 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
     lenientStructure: true,
     preprocess: (raw) => {
       let cleaned = raw;
-      // Jinx variant of GPT-OSS
-      const jsonStart = cleaned.indexOf("{");
-      if (jsonStart > 0) {
-        cleaned = cleaned.slice(jsonStart);
+
+      // Strip special tokens (same as GPT-OSS)
+      cleaned = cleaned.replace(/<\|[^|]+\|>/g, " ");
+      cleaned = cleaned.replace(/<\|[^>]*>/g, " ");
+
+      // Look for main response object
+      const mainResponsePatterns = [
+        /\{\s*"thoughts_summary"/,
+        /\{\s*"plan"\s*:/,
+        /\{\s*"sections"\s*:/,
+        /\{\s*"analysis"\s*:/
+      ];
+
+      for (const pattern of mainResponsePatterns) {
+        const match = cleaned.match(pattern);
+        if (match && match.index !== undefined) {
+          cleaned = cleaned.slice(match.index);
+          break;
+        }
       }
+
+      // Fallback to largest object
+      if (!mainResponsePatterns.some(p => p.test(cleaned))) {
+        const allObjects = findAllJsonObjects(cleaned);
+        if (allObjects.length > 0) {
+          const largest = allObjects.reduce((a, b) =>
+            a.length > b.length ? a : b
+          );
+          cleaned = largest;
+        }
+      }
+
       return cleaned;
     },
-    notes: "Jinx fine-tuned variant of GPT-OSS"
+    notes: "Jinx fine-tuned variant of GPT-OSS with same token handling"
   },
   {
     pattern: /qwen/i,
