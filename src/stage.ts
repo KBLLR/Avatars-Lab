@@ -40,7 +40,16 @@ import {
   ensureLipsync,
   buildVisemeTimings
 } from "./avatar/index";
-import { clamp } from "./scene/lighting";
+import {
+  updateStageLighting as updateStageLightingModule,
+  applyLightPreset as applyLightPresetModule,
+  applyLightSettings as applyLightSettingsModule,
+  updateSliderReadouts as updateSliderReadoutsModule
+} from "./scene/lighting";
+import {
+  applyCameraSettings as applyCameraSettingsModule,
+  getCameraSettingsFromInputs
+} from "./scene/camera";
 import {
   buildSectionsFromTimings,
   fallbackPlan as createFallbackPlan,
@@ -190,7 +199,7 @@ const enqueueAnalysisVoice = (text: string) => {
   updateState({ analysisVoiceQueue: nextQueue });
 };
 
-// clamp, randomItem, encodeWords are now imported from modules
+// randomItem, encodeWords are now imported from modules
 
 const buildWordTimings = (words: string[], durationMs: number): WordTiming => {
   if (!words.length) {
@@ -203,31 +212,19 @@ const buildWordTimings = (words: string[], durationMs: number): WordTiming => {
 };
 
 const updateStageLighting = (head: TalkingHead, dt: number) => {
-  let pulseAmount = state.lightPulseAmount;
-  if (!state.lightPulse) {
-    pulseAmount = 0;
-  } else {
-    const analyser = head.audioAnalyzerNode;
-    if (analyser) {
-      const bins = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(bins);
-      const avg = bins.reduce((sum, v) => sum + v, 0) / bins.length / 255;
-      pulseAmount = clamp(pulseAmount + (avg * 1.5 - pulseAmount) * (dt / 300), 0, 1.2);
-    }
-  }
-
+  const pulseAmount = updateStageLightingModule(
+    head,
+    {
+      lightPulse: state.lightPulse,
+      lightPulseAmount: state.lightPulseAmount,
+      stageLightingBase: state.stageLightingBase,
+      lightColors: state.lightColors,
+      lightPreset: state.lightPreset
+    },
+    dt
+  );
   if (pulseAmount !== state.lightPulseAmount) {
     updateState({ lightPulseAmount: pulseAmount });
-  }
-
-  if (head.lightAmbient) {
-    head.lightAmbient.intensity = state.stageLightingBase.ambient + pulseAmount * 0.6;
-  }
-  if (head.lightDirect) {
-    head.lightDirect.intensity = state.stageLightingBase.direct + pulseAmount * 10;
-  }
-  if (head.lightSpot) {
-    head.lightSpot.intensity = state.stageLightingBase.spot + pulseAmount * 14;
   }
 };
 
@@ -296,81 +293,53 @@ const initHeadAudio = async () => {
   };
 };
 
-const updateSpotlightsOverlay = () => {
-  const node = document.getElementById("spotlights");
-  if (!node) return;
-  const { ambient, direct, spot } = state.lightColors;
-  node.style.background = `radial-gradient(circle at 20% 10%, ${ambient}55, transparent 45%),
-    radial-gradient(circle at 80% 20%, ${direct}55, transparent 50%),
-    radial-gradient(circle at 50% 80%, ${spot}55, transparent 55%)`;
-};
-
 const applyLightSettings = () => {
   if (!state.head) return;
-  state.head.lightAmbient?.color?.set(state.lightColors.ambient);
-  state.head.lightDirect?.color?.set(state.lightColors.direct);
-  state.head.lightSpot?.color?.set(state.lightColors.spot);
-  updateStageLighting(state.head, 16);
-  updateSpotlightsOverlay();
+  applyLightSettingsModule(state.head, {
+    lightPulse: state.lightPulse,
+    lightPulseAmount: state.lightPulseAmount,
+    stageLightingBase: state.stageLightingBase,
+    lightColors: state.lightColors,
+    lightPreset: state.lightPreset
+  });
+};
+
+const updateSliderReadouts = () => {
+  updateSliderReadoutsModule(els);
 };
 
 const applyLightPreset = (presetId: string) => {
-  const preset = lightPresets[presetId];
-  if (!preset) return;
-  const stageLightingBase = {
-    ambient: preset.ambient,
-    direct: preset.direct,
-    spot: preset.spot
-  };
-  const lightColors = {
-    ambient: preset.ambientColor,
-    direct: preset.directColor,
-    spot: preset.spotColor
-  };
-  updateState({ lightPreset: presetId, stageLightingBase, lightColors });
-  els.ambientColor.value = preset.ambientColor;
-  els.directColor.value = preset.directColor;
-  els.spotColor.value = preset.spotColor;
-  els.ambientIntensity.value = String(preset.ambient);
-  els.directIntensity.value = String(preset.direct);
-  els.spotIntensity.value = String(preset.spot);
-  updateSliderReadouts();
-  applyLightSettings();
-  setHud(els, els.hudScene.textContent || "Idle", els.hudCamera.textContent || "Upper", preset.label, els.hudMode.textContent || "Awaiting");
+  const result = applyLightPresetModule(
+    presetId,
+    state.head,
+    els,
+    {
+      lightPulse: state.lightPulse,
+      lightPulseAmount: state.lightPulseAmount,
+      stageLightingBase: state.stageLightingBase,
+      lightColors: state.lightColors,
+      lightPreset: state.lightPreset
+    },
+    () => updateSliderReadoutsModule(els),
+    (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode)
+  );
+  if (result) {
+    updateState({
+      lightPreset: result.lightPreset,
+      stageLightingBase: result.stageLightingBase,
+      lightColors: result.lightColors
+    });
+  }
 };
 
 const applyCameraSettings = () => {
   if (!state.head) return;
-  const view = state.cameraSettings.view;
-  state.head.opt.cameraDistance = state.cameraSettings.distance;
-  state.head.opt.cameraX = state.cameraSettings.x;
-  state.head.opt.cameraY = state.cameraSettings.y;
-  state.head.opt.cameraRotateX = state.cameraSettings.rotateX;
-  state.head.opt.cameraRotateY = state.cameraSettings.rotateY;
-  state.head.setView(view, {
-    cameraDistance: state.cameraSettings.distance,
-    cameraX: state.cameraSettings.x,
-    cameraY: state.cameraSettings.y,
-    cameraRotateX: state.cameraSettings.rotateX,
-    cameraRotateY: state.cameraSettings.rotateY
-  });
-  if (state.head.controls) {
-    state.head.controls.autoRotate = state.cameraSettings.autoRotate;
-    state.head.controls.autoRotateSpeed = state.cameraSettings.autoRotateSpeed;
-  }
-  setHud(els, els.hudScene.textContent || "Idle", view, els.hudLights.textContent || "Neon", els.hudMode.textContent || "Awaiting");
-};
-
-const updateSliderReadouts = () => {
-  els.cameraDistanceVal.textContent = Number(els.cameraDistance.value).toFixed(2);
-  els.cameraXVal.textContent = Number(els.cameraX.value).toFixed(2);
-  els.cameraYVal.textContent = Number(els.cameraY.value).toFixed(2);
-  els.cameraRotateXVal.textContent = Number(els.cameraRotateX.value).toFixed(2);
-  els.cameraRotateYVal.textContent = Number(els.cameraRotateY.value).toFixed(2);
-  els.autoRotateSpeedVal.textContent = Number(els.autoRotateSpeed.value).toFixed(2);
-  els.ambientIntensityVal.textContent = Number(els.ambientIntensity.value).toFixed(1);
-  els.directIntensityVal.textContent = Number(els.directIntensity.value).toFixed(1);
-  els.spotIntensityVal.textContent = Number(els.spotIntensity.value).toFixed(1);
+  applyCameraSettingsModule(
+    state.head,
+    state.cameraSettings,
+    els,
+    (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode)
+  );
 };
 
 const loadModelRegistry = async () => {
@@ -1700,6 +1669,12 @@ const initControls = () => {
 };
 
 const bindControls = () => {
+  const applyCameraInputState = () => {
+    updateSliderReadouts();
+    updateState({ cameraSettings: getCameraSettingsFromInputs(els) });
+    if (state.head) applyCameraSettings();
+  };
+
   const cameraInputs = [
     ["cameraView", els.cameraView],
     ["cameraDistance", els.cameraDistance],
@@ -1710,23 +1685,14 @@ const bindControls = () => {
     ["autoRotateSpeed", els.autoRotateSpeed]
   ] as const;
 
-  cameraInputs.forEach(([key, input]) => {
+  cameraInputs.forEach(([, input]) => {
     input.addEventListener("input", () => {
-      updateSliderReadouts();
-      state.cameraSettings.view = els.cameraView.value as typeof state.cameraSettings.view;
-      state.cameraSettings.distance = Number(els.cameraDistance.value);
-      state.cameraSettings.x = Number(els.cameraX.value);
-      state.cameraSettings.y = Number(els.cameraY.value);
-      state.cameraSettings.rotateX = Number(els.cameraRotateX.value);
-      state.cameraSettings.rotateY = Number(els.cameraRotateY.value);
-      state.cameraSettings.autoRotateSpeed = Number(els.autoRotateSpeed.value);
-      if (state.head) applyCameraSettings();
+      applyCameraInputState();
     });
   });
 
   els.autoRotate.addEventListener("change", () => {
-    state.cameraSettings.autoRotate = els.autoRotate.checked;
-    if (state.head) applyCameraSettings();
+    applyCameraInputState();
   });
 
   els.lightPreset.addEventListener("change", () => {
