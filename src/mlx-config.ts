@@ -42,6 +42,10 @@ const getMlxConfig = () => {
   return {
     llmBaseUrl: import.meta.env.VITE_MLX_LLM_BASE_URL,
     audioBaseUrl: import.meta.env.VITE_MLX_AUDIO_BASE_URL,
+    dataLakeUrl:
+      import.meta.env.VITE_DATA_LAKE_URL ||
+      import.meta.env.VITE_MLX_DATA_LAKE_URL ||
+      "http://127.0.0.1:8012",
     llmModel,
     sttModel,
     ttsModel,

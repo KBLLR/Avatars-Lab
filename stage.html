@@ -794,6 +794,26 @@
         </div>
 
         <div class="card">
+          <div class="card-title">Performance Library</div>
+          <label>Title</label>
+          <input id="dataPoolTitle" type="text" placeholder="Name this performance" />
+          <div class="toggle">
+            <input id="dataPoolIncludeAudio" type="checkbox" checked />
+            <label for="dataPoolIncludeAudio">Include audio (base64)</label>
+          </div>
+          <div class="row">
+            <button id="dataPoolSave" class="primary">Save</button>
+            <button id="dataPoolRefresh" class="ghost">Refresh</button>
+          </div>
+          <label>Saved Performances</label>
+          <select id="dataPoolSelect"></select>
+          <div class="row">
+            <button id="dataPoolLoad">Load</button>
+          </div>
+          <div class="runtime-status" id="dataPoolStatus">Data pool idle.</div>
+        </div>
+
+        <div class="card">
           <div class="card-title">Model Routing</div>
           <label>Chat LLM Model</label>
           <select id="llmModelSelect"></select>

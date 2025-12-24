@@ -35,6 +35,13 @@ export interface StageElements {
   llmRuntimeLoad: HTMLButtonElement;
   llmRuntimeForce: HTMLInputElement;
   directorStyle: HTMLSelectElement;
+  dataPoolTitle: HTMLInputElement;
+  dataPoolIncludeAudio: HTMLInputElement;
+  dataPoolSave: HTMLButtonElement;
+  dataPoolRefresh: HTMLButtonElement;
+  dataPoolSelect: HTMLSelectElement;
+  dataPoolLoad: HTMLButtonElement;
+  dataPoolStatus: HTMLElement;
   sttChip: HTMLElement;
   chatChip: HTMLElement;
   llmChip: HTMLElement;
@@ -121,6 +128,13 @@ export const getElements = (): StageElements => {
     llmRuntimeLoad: document.getElementById("llmRuntimeLoad") as HTMLButtonElement,
     llmRuntimeForce: document.getElementById("llmRuntimeForce") as HTMLInputElement,
     directorStyle: document.getElementById("directorStyle") as HTMLSelectElement,
+    dataPoolTitle: document.getElementById("dataPoolTitle") as HTMLInputElement,
+    dataPoolIncludeAudio: document.getElementById("dataPoolIncludeAudio") as HTMLInputElement,
+    dataPoolSave: document.getElementById("dataPoolSave") as HTMLButtonElement,
+    dataPoolRefresh: document.getElementById("dataPoolRefresh") as HTMLButtonElement,
+    dataPoolSelect: document.getElementById("dataPoolSelect") as HTMLSelectElement,
+    dataPoolLoad: document.getElementById("dataPoolLoad") as HTMLButtonElement,
+    dataPoolStatus: document.getElementById("dataPoolStatus") as HTMLElement,
     sttChip: document.getElementById("sttChip") as HTMLElement,
     chatChip: document.getElementById("chatChip") as HTMLElement,
     llmChip: document.getElementById("llmChip") as HTMLElement,

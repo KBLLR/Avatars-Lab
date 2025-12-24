@@ -29,6 +29,7 @@ export interface ModelSelectorElements {
 export interface MlxConfig {
   llmBaseUrl?: string;
   audioBaseUrl?: string;
+  dataLakeUrl?: string;
   llmModel?: string;
   sttModel?: string;
   ttsModel?: string;

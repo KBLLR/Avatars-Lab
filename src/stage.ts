@@ -4,6 +4,7 @@ import { getMlxConfig, setOverride, readOverrides } from "./mlx-config";
 import { createAnalysisController } from "./stage/analysis";
 import { createAudioController } from "./stage/audio";
 import { bootstrapStage } from "./stage/bootstrap";
+import { initPerformanceLibrary } from "./data-pool/index";
 import type {
   MergedPlan,
   CameraView,
@@ -742,6 +743,22 @@ const init = async () => {
       updateHero(els, avatarName, songName, status),
     updateStatus: (message) => updateStatus(els, message),
     speakWithLipsync
+  });
+
+  initPerformanceLibrary({
+    els,
+    config,
+    getState: () => state,
+    updateState,
+    decodeAudioFile,
+    applyPlanApproved,
+    renderPlan,
+    setAnalysisOverlay: (active, step) => setAnalysisOverlay(els, active, step),
+    setChip,
+    updateHero: (avatarName, songName, status) =>
+      updateHero(els, avatarName, songName, status),
+    updateStatus: (message) => updateStatus(els, message),
+    setOverride
   });
 };
 
