@@ -5,3 +5,4 @@ export * from "./state-manager";
 export * from "./analysis";
 export * from "./controls";
 export * from "./audio";
+export * from "./bootstrap";

@@ -3,6 +3,7 @@ import { initLipsync, speakWithLipsync } from "./modules/lipsync";
 import { getMlxConfig, setOverride, readOverrides } from "./mlx-config";
 import { createAnalysisController } from "./stage/analysis";
 import { createAudioController } from "./stage/audio";
+import { bootstrapStage } from "./stage/bootstrap";
 import type {
   MergedPlan,
   CameraView,
@@ -631,95 +632,6 @@ const handleFile = async (file: File) => {
   updateStatus(els, "Audio loaded. Transcribe, then analyze to continue.");
 };
 
-const initStage = async () => {
-  setHud(els, "Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Awaiting");
-  setChip(els.sttChip, "STT", config.sttModel);
-  setChip(els.chatChip, "Chat", config.llmModel);
-  const defaultDirector = config.directorModel || directorModelFallback;
-  setChip(els.llmChip, "LLM", defaultDirector);
-  setChip(els.audioChip, "Audio", "-");
-  updateHero(els, undefined, undefined, "Awaiting Audio");
-  applyPlanApproved(false);
-  initControlsModule({ els, getState: () => state, updateState });
-  await initModelSelectors();
-  refreshRuntimePanel().catch(() => {
-    setRuntimeStatusText("Failed to refresh LLM status.");
-  });
-
-  try {
-    await loadAvatarList();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    updateStatus(els, `Failed to load avatars: ${message}`);
-  }
-
-  resetHead();
-  loadAvatar()
-    .then(initHeadAudio)
-    .then(() => {
-        initLipsync(state.head);
-    })
-    .catch(() => updateStatus(els, "Avatar preview requires a user gesture."));
-
-  els.avatarSelect.addEventListener("change", () => {
-    resetHead();
-    loadAvatar()
-      .then(initHeadAudio)
-      .then(async () => {
-        initLipsync(state.head);
-        if (state.audioFile) {
-          const audioBuffer = await decodeAudioFile(state.audioFile, state.head.audioCtx);
-          updateState({ audioBuffer });
-          return null;
-        }
-        return null;
-      })
-      .catch((error) => updateStatus(els, error.message || "Failed to load avatar."));
-  });
-
-  els.songInput.addEventListener("change", () => {
-    const file = els.songInput.files?.[0];
-    if (!file) return;
-    handleFile(file).catch((error) => updateStatus(els, error.message || "Failed to load audio."));
-  });
-
-  els.transcribeBtn.addEventListener("click", () => {
-    transcribeAudio().catch((error) => updateStatus(els, error.message || "Transcribe failed."));
-  });
-
-  els.analyzeBtn.addEventListener("click", () => {
-    analyzePerformance().catch((error) => updateStatus(els, error.message || "Analysis failed."));
-  });
-
-  els.playBtn.addEventListener("click", () => {
-    performSong().catch((error) => updateStatus(els, error.message || "Performance failed."));
-  });
-
-  els.lipsyncBtn.addEventListener("click", () => {
-     const text = els.transcript.value || "Hello, I am ready to lipsync.";
-     speakWithLipsync(text).catch(e => updateStatus(els, "Lipsync failed: " + e.message));
-  });
-
-  els.stopBtn.addEventListener("click", () => {
-    stopPerformance();
-  });
-
-  bindControlsModule({
-    els,
-    getState: () => state,
-    updateState,
-    config,
-    setOverride,
-    setChip,
-    updateStatus: (message) => updateStatus(els, message),
-    applyPlanApproved,
-    refreshRuntimePanel,
-    unloadRuntimeModel,
-    loadRuntimeModel,
-    setRuntimeStatusText
-  });
-};
-
 const init = async () => {
   // Initialize elements from the DOM
   els = getElements();
@@ -786,7 +698,51 @@ const init = async () => {
     { autoFetch: false }
   );
 
-  initStage();
+  await bootstrapStage({
+    els,
+    config,
+    directorModelFallback,
+    getLightLabel: (presetId) => lightPresets[presetId]?.label || presetId,
+    getState: () => state,
+    updateState,
+    applyPlanApproved,
+    initControls: () => initControlsModule({ els, getState: () => state, updateState }),
+    initModelSelectors,
+    refreshRuntimePanel,
+    setRuntimeStatusText,
+    loadAvatarList,
+    resetHead,
+    loadAvatar,
+    initHeadAudio,
+    initLipsync,
+    decodeAudioFile,
+    handleFile,
+    transcribeAudio,
+    analyzePerformance,
+    performSong,
+    stopPerformance,
+    bindControls: () =>
+      bindControlsModule({
+        els,
+        getState: () => state,
+        updateState,
+        config,
+        setOverride,
+        setChip,
+        updateStatus: (message) => updateStatus(els, message),
+        applyPlanApproved,
+        refreshRuntimePanel,
+        unloadRuntimeModel,
+        loadRuntimeModel,
+        setRuntimeStatusText
+      }),
+    setHud: (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode),
+    setChip: (chip, label, value) => setChip(chip, label, value),
+    updateHero: (avatarName, songName, status) =>
+      updateHero(els, avatarName, songName, status),
+    updateStatus: (message) => updateStatus(els, message),
+    speakWithLipsync
+  });
 };
 
 init().catch((error) => {
