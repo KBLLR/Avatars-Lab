@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TalkingHead E2E Harness</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+        background: #0d141c;
+        color: #f6f2ea;
+      }
+      #app {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        min-height: 100vh;
+      }
+      #stage {
+        position: relative;
+        background: radial-gradient(circle at 20% 20%, #1d354a, transparent 55%),
+          radial-gradient(circle at 80% 20%, #273d2c, transparent 50%),
+          #0d141c;
+      }
+      #panel {
+        padding: 24px;
+        background: #131f2e;
+        display: grid;
+        gap: 12px;
+      }
+      .status {
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+      #avatar {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <div id="avatar"></div>
+      </div>
+      <div id="panel">
+        <h1>TalkingHead E2E</h1>
+        <div class="status" id="status">Waiting for MLX + assets...</div>
+        <div class="status" id="metrics">Metrics pending</div>
+        <div class="status" id="events">Events: 0</div>
+      </div>
+    </div>
+    <script type="module" src="/src/talkinghead-e2e.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Labs Settings</title>
+    <style>
+      :root {
+        --bg: #0b0f16;
+        --panel: #111826;
+        --accent: #7cd9b1;
+        --text: #f7f3ee;
+        --muted: #9fb0c2;
+        --border: rgba(255, 255, 255, 0.1);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 15% 20%, #1b2738 0%, transparent 55%),
+          radial-gradient(circle at 80% 10%, #1f3a2e 0%, transparent 50%),
+          linear-gradient(150deg, #0b0f16, #111827);
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 64px 24px 80px;
+        display: grid;
+        gap: 24px;
+      }
+
+      h1 { margin: 0; font-size: 32px; }
+      h2 { margin: 0; font-size: 20px; }
+
+      .card {
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(17, 24, 38, 0.9);
+        display: grid;
+        gap: 12px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+
+      .chip {
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      th, td {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        vertical-align: top;
+      }
+
+      th { color: var(--muted); font-weight: 600; }
+
+      code {
+        font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--accent);
+      }
+
+      ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="card">
+        <h1>Settings + Models</h1>
+        <div class="grid">
+          <div class="chip" id="llmBase">LLM Base: -</div>
+          <div class="chip" id="audioBase">Audio Base: -</div>
+          <div class="chip" id="llmModel">LLM Model: -</div>
+          <div class="chip" id="ttsModel">TTS Model: -</div>
+          <div class="chip" id="sttModel">STT Model: -</div>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Available Models (from registry)</h2>
+        <div id="models">Loading...</div>
+      </section>
+
+      <section class="card">
+        <h2>HeadTTS Compatibility Notes</h2>
+        <ul>
+          <li>Uses `ws` (MIT License), `@huggingface/transformers.js` + ONNX Runtime (Apache 2.0).</li>
+          <li>Reference model: `onnx-community/Kokoro-82M-v1.0-ONNX-timestamped`.</li>
+          <li>Local voices directory: `model-zoo/mlx/models/voices` (listed below).</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>HeadTTS Options (Reference)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>Description</th>
+              <th>Default</th>
+            </tr>
+          </thead>
+          <tbody id="headttsOptions"></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Available Voices (local)</h2>
+        <div id="voices">Loading...</div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/settings.ts"></script>
+  </body>
+</html>

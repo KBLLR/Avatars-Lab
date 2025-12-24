@@ -1,0 +1,109 @@
+{
+  "Face": {
+    "baseColorMap": "texture_diffuse.png",
+    "normalMap": "texture_normal.png",
+    "aoMap": "Head_cavity_1001.png",
+    "roughness": 0.6,
+    "metalness": 0.05
+  },
+  "Face.001": {
+    "baseColorMap": "texture_diffuse.png",
+    "normalMap": "texture_normal.png",
+    "aoMap": "Head_cavity_1001.png",
+    "roughness": 0.6,
+    "metalness": 0.05
+  },
+  "Backhead": {
+    "baseColorMap": "texture_diffuse_backhead.png",
+    "normalMap": "texture_normal_backhead.png",
+    "roughness": 0.6,
+    "metalness": 0.05
+  },
+  "Backhead.001": {
+    "baseColorMap": "texture_diffuse_backhead.png",
+    "normalMap": "texture_normal_backhead.png",
+    "roughness": 0.6,
+    "metalness": 0.05
+  },
+  "Eyelashes": {
+    "baseColorMap": "eyelashes_alpha.png",
+    "normalMap": "eyelashes_normal.png",
+    "alphaMode": "MASK",
+    "alphaTest": 0.5,
+    "doubleSided": true,
+    "depthWrite": true,
+    "roughness": 0.6
+  },
+  "Eyelashes.001": {
+    "baseColorMap": "eyelashes_alpha.png",
+    "normalMap": "eyelashes_normal.png",
+    "alphaMode": "MASK",
+    "alphaTest": 0.5,
+    "doubleSided": true,
+    "depthWrite": true,
+    "roughness": 0.6
+  },
+  "Eye": {
+    "normalMap": "Cornea_Normal1.png",
+    "normalScale": 0.2,
+    "metalness": 0.0,
+    "roughness": 0.02,
+    "transmission": 1.0,
+    "ior": 1.376,
+    "thickness": 0.05,
+    "clearcoat": 1.0,
+    "clearcoatRoughness": 0.08,
+    "depthWrite": false
+  },
+  "Eye.001": {
+    "normalMap": "Cornea_Normal1.png",
+    "normalScale": 0.2,
+    "metalness": 0.0,
+    "roughness": 0.02,
+    "transmission": 1.0,
+    "ior": 1.376,
+    "thickness": 0.05,
+    "clearcoat": 1.0,
+    "clearcoatRoughness": 0.08,
+    "depthWrite": false
+  },
+  "Fluid": {
+    "normalMap": "T_lacrimal_n.png",
+    "metalness": 0.0,
+    "roughness": 0.1,
+    "transmission": 0.85,
+    "ior": 1.4,
+    "thickness": 0.02,
+    "clearcoat": 1.0,
+    "clearcoatRoughness": 0.1
+  },
+  "Fluid.003": {
+    "normalMap": "T_lacrimal_n.png",
+    "metalness": 0.0,
+    "roughness": 0.1,
+    "transmission": 0.85,
+    "ior": 1.4,
+    "thickness": 0.02,
+    "clearcoat": 1.0,
+    "clearcoatRoughness": 0.1
+  },
+  "Teeth": {
+    "baseColorMap": "teeth_color_map_001.png",
+    "normalMap": "teeth_normal_map.png",
+    "aoMap": "T_Teeth_mouthOcc.png",
+    "roughness": 0.35,
+    "metalness": 0.0
+  },
+  "Teeth.001": {
+    "baseColorMap": "teeth_color_map_001.png",
+    "normalMap": "teeth_normal_map.png",
+    "aoMap": "T_Teeth_mouthOcc.png",
+    "roughness": 0.35,
+    "metalness": 0.0
+  },
+  "Gums": {
+    "baseColorMap": "gums_color_picker.png",
+    "normalMap": "TeethGumsNormal.png",
+    "roughness": 0.4
+  }
+}

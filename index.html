@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Labs</title>
+    <style>
+      :root {
+        --bg-1: #0f1b2b;
+        --bg-2: #12283a;
+        --accent: #f2c14e;
+        --surface: rgba(255, 255, 255, 0.08);
+        --text: #f5f3ee;
+        --muted: #b7c4d0;
+        --border: rgba(242, 193, 78, 0.25);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--text);
+        background: radial-gradient(1200px circle at 15% 20%, #193751 0%, transparent 55%),
+          radial-gradient(900px circle at 85% 10%, #2b4b38 0%, transparent 50%),
+          linear-gradient(140deg, var(--bg-1), var(--bg-2));
+      }
+
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 72px 24px 80px;
+      }
+
+      header {
+        display: grid;
+        gap: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 44px;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        max-width: 680px;
+      }
+
+      .card-grid {
+        margin-top: 36px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 20px;
+        border-radius: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(6px);
+      }
+
+      .card-title {
+        font-weight: 600;
+      }
+
+      .card-desc {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      a {
+        color: var(--text);
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      a:hover {
+        background: rgba(242, 193, 78, 0.15);
+        transform: translateY(-1px);
+      }
+
+      footer {
+        margin-top: 48px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Avatar Labs</h1>
+        <p>
+          Local-first validation for TalkingHead + HeadAudio + MLX services. Use the
+          harness links below to run the browser tests.
+        </p>
+        <p>
+          Experiments: realtime MLX conversation loop, HeadAudio viseme callbacks,
+          and TalkingHead streaming playback.
+        </p>
+      </header>
+
+      <section class="card-grid">
+        <div class="card">
+          <div>
+            <div class="card-title">HeadAudio Viseme Harness</div>
+            <div class="card-desc">Deterministic viseme callbacks from fixed audio.</div>
+          </div>
+          <a href="/head-audio.html">Open</a>
+        </div>
+        <div class="card">
+          <div>
+            <div class="card-title">MLX Realtime Demo</div>
+            <div class="card-desc">Mic → STT → LLM → TTS with gestures + moods.</div>
+          </div>
+          <a href="/mlx-conversation.html">Open</a>
+        </div>
+        <div class="card">
+          <div>
+            <div class="card-title">Lab Info</div>
+            <div class="card-desc">What this lab validates and repo links.</div>
+          </div>
+          <a href="/info.html">Open</a>
+        </div>
+        <div class="card">
+          <div>
+            <div class="card-title">Settings + Models</div>
+            <div class="card-desc">View MLX endpoints, registry models, and HeadTTS options.</div>
+          </div>
+          <a href="/settings.html">Open</a>
+        </div>
+        <div class="card">
+          <div>
+            <div class="card-title">Stage (Music Video)</div>
+            <div class="card-desc">Upload songs, get transcript, perform with HeadAudio.</div>
+          </div>
+          <a href="/stage.html">Open</a>
+        </div>
+        <div class="card">
+          <div>
+            <div class="card-title">TalkingHead E2E Harness</div>
+            <div class="card-desc">Streaming playback + local GLB avatar.</div>
+          </div>
+          <a href="/e2e.html">Open</a>
+        </div>
+      </section>
+
+      <footer>
+        Use `scripts/smoke.zsh` or `scripts/e2e.zsh` for automated runs.
+      </footer>
+    </main>
+  </body>
+</html>

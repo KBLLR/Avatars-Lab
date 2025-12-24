@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Labs Info</title>
+    <style>
+      :root {
+        --bg: #0b0f16;
+        --panel: #111826;
+        --accent: #ffb347;
+        --text: #f7f3ee;
+        --muted: #9fb0c2;
+        --border: rgba(255, 255, 255, 0.1);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 20% 20%, #1b2738 0%, transparent 55%),
+          radial-gradient(circle at 80% 15%, #2b1a2e 0%, transparent 50%),
+          linear-gradient(150deg, #0b0f16, #111827);
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 64px 24px 80px;
+        display: grid;
+        gap: 24px;
+      }
+
+      h1 { margin: 0; font-size: 34px; }
+      h2 { margin: 0; font-size: 20px; }
+
+      .card {
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(17, 24, 38, 0.9);
+        display: grid;
+        gap: 12px;
+      }
+
+      p { margin: 0; color: var(--muted); }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      a { color: var(--accent); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="card">
+        <h1>Avatar Labs</h1>
+        <p>Purpose: validate avatar pipelines locally with MLX services, deterministic fixtures, and browser harnesses. This lab focuses on real-time viseme sync, streaming playback, and audio-driven stage performances.</p>
+      </header>
+
+      <section class="grid">
+        <div class="card">
+          <h2>TalkingHead</h2>
+          <p>3D avatar runtime for real-time speech + lip-sync, streaming audio, gestures, and expressions.</p>
+          <ul>
+            <li>Streaming: `streamStart()` + `streamAudio()` with PCM16LE + optional viseme/word timings.</li>
+            <li>Local GLB avatars (no Ready Player Me dependency).</li>
+          </ul>
+          <a href="https://github.com/met4citizen/TalkingHead" target="_blank" rel="noreferrer">Repo</a>
+        </div>
+
+        <div class="card">
+          <h2>HeadAudio</h2>
+          <p>AudioWorklet for real-time viseme detection. Emits Oculus viseme blend-shape values in the [0,1] range.</p>
+          <ul>
+            <li>Worklet + model are loaded locally from the package dist.</li>
+            <li>Used in Stage + Conversation lab pages.</li>
+          </ul>
+          <a href="https://github.com/met4citizen/HeadAudio" target="_blank" rel="noreferrer">Repo</a>
+        </div>
+
+        <div class="card">
+          <h2>HeadTTS</h2>
+          <p>Reference REST/WebSocket TTS with word + viseme timing arrays. We provide a minimal bridge backed by MLX Audio.</p>
+          <ul>
+            <li>Bridge: `packages/headtts-bridge/server.mjs` (local only).</li>
+            <li>Timing arrays are approximate in the bridge.</li>
+          </ul>
+          <a href="https://github.com/met4citizen/HeadTTS" target="_blank" rel="noreferrer">Repo</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Lab Experiments</h2>
+        <ul>
+          <li>MLX Conversation: mic → STT → LLM → TTS → TalkingHead.</li>
+          <li>Stage (music video): upload songs, generate transcript, perform with visemes + lighting.</li>
+          <li>HeadAudio harness: deterministic viseme callbacks for regression.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,374 @@
+{
+  "generated_at": "2025-12-24T00:53:22.346Z",
+  "registry_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/registry.json",
+  "models": [
+    {
+      "id": "audio/kokoro-voices",
+      "type": "assets",
+      "capabilities": [],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/bert-base-multilingual-cased",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/hexgrad__kokoro-82m",
+      "type": "text-to-speech",
+      "capabilities": [
+        "audio-generate"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__Jinx-gpt-oss-20b-mxfp4-mlx",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__Qwen2.5-0.5B-Instruct-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__chatterbox-turbo-fp16",
+      "type": "text-to-speech",
+      "capabilities": [
+        "audio-generate"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__csm-1b-fp16",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__descript-audio-codec-44khz",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__encodec-24khz-float32",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__gemma-3-4b-it-4bit",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__gpt-oss-20b-MXFP4-Q8",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__gpt-oss-20b-mxfp4-q8",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__jinx-gpt-oss-20b-mxfp4-mlx",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__kokoro-82m-bf16",
+      "type": "text-to-speech",
+      "capabilities": [
+        "audio-generate"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__llama-3.2-3b-instruct-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__mxbai-rerank-large-v2",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__phi-3-mini-4k-instruct-4bit",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__phi-3-mini-4k-instruct-unsloth-4bit",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__qwen2.5-0.5b-instruct-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__qwen2.5-7b-instruct-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__snac_24khz",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__whisper-large-v3-mlx",
+      "type": "automatic-speech-recognition",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__whisper-large-v3-turbo",
+      "type": "automatic-speech-recognition",
+      "capabilities": [
+        "audio-transcribe"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__whisper-small-mlx-q4",
+      "type": "automatic-speech-recognition",
+      "capabilities": [
+        "audio-transcribe"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__whisper-tiny",
+      "type": "automatic-speech-recognition",
+      "capabilities": [
+        "audio-transcribe"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/prince-canuma__kokoro-82m",
+      "type": "text-to-speech",
+      "capabilities": [
+        "audio-generate"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/vegaluisjose__mlx-rag",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/all-minilm-l6-v2",
+      "type": "embedding",
+      "capabilities": [
+        "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/cross-encoder-ms-marco-minilm-l-6-v2",
+      "type": "embedding",
+      "capabilities": [
+        "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/encodec-32khz-float32",
+      "type": "embedding",
+      "capabilities": [
+        "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/llasa-3b-q4-mlx",
+      "type": "embedding",
+      "capabilities": [
+        "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/manifests",
+      "type": "embedding",
+      "capabilities": [
+        "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/musicgen-small",
+      "type": "audio-gen",
+      "capabilities": [
+        "audio-generate"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "rag/qwen2.5-7b-instr",
+      "type": "embedding",
+      "capabilities": [
+        "embedding"
+      ],
+      "description": null,
+      "tags": []
+    }
+  ],
+  "voices_dir": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/mlx/models/voices",
+  "voices": [
+    "af_alloy.bin",
+    "af_aoede.bin",
+    "af_bella.bin",
+    "af_heart.bin",
+    "af_heart.pt",
+    "af_jessica.bin",
+    "af_kore.bin",
+    "af_nicole.bin",
+    "af_nova.bin",
+    "af_river.bin",
+    "af_sarah.bin",
+    "af_sky.bin",
+    "am_adam.bin",
+    "am_echo.bin",
+    "am_eric.bin",
+    "am_fenrir.bin",
+    "am_liam.bin",
+    "am_michael.bin",
+    "am_onyx.bin",
+    "am_puck.bin",
+    "am_santa.bin",
+    "bf_alice.bin",
+    "bf_emma.bin",
+    "bf_isabella.bin",
+    "bf_lily.bin",
+    "bm_daniel.bin",
+    "bm_fable.bin",
+    "bm_george.bin",
+    "bm_lewis.bin",
+    "ef_dora.bin",
+    "em_alex.bin",
+    "em_santa.bin",
+    "ff_siwis.bin",
+    "hf_alpha.bin",
+    "hf_beta.bin",
+    "hm_omega.bin",
+    "hm_psi.bin",
+    "if_sara.bin",
+    "im_nicola.bin",
+    "pf_dora.bin",
+    "pm_alex.bin",
+    "pm_santa.bin"
+  ]
+}

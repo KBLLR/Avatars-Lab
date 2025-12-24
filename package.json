@@ -1,0 +1,29 @@
+{
+  "name": "avatar-labs",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "zsh scripts/dev.zsh",
+    "dev:ui": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:contract": "node packages/tests/contract-tests.mjs",
+    "test:bridge": "node packages/tests/bridge-spec-test.mjs",
+    "test:headaudio": "playwright test packages/tests/playwright/headaudio.spec.mjs --config playwright.config.mjs",
+    "test:e2e": "playwright test packages/tests/playwright/talkinghead.e2e.spec.mjs --config playwright.config.mjs",
+    "smoke": "zsh scripts/smoke.zsh",
+    "e2e": "zsh scripts/e2e.zsh",
+    "all": "zsh scripts/all.zsh"
+  },
+  "dependencies": {
+    "@met4citizen/headaudio": "^0.1.0",
+    "@met4citizen/headtts": "^1.2.0",
+    "@met4citizen/talkinghead": "^1.7.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2",
+    "vite": "^6.1.0"
+  }
+}
