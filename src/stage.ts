@@ -31,7 +31,7 @@ import {
   moods,
   cameraViews,
   stageFunctionDefs,
-  createInitialState,
+  createStateManager,
   type RegistryModel,
   type ModelRuntimeStatus,
   type StageState
@@ -47,6 +47,25 @@ import {
   randomItem,
   encodeWords
 } from "./performance/index";
+import {
+  updateStatus,
+  setChip,
+  setHud,
+  updateHero,
+  setAnalysisOverlay,
+  resetAnalysisThoughts,
+  appendAnalysisThought,
+  truncateForVoice,
+  updateProgressBar,
+  updateStageBadges,
+  resetStageBadges,
+  setPlanApproved,
+  markPlanDirty,
+  updatePlanDetails,
+  createSelect,
+  createInlineInput,
+  clearPlan
+} from "./ui/index";
 
 // Elements are lazily loaded via getElements() from stage module
 let els: ReturnType<typeof getElements>;
@@ -55,12 +74,13 @@ const config = getMlxConfig();
 
 // Types now imported from ./stage/types: RegistryModel, ModelRuntimeStatus, StageState
 
-// State object using createInitialState from stage module
-const state: StageState = createInitialState();
-
-const updateStatus = (text: string) => {
-  els.status.textContent = text;
-};
+// State manager for staged migration off direct state mutations
+const stateManager = createStateManager();
+let state = stateManager.getState();
+stateManager.subscribe((nextState) => {
+  state = nextState;
+});
+const updateState = (partial: Partial<StageState>) => stateManager.update(partial);
 
 const ensureAudioContext = async (contextLabel: string) => {
   if (!state.head) return false;
@@ -71,34 +91,10 @@ const ensureAudioContext = async (contextLabel: string) => {
     // Resume requires a user gesture.
   }
   if (state.head.audioCtx.state !== "running") {
-    updateStatus(`Audio blocked. Click ${contextLabel} again to enable audio.`);
+    updateStatus(els, `Audio blocked. Click ${contextLabel} again to enable audio.`);
     return false;
   }
   return true;
-};
-
-const setAnalysisOverlay = (active: boolean, step?: string) => {
-  els.analysisOverlay.classList.toggle("active", active);
-  if (step) {
-    els.analysisStepText.textContent = step;
-  }
-};
-
-const resetAnalysisThoughts = (text: string) => {
-  state.analysisSegments = text ? [text] : [];
-  els.analysisThoughts.textContent = state.analysisSegments.join("\n\n") || "Awaiting performance analysis.";
-};
-
-const appendAnalysisThought = (text: string) => {
-  if (!text) return;
-  state.analysisSegments.push(text.trim());
-  els.analysisThoughts.textContent = state.analysisSegments.join("\n\n");
-};
-
-const truncateForVoice = (text: string, max = 360) => {
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (clean.length <= max) return clean;
-  return `${clean.slice(0, max).trim()}...`;
 };
 
 const playAnalysisVoice = async (text: string) => {
@@ -148,46 +144,12 @@ const playAnalysisVoice = async (text: string) => {
 const enqueueAnalysisVoice = (text: string) => {
   const trimmed = truncateForVoice(text);
   if (!trimmed) return;
-  state.analysisVoiceQueue = state.analysisVoiceQueue
+  const nextQueue = state.analysisVoiceQueue
     .then(() => playAnalysisVoice(trimmed))
     .catch(() => {
       els.analysisHint.textContent = "Voiceover unavailable.";
     });
-};
-
-const setChip = (el: HTMLElement, label: string, value?: string) => {
-  el.textContent = `${label}: ${value || "-"}`;
-};
-
-const setPlanApproved = (approved: boolean) => {
-  state.planApproved = approved;
-  els.approveBtn.disabled = approved || !state.plan;
-  els.playBtn.disabled = !approved;
-  els.planStatus.textContent = approved ? "Approved" : state.plan ? "Awaiting approval" : "Pending analysis";
-};
-
-const markPlanDirty = () => {
-  if (!state.plan) return;
-  if (state.planApproved) {
-    setPlanApproved(false);
-  } else {
-    els.planStatus.textContent = "Awaiting approval";
-  }
-};
-
-const setHud = (scene: string, camera: string, lights: string, mode: string) => {
-  els.hudScene.textContent = scene;
-  els.hudCamera.textContent = camera;
-  els.hudLights.textContent = lights;
-  els.hudMode.textContent = mode;
-};
-
-const updateHero = (avatarName?: string, songName?: string, sectionLabel?: string) => {
-  const avatarLabel = avatarName || els.avatarSelect.value || "Avatar";
-  const rawSong = songName ? `Performing ${songName}` : "No song";
-  const songLabel = rawSong ? rawSong : "Awaiting Audio";
-  els.heroTitle.textContent = `${avatarLabel.replace(/\\.glb$/i, "")}`;
-  els.heroSubtitle.textContent = sectionLabel ? `${songLabel} · ${sectionLabel}` : songLabel;
+  updateState({ analysisVoiceQueue: nextQueue });
 };
 
 // clamp, randomItem, encodeWords are now imported from modules
@@ -257,36 +219,37 @@ const resetHead = () => {
   if (state.head && typeof state.head.dispose === "function") {
     state.head.dispose();
   }
-  state.head = createHead();
-  state.headaudio = null;
-  state.audioBuffer = null;
+  const head = createHead();
+  updateState({ head, headaudio: null, audioBuffer: null });
 };
 
 const initHeadAudio = async () => {
-  if (!state.head || state.headaudio) return;
-  await state.head.audioCtx.audioWorklet.addModule(workletUrl);
-  state.headaudio = new HeadAudio(state.head.audioCtx, {
+  const head = state.head;
+  if (!head || state.headaudio) return;
+  await head.audioCtx.audioWorklet.addModule(workletUrl);
+  const headaudio = new HeadAudio(head.audioCtx, {
     processorOptions: {
       visemeEventsEnabled: true
     }
   });
-  await state.headaudio.loadModel(modelUrl);
-  state.head.audioSpeechGainNode.connect(state.headaudio);
-  state.headaudio.onvalue = (key, value) => {
-    if (state.head?.mtAvatar?.[key]) {
-      Object.assign(state.head.mtAvatar[key], { newvalue: value, needsUpdate: true });
+  updateState({ headaudio });
+  await headaudio.loadModel(modelUrl);
+  head.audioSpeechGainNode.connect(headaudio);
+  headaudio.onvalue = (key, value) => {
+    if (head.mtAvatar?.[key]) {
+      Object.assign(head.mtAvatar[key], { newvalue: value, needsUpdate: true });
     }
   };
 
-  const originalUpdate = state.head.opt.update;
-  state.head.opt.update = (dt: number) => {
+  const originalUpdate = head.opt.update;
+  head.opt.update = (dt: number) => {
     if (state.headaudio) {
       state.headaudio.update(dt);
     }
     if (originalUpdate) {
       originalUpdate(dt);
     }
-    updateStageLighting(state.head!, dt);
+    updateStageLighting(head, dt);
   };
 };
 
@@ -311,13 +274,17 @@ const applyLightSettings = () => {
 const applyLightPreset = (presetId: string) => {
   const preset = lightPresets[presetId];
   if (!preset) return;
-  state.lightPreset = presetId;
-  state.stageLightingBase.ambient = preset.ambient;
-  state.stageLightingBase.direct = preset.direct;
-  state.stageLightingBase.spot = preset.spot;
-  state.lightColors.ambient = preset.ambientColor;
-  state.lightColors.direct = preset.directColor;
-  state.lightColors.spot = preset.spotColor;
+  const stageLightingBase = {
+    ambient: preset.ambient,
+    direct: preset.direct,
+    spot: preset.spot
+  };
+  const lightColors = {
+    ambient: preset.ambientColor,
+    direct: preset.directColor,
+    spot: preset.spotColor
+  };
+  updateState({ lightPreset: presetId, stageLightingBase, lightColors });
   els.ambientColor.value = preset.ambientColor;
   els.directColor.value = preset.directColor;
   els.spotColor.value = preset.spotColor;
@@ -326,7 +293,7 @@ const applyLightPreset = (presetId: string) => {
   els.spotIntensity.value = String(preset.spot);
   updateSliderReadouts();
   applyLightSettings();
-  setHud(els.hudScene.textContent || "Idle", els.hudCamera.textContent || "Upper", preset.label, els.hudMode.textContent || "Awaiting");
+  setHud(els, els.hudScene.textContent || "Idle", els.hudCamera.textContent || "Upper", preset.label, els.hudMode.textContent || "Awaiting");
 };
 
 const applyCameraSettings = () => {
@@ -348,7 +315,7 @@ const applyCameraSettings = () => {
     state.head.controls.autoRotate = state.cameraSettings.autoRotate;
     state.head.controls.autoRotateSpeed = state.cameraSettings.autoRotateSpeed;
   }
-  setHud(els.hudScene.textContent || "Idle", view, els.hudLights.textContent || "Neon", els.hudMode.textContent || "Awaiting");
+  setHud(els, els.hudScene.textContent || "Idle", view, els.hudLights.textContent || "Neon", els.hudMode.textContent || "Awaiting");
 };
 
 const updateSliderReadouts = () => {
@@ -369,7 +336,7 @@ const loadModelRegistry = async () => {
     if (!response.ok) return [];
     const payload = await response.json();
     const models = Array.isArray(payload.models) ? payload.models : [];
-    state.modelRegistry = models;
+    updateState({ modelRegistry: models });
     return models;
   } catch {
     return [];
@@ -727,7 +694,7 @@ const loadAvatarList = async () => {
     els.avatarSelect.value = avatars[0];
   }
   if (manifestUrl) {
-    state.avatarBaseUrl = new URL(".", manifestUrl).toString();
+    updateState({ avatarBaseUrl: new URL(".", manifestUrl).toString() });
   }
 };
 
@@ -735,28 +702,28 @@ const loadAvatar = async () => {
   if (!state.head) return;
   const name = els.avatarSelect.value;
   if (!name) return;
-  updateStatus(`Loading avatar: ${name}`);
+  updateStatus(els, `Loading avatar: ${name}`);
   await state.head.showAvatar({
     url: resolveAvatarUrl(name),
     body: "F",
     avatarMood: "neutral"
   });
   state.head.setMood("happy");
-  updateHero(name, state.audioFile ? state.audioFile.name : undefined);
-  updateStatus("Avatar ready. Upload a song to begin.");
+  updateHero(els, name, state.audioFile ? state.audioFile.name : undefined);
+  updateStatus(els, "Avatar ready. Upload a song to begin.");
 };
 
 const transcribeAudio = async () => {
   if (!state.audioFile) {
-    updateStatus("Select an audio file first.");
+    updateStatus(els, "Select an audio file first.");
     return;
   }
   if (!config.audioBaseUrl || !config.sttModel) {
-    updateStatus("Missing VITE_MLX_AUDIO_BASE_URL or VITE_MLX_DEFAULT_STT_MODEL.");
+    updateStatus(els, "Missing VITE_MLX_AUDIO_BASE_URL or VITE_MLX_DEFAULT_STT_MODEL.");
     return;
   }
 
-  updateStatus("Transcribing with MLX STT...");
+  updateStatus(els, "Transcribing with MLX STT...");
   const form = new FormData();
   form.append("file", state.audioFile);
   form.append("model", config.sttModel);
@@ -776,44 +743,47 @@ const transcribeAudio = async () => {
   const payload = await response.json();
   const text = payload?.text || "";
   if (!text) {
-    updateStatus("STT returned empty transcript.");
+    updateStatus(els, "STT returned empty transcript.");
     return;
   }
 
-  state.transcriptText = text;
-  els.transcript.value = text;
-  if (
+  const nextWordTimings =
     Array.isArray(payload?.words) &&
     Array.isArray(payload?.wtimes) &&
     Array.isArray(payload?.wdurations) &&
     payload.words.length === payload.wtimes.length &&
     payload.words.length === payload.wdurations.length
-  ) {
-    state.wordTimings = {
-      words: payload.words,
-      wtimes: payload.wtimes,
-      wdurations: payload.wdurations
-    };
-  } else {
-    state.wordTimings = null;
-  }
-  state.plan = null;
-  state.planSource = "none";
-  state.directorNotes = "";
-  setAnalysisOverlay(false);
-  resetAnalysisThoughts("Transcript ready. Analyze performance.");
+      ? {
+          words: payload.words,
+          wtimes: payload.wtimes,
+          wdurations: payload.wdurations
+        }
+      : null;
+
+  updateState({
+    transcriptText: text,
+    wordTimings: nextWordTimings,
+    plan: null,
+    planSource: "none",
+    directorNotes: ""
+  });
+
+  els.transcript.value = text;
+  setAnalysisOverlay(els, false);
+  resetAnalysisThoughts(els, state, "Transcript ready. Analyze performance.");
   els.playBtn.disabled = true;
-  setPlanApproved(false);
+  setPlanApproved(els, state, false);
   renderPlan([]);
   els.heroLyrics.textContent = "Transcript ready. Analyze performance.";
-  updateHero(undefined, state.audioFile ? state.audioFile.name : undefined, "Transcript Ready");
-  updateStatus("Transcript ready. Analyze performance to stage the song.");
+  updateHero(els, undefined, state.audioFile ? state.audioFile.name : undefined, "Transcript Ready");
+  updateStatus(els, "Transcript ready. Analyze performance to stage the song.");
 };
 
 const decodeAudio = async () => {
   if (!state.audioFile || !state.head) return;
   const arrayBuffer = await state.audioFile.arrayBuffer();
-  state.audioBuffer = await state.head.audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  const audioBuffer = await state.head.audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  updateState({ audioBuffer });
 };
 
 // buildSectionsFromTimings is imported from ./performance/index
@@ -833,7 +803,7 @@ const fetchTtsModels = async () => {
     const response = await fetch(`${config.audioBaseUrl}/v1/audio/models`);
     if (response.ok) {
       const data = await response.json();
-      state.availableTtsModels = data.data || [];
+      updateState({ availableTtsModels: data.data || [] });
       populateTtsModelSelect();
     }
   } catch (e) {
@@ -850,7 +820,7 @@ const fetchTtsVoices = async (modelId: string) => {
     const response = await fetch(url.toString());
     if (response.ok) {
       const data = await response.json();
-      state.availableVoices = data.data || [];
+      updateState({ availableVoices: data.data || [] });
       populateVoiceSelect();
     }
   } catch (e) {
@@ -919,7 +889,7 @@ const getOrchestrator = (): DirectorOrchestrator => {
   const seed = state.analysisSeed || new Date().toISOString();
 
   if (!state.orchestrator) {
-    state.orchestrator = createOrchestrator({
+    const orchestrator = createOrchestrator({
       baseUrl: config.llmBaseUrl,
       model,
       style,
@@ -931,6 +901,8 @@ const getOrchestrator = (): DirectorOrchestrator => {
       enableChunking: true,
       parallelStageCamera: true
     });
+    updateState({ orchestrator });
+    return orchestrator;
   } else {
     // Update seed for fresh generation
     state.orchestrator.updateSeed(seed);
@@ -945,10 +917,9 @@ const getOrchestrator = (): DirectorOrchestrator => {
 const cancelAnalysis = () => {
   if (state.orchestrator && state.isAnalyzing) {
     state.orchestrator.cancel();
-    state.isAnalyzing = false;
     updateAnalyzeButton(false);
-    setAnalysisOverlay(false);
-    updateStatus("Analysis cancelled.");
+    setAnalysisOverlay(els, false);
+    updateStatus(els, "Analysis cancelled.");
   }
 };
 
@@ -956,7 +927,7 @@ const cancelAnalysis = () => {
  * Update analyze button state (Analyze vs Cancel)
  */
 const updateAnalyzeButton = (isAnalyzing: boolean) => {
-  state.isAnalyzing = isAnalyzing;
+  updateState({ isAnalyzing });
   els.analyzeBtn.textContent = isAnalyzing ? "Cancel" : "Analyze";
   els.analyzeBtn.classList.toggle("cancel-mode", isAnalyzing);
 };
@@ -974,60 +945,6 @@ const getStageDisplayName = (stage: DirectorStage): string => {
 };
 
 /**
- * Update progress bar (0-100)
- */
-const updateProgressBar = (percent: number) => {
-  if (els.analysisProgressBar) {
-    els.analysisProgressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-  }
-};
-
-/**
- * Update stage badges to reflect pipeline state
- */
-const updateStageBadges = (
-  stage: DirectorStage,
-  status: "pending" | "active" | "complete" | "failed"
-) => {
-  const badges: Record<DirectorStage, HTMLElement | null> = {
-    performance: els.stageBadgePerformance,
-    stage: els.stageBadgeStage,
-    camera: els.stageBadgeCamera
-  };
-
-  const badge = badges[stage];
-  if (!badge) return;
-
-  // Remove all state classes
-  badge.classList.remove("active", "complete", "failed");
-
-  // Add the appropriate state class
-  if (status === "active") {
-    badge.classList.add("active");
-  } else if (status === "complete") {
-    badge.classList.add("complete");
-  } else if (status === "failed") {
-    badge.classList.add("failed");
-  }
-};
-
-/**
- * Reset all stage badges to pending state
- */
-const resetStageBadges = () => {
-  const badges = [
-    els.stageBadgePerformance,
-    els.stageBadgeStage,
-    els.stageBadgeCamera
-  ];
-  badges.forEach((badge) => {
-    if (badge) {
-      badge.classList.remove("active", "complete", "failed");
-    }
-  });
-};
-
-/**
  * Main analysis function using the orchestrator
  */
 const analyzePerformance = async () => {
@@ -1039,41 +956,49 @@ const analyzePerformance = async () => {
 
   // Validation
   if (!state.audioBuffer) {
-    updateStatus("Load audio before analyzing performance.");
+    updateStatus(els, "Load audio before analyzing performance.");
     return;
   }
   if (!state.transcriptText) {
-    updateStatus("Transcript required. Run transcribe first.");
+    updateStatus(els, "Transcript required. Run transcribe first.");
     return;
   }
   if (!config.llmBaseUrl) {
-    updateStatus("Missing VITE_MLX_LLM_BASE_URL.");
+    updateStatus(els, "Missing VITE_MLX_LLM_BASE_URL.");
     return;
   }
 
   const model = els.directorModelSelect.value || config.directorModel || directorModelFallback;
   if (!model) {
-    updateStatus("Missing VITE_MLX_DEFAULT_LLM_MODEL.");
+    updateStatus(els, "Missing VITE_MLX_DEFAULT_LLM_MODEL.");
     return;
   }
 
   // Reset state
-  setPlanApproved(false);
-  state.analysisSeed = new Date().toISOString();
-  state.directorNotes = "Performance Director: thinking...";
-  els.directorNotes.textContent = state.directorNotes;
-  state.analysisVoiceQueue = Promise.resolve();
+  setPlanApproved(els, state, false);
+  const analysisSeed = new Date().toISOString();
+  const directorNotes = "Performance Director: thinking...";
+  updateState({
+    analysisSeed,
+    directorNotes,
+    analysisVoiceQueue: Promise.resolve()
+  });
+  els.directorNotes.textContent = directorNotes;
   updateAnalyzeButton(true);
-  setAnalysisOverlay(true, "Performance Director");
+  setAnalysisOverlay(els, true, "Performance Director");
   els.analysisHint.textContent = config.ttsModel
     ? "Voiceover will play when available."
     : "Voiceover disabled (missing TTS model).";
-  resetAnalysisThoughts(`Creative seed: ${state.analysisSeed}\nPerformance Director: listening to the lyrics...`);
+  resetAnalysisThoughts(
+    els,
+    state,
+    `Creative seed: ${analysisSeed}\nPerformance Director: listening to the lyrics...`
+  );
   renderPlan([]);
 
   // Reset progress UI
-  updateProgressBar(0);
-  resetStageBadges();
+  updateProgressBar(els.analysisProgressBar, 0);
+  resetStageBadges(els);
 
   try {
     const durationMs = state.audioBuffer.duration * 1000;
@@ -1083,7 +1008,7 @@ const analyzePerformance = async () => {
     // Get or create orchestrator
     const orchestrator = getOrchestrator();
 
-    updateStatus("Director pipeline: analyzing performance...");
+    updateStatus(els, "Director pipeline: analyzing performance...");
 
     // Run the pipeline with callbacks
     const result: PipelineResult = await orchestrator.run(
@@ -1097,11 +1022,11 @@ const analyzePerformance = async () => {
         // Progress callback - update UI overlay
         onProgress: (event: ProgressEvent) => {
           const stageName = getStageDisplayName(event.stage);
-          setAnalysisOverlay(true, stageName);
+          setAnalysisOverlay(els, true, stageName);
 
           // Update stage badges based on current stage
           if (event.status === "running") {
-            updateStageBadges(event.stage, "active");
+            updateStageBadges(els, event.stage, "active");
 
             // Calculate progress: performance=0-33%, stage=33-66%, camera=66-100%
             const stageProgress: Record<DirectorStage, number> = {
@@ -1109,18 +1034,18 @@ const analyzePerformance = async () => {
               stage: 45,
               camera: 78
             };
-            updateProgressBar(stageProgress[event.stage]);
+            updateProgressBar(els.analysisProgressBar, stageProgress[event.stage]);
 
             const chunkInfo = event.chunk && event.totalChunks
               ? ` (${event.chunk}/${event.totalChunks})`
               : "";
-            updateStatus(`${stageName}${chunkInfo}: ${event.message || "analyzing..."}`);
+            updateStatus(els, `${stageName}${chunkInfo}: ${event.message || "analyzing..."}`);
 
             if (event.thoughtsPreview) {
               els.directorNotes.textContent = `${state.directorNotes}\n\n${stageName}: ${event.thoughtsPreview}`;
             }
           } else if (event.status === "complete") {
-            updateStageBadges(event.stage, "complete");
+            updateStageBadges(els, event.stage, "complete");
 
             // Update progress bar for completed stages
             const completedProgress: Record<DirectorStage, number> = {
@@ -1128,12 +1053,12 @@ const analyzePerformance = async () => {
               stage: 66,
               camera: 100
             };
-            updateProgressBar(completedProgress[event.stage]);
+            updateProgressBar(els.analysisProgressBar, completedProgress[event.stage]);
 
-            appendAnalysisThought(`${stageName}: Complete`);
+            appendAnalysisThought(els, state, `${stageName}: Complete`);
           } else if (event.status === "failed") {
-            updateStageBadges(event.stage, "failed");
-            appendAnalysisThought(`${stageName}: ${event.message || "Failed"}`);
+            updateStageBadges(els, event.stage, "failed");
+            appendAnalysisThought(els, state, `${stageName}: ${event.message || "Failed"}`);
           }
         },
 
@@ -1147,35 +1072,34 @@ const analyzePerformance = async () => {
         onThoughts: (stage: DirectorStage, thoughts: string) => {
           const stageName = getStageDisplayName(stage);
           const displayText = `${stageName}: ${thoughts}`;
-          appendAnalysisThought(displayText);
+          appendAnalysisThought(els, state, displayText);
           enqueueAnalysisVoice(`${stageName}. ${thoughts}`);
 
           // Update director notes
-          state.directorNotes = [state.directorNotes, displayText]
+          const nextNotes = [state.directorNotes, displayText]
             .filter(Boolean)
             .join("\n\n");
-          els.directorNotes.textContent = state.directorNotes;
+          updateState({ directorNotes: nextNotes });
+          els.directorNotes.textContent = nextNotes;
         },
 
         // Fallback callback
         onFallback: (reason: string) => {
-          appendAnalysisThought(`Using fallback plan: ${reason}`);
-          updateStatus(`Fallback: ${reason}`);
+          appendAnalysisThought(els, state, `Using fallback plan: ${reason}`);
+          updateStatus(els, `Fallback: ${reason}`);
         }
       }
     );
 
     // Process result
-    if (result.usedFallback) {
-      state.plan = result.plan;
-      state.planSource = "heuristic";
-      state.directorNotes = "Fallback plan used because director output was invalid.";
-      els.directorNotes.textContent = state.directorNotes;
-      updateStatus("Using fallback staging plan.");
-    } else {
-      state.plan = result.plan;
-      state.planSource = "llm";
+    const plan = result.plan;
 
+    if (result.usedFallback) {
+      const fallbackNotes = "Fallback plan used because director output was invalid.";
+      updateState({ plan, planSource: "heuristic", directorNotes: fallbackNotes });
+      els.directorNotes.textContent = fallbackNotes;
+      updateStatus(els, "Using fallback staging plan.");
+    } else {
       // Combine all director notes
       const allNotes = [
         result.plan.performanceNotes,
@@ -1183,20 +1107,22 @@ const analyzePerformance = async () => {
         result.plan.cameraNotes
       ].filter(Boolean).join("\n\n");
 
-      state.directorNotes = allNotes || "Director pipeline completed.";
-      els.directorNotes.textContent = state.directorNotes;
-      updateStatus(`Performance plan ready (${(result.totalDurationMs / 1000).toFixed(1)}s). Hit Perform.`);
+      const nextNotes = allNotes || "Director pipeline completed.";
+      updateState({ plan, planSource: "llm", directorNotes: nextNotes });
+      els.directorNotes.textContent = nextNotes;
+      updateStatus(els, `Performance plan ready (${(result.totalDurationMs / 1000).toFixed(1)}s). Hit Perform.`);
     }
 
-    renderPlan(state.plan.sections);
+    renderPlan(plan.sections);
     updateHero(
+      els,
       undefined,
       state.audioFile ? state.audioFile.name : undefined,
-      state.plan.title || "Performance Plan"
+      plan.title || "Performance Plan"
     );
     els.analysisHint.textContent = "Analysis complete.";
-    setAnalysisOverlay(false);
-    setPlanApproved(false);
+    setAnalysisOverlay(els, false);
+    setPlanApproved(els, state, false);
 
   } catch (error) {
     console.error("Analysis error:", error);
@@ -1204,12 +1130,12 @@ const analyzePerformance = async () => {
 
     // Check if it was a cancellation
     if (message.includes("cancelled")) {
-      updateStatus("Analysis cancelled by user.");
+      updateStatus(els, "Analysis cancelled by user.");
     } else {
-      updateStatus(`Analysis failed: ${message}`);
+      updateStatus(els, `Analysis failed: ${message}`);
     }
 
-    setAnalysisOverlay(false);
+    setAnalysisOverlay(els, false);
 
   } finally {
     updateAnalyzeButton(false);
@@ -1219,66 +1145,9 @@ const analyzePerformance = async () => {
 const renderPlan = (sections: PlanSection[]) => {
   els.planList.innerHTML = "";
   if (!sections.length) {
-    const empty = document.createElement("div");
-    empty.className = "plan-item";
-    empty.textContent = "No staged sections yet.";
-    els.planList.appendChild(empty);
-    els.planDetails.textContent = "No performance plan yet.";
-    els.directorNotes.textContent = "Director notes will appear here after analysis.";
+    clearPlan(els);
     return;
   }
-
-  const updatePlanDetails = (activeSections: PlanSection[]) => {
-    const details: string[] = [];
-    activeSections.forEach((section, index) => {
-      details.push(
-        `${index + 1}. ${section.label} [${Math.round(section.start_ms / 1000)}s-${Math.round(
-          section.end_ms / 1000
-        )}s] role=${section.role} mood=${section.mood || "neutral"} camera=${section.camera || "upper"} light=${section.light || state.lightPreset}`
-      );
-      if (section.notes) details.push(`   notes: ${section.notes}`);
-      if (section.actions?.length) details.push(`   actions: ${section.actions.length}`);
-    });
-    const header = `Source: ${state.planSource === "llm" ? "Director LLM" : "Fallback"} · Sections: ${activeSections.length}`;
-    els.planDetails.textContent = [header, ...details].join("\n");
-    els.directorNotes.textContent = state.directorNotes || "Director notes unavailable.";
-  };
-
-  const createSelect = (
-    className: string,
-    value: string,
-    options: Array<{ value: string; label: string }>,
-    onChange: (next: string) => void
-  ) => {
-    const select = document.createElement("select");
-    select.className = `chip-select ${className}`;
-    options.forEach((option) => {
-      const node = document.createElement("option");
-      node.value = option.value;
-      node.textContent = option.label;
-      select.appendChild(node);
-    });
-    select.value = value;
-    select.addEventListener("change", () => onChange(select.value));
-    return select;
-  };
-
-  const createInlineInput = (
-    label: string,
-    value: string,
-    onChange: (next: string) => void
-  ) => {
-    const wrap = document.createElement("div");
-    wrap.className = "chip-inline";
-    const text = document.createElement("span");
-    text.textContent = label;
-    const input = document.createElement("input");
-    input.value = value;
-    input.addEventListener("change", () => onChange(input.value));
-    wrap.appendChild(text);
-    wrap.appendChild(input);
-    return wrap;
-  };
 
   const actionTypeOptions = [
     { value: "set_mood", label: "Mood" },
@@ -1313,8 +1182,8 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].role = next as "solo" | "ensemble";
-        markPlanDirty();
-        updatePlanDetails(state.plan.sections);
+        markPlanDirty(els, state);
+        updatePlanDetails(els, state.plan.sections, state);
         renderPlan(state.plan.sections);
       }
     );
@@ -1326,8 +1195,8 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].mood = next as Mood;
-        markPlanDirty();
-        updatePlanDetails(state.plan.sections);
+        markPlanDirty(els, state);
+        updatePlanDetails(els, state.plan.sections, state);
       }
     );
 
@@ -1338,8 +1207,8 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].camera = next as CameraView;
-        markPlanDirty();
-        updatePlanDetails(state.plan.sections);
+        markPlanDirty(els, state);
+        updatePlanDetails(els, state.plan.sections, state);
       }
     );
 
@@ -1350,8 +1219,8 @@ const renderPlan = (sections: PlanSection[]) => {
       (next) => {
         if (!state.plan) return;
         state.plan.sections[index].light = next as LightPreset;
-        markPlanDirty();
-        updatePlanDetails(state.plan.sections);
+        markPlanDirty(els, state);
+        updatePlanDetails(els, state.plan.sections, state);
       }
     );
 
@@ -1372,10 +1241,10 @@ const renderPlan = (sections: PlanSection[]) => {
             if (!state.plan) return;
             const target = state.plan.sections[index].actions?.[actionIndex];
             if (!target) return;
-            target.action = next;
-            target.args = {};
-            markPlanDirty();
-            renderPlan(state.plan.sections);
+              target.action = next;
+              target.args = {};
+              markPlanDirty(els, state);
+              renderPlan(state.plan.sections);
           }
         );
         actionWrap.appendChild(typeSelect);
@@ -1391,8 +1260,8 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, mood: next as Mood };
-                markPlanDirty();
-                updatePlanDetails(state.plan.sections);
+                markPlanDirty(els, state);
+                updatePlanDetails(els, state.plan.sections, state);
               }
             )
           );
@@ -1407,8 +1276,8 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, gesture: next };
-                markPlanDirty();
-                updatePlanDetails(state.plan.sections);
+                markPlanDirty(els, state);
+                updatePlanDetails(els, state.plan.sections, state);
               }
             )
           );
@@ -1419,8 +1288,8 @@ const renderPlan = (sections: PlanSection[]) => {
               const target = state.plan.sections[index].actions?.[actionIndex];
               if (!target) return;
               target.args = { ...target.args, emoji: next };
-              markPlanDirty();
-              updatePlanDetails(state.plan.sections);
+              markPlanDirty(els, state);
+              updatePlanDetails(els, state.plan.sections, state);
             })
           );
         } else if (action.action === "speak_break") {
@@ -1431,8 +1300,8 @@ const renderPlan = (sections: PlanSection[]) => {
               if (!target) return;
               const ms = Number(next);
               target.args = { ...target.args, duration_ms: Number.isFinite(ms) ? ms : 400 };
-              markPlanDirty();
-              updatePlanDetails(state.plan.sections);
+              markPlanDirty(els, state);
+              updatePlanDetails(els, state.plan.sections, state);
             })
           );
         } else if (action.action === "set_view") {
@@ -1446,8 +1315,8 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, view: next as CameraView };
-                markPlanDirty();
-                updatePlanDetails(state.plan.sections);
+                markPlanDirty(els, state);
+                updatePlanDetails(els, state.plan.sections, state);
               }
             )
           );
@@ -1462,8 +1331,8 @@ const renderPlan = (sections: PlanSection[]) => {
                 const target = state.plan.sections[index].actions?.[actionIndex];
                 if (!target) return;
                 target.args = { ...target.args, preset: next as LightPreset };
-                markPlanDirty();
-                updatePlanDetails(state.plan.sections);
+                markPlanDirty(els, state);
+                updatePlanDetails(els, state.plan.sections, state);
               }
             )
           );
@@ -1485,7 +1354,7 @@ const renderPlan = (sections: PlanSection[]) => {
     els.planList.appendChild(node);
   });
 
-  updatePlanDetails(sections);
+  updatePlanDetails(els, sections, state);
 };
 
 const filterWordsForSolo = (timings: WordTiming, sections: PlanSection[]) => {
@@ -1539,7 +1408,7 @@ const scheduleAction = (action: PlanAction, markers: Array<() => void>, mtimes: 
         break;
       case "speak_marker":
         if (args.marker) {
-          updateStatus(`Marker: ${args.marker}`);
+          updateStatus(els, `Marker: ${args.marker}`);
         }
         break;
       case "look_at":
@@ -1559,7 +1428,7 @@ const scheduleAction = (action: PlanAction, markers: Array<() => void>, mtimes: 
       case "get_value":
         if (args.mt) {
           const value = state.head.getValue(args.mt as string);
-          updateStatus(`Value ${args.mt}: ${value ?? "n/a"}`);
+          updateStatus(els, `Value ${args.mt}: ${value ?? "n/a"}`);
         }
         break;
       case "play_background_audio":
@@ -1666,11 +1535,11 @@ const buildMarkersFromPlan = (plan: { sections: PlanSection[]; actions?: PlanAct
 const performSong = async () => {
   if (!state.head || !state.audioBuffer) return;
   if (!state.transcriptText) {
-    updateStatus("Transcript required. Run transcribe first.");
+    updateStatus(els, "Transcript required. Run transcribe first.");
     return;
   }
   if (!state.plan || !state.planApproved) {
-    updateStatus("Approve the performance plan before performing.");
+    updateStatus(els, "Approve the performance plan before performing.");
     return;
   }
 
@@ -1685,11 +1554,12 @@ const performSong = async () => {
   const baseTimings =
     state.wordTimings || buildWordTimings(encodeWords(state.transcriptText), durationMs);
   const activePlan = state.plan || fallbackPlan(durationMs, baseTimings);
-  state.plan = activePlan;
-  if (state.planSource === "none") {
-    state.planSource = "heuristic";
+  let planSource = state.planSource;
+  if (planSource === "none") {
+    planSource = "heuristic";
     renderPlan(activePlan.sections);
   }
+  updateState({ plan: activePlan, planSource });
 
   const timings = els.soloOnly.checked ? filterWordsForSolo(baseTimings, activePlan.sections) : baseTimings;
   const visemeTimings = buildVisemeTimings(state.head, timings);
@@ -1708,49 +1578,54 @@ const performSong = async () => {
     mtimes: markers.mtimes
   };
 
-  state.performing = true;
-  setHud(activePlan.title || "Performance", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Performing");
-  updateStatus("Performance started...");
-  state.playbackStart = state.head.audioCtx.currentTime;
-  state.lyricIndex = 0;
-  state.lyricActive = Boolean(state.wordTimings?.words.length);
-  if (state.lyricActive) {
+  const playbackStart = state.head.audioCtx.currentTime;
+  const lyricActive = Boolean(state.wordTimings?.words.length);
+  updateState({
+    performing: true,
+    playbackStart,
+    lyricIndex: 0,
+    lyricActive
+  });
+  setHud(els, activePlan.title || "Performance", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Performing");
+  updateStatus(els, "Performance started...");
+  if (lyricActive) {
     requestAnimationFrame(updateLyricsOverlay);
   }
-  updateHero(undefined, state.audioFile ? state.audioFile.name : undefined, activePlan.title || "Performance");
+  updateHero(els, undefined, state.audioFile ? state.audioFile.name : undefined, activePlan.title || "Performance");
   state.head.speakAudio(audio);
 };
 
 const stopPerformance = () => {
   if (!state.head) return;
   state.head.stop();
-  state.performing = false;
-  state.lyricActive = false;
-  setHud(els.hudScene.textContent || "Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Stopped");
-  updateStatus("Performance stopped.");
+  updateState({ performing: false, lyricActive: false });
+  setHud(els, els.hudScene.textContent || "Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Stopped");
+  updateStatus(els, "Performance stopped.");
 };
 
 const handleFile = async (file: File) => {
-  state.audioFile = file;
+  updateState({
+    audioFile: file,
+    transcriptText: "",
+    plan: null,
+    planSource: "none",
+    directorNotes: ""
+  });
   els.playBtn.disabled = true;
   els.transcript.value = "";
-  state.transcriptText = "";
-  state.plan = null;
-  state.planSource = "none";
-  state.directorNotes = "";
-  setPlanApproved(false);
-  setAnalysisOverlay(false);
-  resetAnalysisThoughts("Awaiting performance analysis.");
+  setPlanApproved(els, state, false);
+  setAnalysisOverlay(els, false);
+  resetAnalysisThoughts(els, state, "Awaiting performance analysis.");
   renderPlan([]);
-  updateStatus("Loading audio...");
+  updateStatus(els, "Loading audio...");
   resetHead();
   await loadAvatar();
   await initHeadAudio();
   await decodeAudio();
   setChip(els.audioChip, "Audio", `${file.name}`);
-  updateHero(undefined, file.name);
+  updateHero(els, undefined, file.name);
   els.heroLyrics.textContent = "Audio loaded. Transcribe, then analyze to enable performance.";
-  updateStatus("Audio loaded. Transcribe, then analyze to continue.");
+  updateStatus(els, "Audio loaded. Transcribe, then analyze to continue.");
 };
 
 const initControls = () => {
@@ -1820,19 +1695,24 @@ const bindControls = () => {
 
   lightInputs.forEach((input) => {
     input.addEventListener("input", () => {
-      state.lightColors.ambient = els.ambientColor.value;
-      state.lightColors.direct = els.directColor.value;
-      state.lightColors.spot = els.spotColor.value;
-      state.stageLightingBase.ambient = Number(els.ambientIntensity.value);
-      state.stageLightingBase.direct = Number(els.directIntensity.value);
-      state.stageLightingBase.spot = Number(els.spotIntensity.value);
+      const lightColors = {
+        ambient: els.ambientColor.value,
+        direct: els.directColor.value,
+        spot: els.spotColor.value
+      };
+      const stageLightingBase = {
+        ambient: Number(els.ambientIntensity.value),
+        direct: Number(els.directIntensity.value),
+        spot: Number(els.spotIntensity.value)
+      };
+      updateState({ lightColors, stageLightingBase });
       updateSliderReadouts();
       applyLightSettings();
     });
   });
 
   els.lightPulse.addEventListener("change", () => {
-    state.lightPulse = els.lightPulse.checked;
+    updateState({ lightPulse: els.lightPulse.checked });
   });
 
   els.directorModelSelect.addEventListener("change", () => {
@@ -1890,23 +1770,23 @@ const bindControls = () => {
 
   els.approveBtn.addEventListener("click", () => {
     if (!state.plan) {
-      updateStatus("Analyze a plan before approval.");
+      updateStatus(els, "Analyze a plan before approval.");
       return;
     }
-    setPlanApproved(true);
-    updateStatus("Plan approved. Ready to perform.");
+    setPlanApproved(els, state, true);
+    updateStatus(els, "Plan approved. Ready to perform.");
   });
 };
 
 const initStage = async () => {
-  setHud("Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Awaiting");
+  setHud(els, "Idle", state.cameraSettings.view, lightPresets[state.lightPreset].label, "Awaiting");
   setChip(els.sttChip, "STT", config.sttModel);
   setChip(els.chatChip, "Chat", config.llmModel);
   const defaultDirector = config.directorModel || directorModelFallback;
   setChip(els.llmChip, "LLM", defaultDirector);
   setChip(els.audioChip, "Audio", "-");
-  updateHero(undefined, undefined, "Awaiting Audio");
-  setPlanApproved(false);
+  updateHero(els, undefined, undefined, "Awaiting Audio");
+  setPlanApproved(els, state, false);
   initControls();
   await initModelSelectors();
   refreshRuntimePanel().catch(() => {
@@ -1917,7 +1797,7 @@ const initStage = async () => {
     await loadAvatarList();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    updateStatus(`Failed to load avatars: ${message}`);
+    updateStatus(els, `Failed to load avatars: ${message}`);
   }
 
   resetHead();
@@ -1926,7 +1806,7 @@ const initStage = async () => {
     .then(() => {
         initLipsync(state.head);
     })
-    .catch(() => updateStatus("Avatar preview requires a user gesture."));
+    .catch(() => updateStatus(els, "Avatar preview requires a user gesture."));
 
   els.avatarSelect.addEventListener("change", () => {
     resetHead();
@@ -1939,30 +1819,30 @@ const initStage = async () => {
         }
         return null;
       })
-      .catch((error) => updateStatus(error.message || "Failed to load avatar."));
+      .catch((error) => updateStatus(els, error.message || "Failed to load avatar."));
   });
 
   els.songInput.addEventListener("change", () => {
     const file = els.songInput.files?.[0];
     if (!file) return;
-    handleFile(file).catch((error) => updateStatus(error.message || "Failed to load audio."));
+    handleFile(file).catch((error) => updateStatus(els, error.message || "Failed to load audio."));
   });
 
   els.transcribeBtn.addEventListener("click", () => {
-    transcribeAudio().catch((error) => updateStatus(error.message || "Transcribe failed."));
+    transcribeAudio().catch((error) => updateStatus(els, error.message || "Transcribe failed."));
   });
 
   els.analyzeBtn.addEventListener("click", () => {
-    analyzePerformance().catch((error) => updateStatus(error.message || "Analysis failed."));
+    analyzePerformance().catch((error) => updateStatus(els, error.message || "Analysis failed."));
   });
 
   els.playBtn.addEventListener("click", () => {
-    performSong().catch((error) => updateStatus(error.message || "Performance failed."));
+    performSong().catch((error) => updateStatus(els, error.message || "Performance failed."));
   });
 
   els.lipsyncBtn.addEventListener("click", () => {
      const text = els.transcript.value || "Hello, I am ready to lipsync.";
-     speakWithLipsync(text).catch(e => updateStatus("Lipsync failed: " + e.message));
+     speakWithLipsync(text).catch(e => updateStatus(els, "Lipsync failed: " + e.message));
   });
 
   els.stopBtn.addEventListener("click", () => {
@@ -2000,5 +1880,5 @@ const init = async () => {
 
 init().catch((error) => {
   console.error(error);
-  updateStatus("Stage init failed.");
+  updateStatus(els, "Stage init failed.");
 });
