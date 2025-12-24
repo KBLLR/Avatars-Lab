@@ -488,19 +488,67 @@ export class DirectorOrchestrator {
   }
 
   /**
-   * Format director notes from result
+   * Format director notes from result with full metadata
+   * Captures all decisions for data-pool storage
    */
   private formatNotes(result: DirectorResult): string {
     const parts: string[] = [];
+    const meta = result.meta;
 
+    // Header with model info
+    if (meta) {
+      parts.push(`=== Director Analysis ===`);
+      parts.push(`Model: ${meta.model}`);
+      parts.push(`Style: ${meta.style}`);
+      parts.push(`Timestamp: ${meta.timestamp}`);
+      parts.push(`Duration: ${result.durationMs}ms`);
+      parts.push(`Sections: ${meta.sectionCount}`);
+      parts.push(`Parse Success: ${meta.parseSuccess ? 'Yes' : 'No'}`);
+      if (meta.seed) {
+        parts.push(`Seed: ${meta.seed.slice(0, 20)}...`);
+      }
+      parts.push(``);
+    }
+
+    // Creative decisions
     if (result.thoughts) {
-      parts.push(`Thoughts: ${result.thoughts}`);
+      parts.push(`--- Creative Vision ---`);
+      parts.push(result.thoughts);
+      parts.push(``);
     }
+
     if (result.analysis) {
-      parts.push(`Analysis: ${result.analysis}`);
+      parts.push(`--- Lyrical Analysis ---`);
+      parts.push(result.analysis);
+      parts.push(``);
     }
+
     if (result.selectionReason) {
-      parts.push(`Selection: ${result.selectionReason}`);
+      parts.push(`--- Selection Rationale ---`);
+      parts.push(result.selectionReason);
+      parts.push(``);
+    }
+
+    // Error info if any
+    if (result.error) {
+      parts.push(`--- Error ---`);
+      parts.push(`${result.error.name}: ${result.error.message}`);
+      parts.push(``);
+    }
+
+    // Section summary
+    if (result.plan?.sections && result.plan.sections.length > 0) {
+      parts.push(`--- Section Decisions ---`);
+      result.plan.sections.forEach((section, i) => {
+        const details = [
+          section.mood && `mood:${section.mood}`,
+          section.camera && `camera:${section.camera}`,
+          section.light && `light:${section.light}`,
+          section.role && `role:${section.role}`,
+          section.actions?.length && `actions:${section.actions.length}`
+        ].filter(Boolean).join(', ');
+        parts.push(`  [${i + 1}] ${section.label}: ${details}`);
+      });
     }
 
     return parts.join("\n") || "No notes available";

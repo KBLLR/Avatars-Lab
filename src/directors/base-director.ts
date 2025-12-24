@@ -4,7 +4,7 @@
  */
 
 import { requestLLM, LLMRequestError } from "../llm/request";
-import { parseDirectorResponse, IncrementalJsonValidator } from "../llm/streaming-parser";
+import { parseDirectorResponse, IncrementalJsonValidator, type ParseContext } from "../llm/streaming-parser";
 import type {
   DirectorConfig,
   DirectorPlan,
@@ -35,6 +35,16 @@ export interface AnalyzeOptions {
   onThoughts?: (thoughts: string) => void;
 }
 
+export interface DirectorResultMeta {
+  model: string;
+  style: string;
+  seed: string;
+  timestamp: string;
+  sectionCount: number;
+  parseAttempts?: number;
+  parseSuccess: boolean;
+}
+
 export interface DirectorResult {
   plan: DirectorPlan | null;
   response: DirectorResponse | null;
@@ -43,6 +53,7 @@ export interface DirectorResult {
   selectionReason?: string;
   error?: Error;
   durationMs: number;
+  meta?: DirectorResultMeta;
 }
 
 /**
@@ -128,7 +139,10 @@ export abstract class BaseDirector {
     try {
       const prompt = this.buildPrompt(sections, durationMs, context);
       this.validateStylePrompt(prompt);
-      const validator = new IncrementalJsonValidator();
+      const validator = new IncrementalJsonValidator({
+        modelId: this.model,
+        debug: import.meta.env.DEV
+      });
       let thoughtsEmitted = false;
 
       const response = await requestLLM({
@@ -177,9 +191,22 @@ export abstract class BaseDirector {
         }
       });
 
-      // Parse the response
+      // Parse the response with model-aware parsing
       const rawContent = this.streaming ? validator.getBuffer() : response.content;
-      const parsed = parseDirectorResponse(rawContent, durationMs);
+      const parseContext: ParseContext = {
+        modelId: this.model,
+        debug: import.meta.env.DEV
+      };
+      const parsed = parseDirectorResponse(rawContent, durationMs, parseContext);
+
+      const baseMeta: DirectorResultMeta = {
+        model: this.model,
+        style: this.style,
+        seed: this.seed,
+        timestamp: new Date().toISOString(),
+        sectionCount: 0,
+        parseSuccess: false
+      };
 
       if (!parsed) {
         onProgress?.({
@@ -192,7 +219,8 @@ export abstract class BaseDirector {
           plan: null,
           response: null,
           error: new Error("Failed to parse director response as valid JSON"),
-          durationMs: Date.now() - startTime
+          durationMs: Date.now() - startTime,
+          meta: baseMeta
         };
       }
 
@@ -215,7 +243,12 @@ export abstract class BaseDirector {
         thoughts: parsed.thoughts_summary,
         analysis: parsed.analysis,
         selectionReason: parsed.selection_reason,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        meta: {
+          ...baseMeta,
+          sectionCount: parsed.plan.sections.length,
+          parseSuccess: true
+        }
       };
 
     } catch (error) {
@@ -234,7 +267,15 @@ export abstract class BaseDirector {
         plan: null,
         response: null,
         error: err,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        meta: {
+          model: this.model,
+          style: this.style,
+          seed: this.seed,
+          timestamp: new Date().toISOString(),
+          sectionCount: 0,
+          parseSuccess: false
+        }
       };
     }
   }
