@@ -58,6 +58,7 @@ export abstract class BaseDirector {
   protected readonly maxTokens: number;
   protected readonly retries: number;
   protected readonly streaming: boolean;
+  private styleValidated = false;
 
   constructor(stage: DirectorStage, options: DirectorOptions) {
     this.stage = stage;
@@ -96,6 +97,15 @@ export abstract class BaseDirector {
     return formatDirectorStylePrompt(this.style);
   }
 
+  protected validateStylePrompt(prompt: string): void {
+    if (this.styleValidated) return;
+    this.styleValidated = true;
+    if (!import.meta.env.DEV) return;
+    if (!prompt.includes("STYLE_GUIDANCE:")) {
+      console.warn(`${this.getStageName()} prompt missing STYLE_GUIDANCE for style "${this.style}".`);
+    }
+  }
+
   /**
    * Analyze sections and generate a plan
    */
@@ -117,6 +127,7 @@ export abstract class BaseDirector {
 
     try {
       const prompt = this.buildPrompt(sections, durationMs, context);
+      this.validateStylePrompt(prompt);
       const validator = new IncrementalJsonValidator();
       let thoughtsEmitted = false;
 
