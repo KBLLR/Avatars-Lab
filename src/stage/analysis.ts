@@ -31,6 +31,7 @@ export interface AnalysisDeps {
   config: AnalysisConfig;
   getState: () => StageState;
   updateState: (partial: Partial<StageState>) => void;
+  decodeAudio: (file: File, audioCtx: AudioContext) => Promise<AudioBuffer>;
   applyPlanApproved: (approved: boolean) => void;
   renderPlan: (sections: PlanSection[]) => void;
   enqueueAnalysisVoice: (text: string) => void;
@@ -58,6 +59,7 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
     config,
     getState,
     updateState,
+    decodeAudio,
     applyPlanApproved,
     renderPlan,
     enqueueAnalysisVoice,
@@ -117,6 +119,22 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
     }
 
     if (!state.audioBuffer) {
+      if (state.audioFile && state.head) {
+        updateStatus(els, "Decoding audio for analysis...");
+        try {
+          const audioBuffer = await decodeAudio(state.audioFile, state.head.audioCtx);
+          updateState({ audioBuffer });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to decode audio.";
+          updateStatus(els, message);
+          return;
+        }
+      } else {
+        updateStatus(els, "Load audio before analyzing performance.");
+        return;
+      }
+    }
+    if (!getState().audioBuffer) {
       updateStatus(els, "Load audio before analyzing performance.");
       return;
     }

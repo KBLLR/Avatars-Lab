@@ -1348,6 +1348,7 @@ const init = async () => {
     config,
     getState: () => state,
     updateState,
+    decodeAudio: decodeAudioFile,
     applyPlanApproved,
     renderPlan,
     enqueueAnalysisVoice,
