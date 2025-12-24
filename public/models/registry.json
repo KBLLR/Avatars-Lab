@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-24T00:53:22.346Z",
+  "generated_at": "2025-12-24T12:31:20.434Z",
   "registry_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/registry.json",
   "models": [
     {
@@ -321,6 +321,26 @@
       "type": "embedding",
       "capabilities": [
         "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__Qwen2.5-14B-Instruct-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__DeepSeek-R1-Distill-Qwen-7B-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
       ],
       "description": null,
       "tags": []

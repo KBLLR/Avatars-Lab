@@ -1,46 +1,43 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
 import type { WordTiming } from "./types";
 
-const lipsyncModuleId = "@nicoleverse/lipsync-en/dist/lipsync-en.mjs";
 
-let lipsyncReadyPromise: Promise<void> | null = null;
+
+let lipsyncReadyPromise: Promise<any> | null = null;
 
 export const ensureLipsync = async (head: TalkingHead): Promise<void> => {
-  if (lipsyncReadyPromise) {
-    await lipsyncReadyPromise;
-    return;
+  if (!lipsyncReadyPromise) {
+    lipsyncReadyPromise = (async () => {
+      try {
+        console.log("Loading lipsync module...");
+        const module = await import("@met4citizen/talkinghead/modules/lipsync-en.mjs");
+        console.log("Lipsync module loaded:", Object.keys(module));
+        return module.LipsyncEn || module.default;
+      } catch (e) {
+        console.error("Failed to load lipsync module:", e);
+        return null;
+      }
+    })();
   }
 
-  lipsyncReadyPromise = (async () => {
-    try {
-      console.log("Loading lipsync module from:", lipsyncModuleId);
-      const module = await import(lipsyncModuleId);
-      console.log("Lipsync module loaded:", Object.keys(module));
+  const LipsyncClass = await lipsyncReadyPromise;
+  if (!LipsyncClass) return;
 
-      const target = head as unknown as {
-        lipsync?: Record<string, unknown>;
-        lipsyncs?: Record<string, unknown>;
-      };
-      if (!target.lipsync) target.lipsync = {};
-      if (!target.lipsyncs) target.lipsyncs = {};
+  const target = head as unknown as {
+    lipsync?: Record<string, unknown>;
+    lipsyncs?: Record<string, unknown>;
+  };
+  
+  if (!target.lipsync) target.lipsync = {};
+  if (!target.lipsyncs) target.lipsyncs = {};
 
-      const LipsyncClass = module.LipsyncEn || module.default;
-      if (!LipsyncClass) {
-        console.error("Failed to load LipsyncEn class from module:", module);
-        return;
-      }
-
-      console.log("Initializing LipsyncEn...");
-      const instance = new LipsyncClass();
-      target.lipsync.en = instance;
-      target.lipsyncs.en = instance;
-      console.log("LipsyncEn initialized and attached to head. lipsync keys:", Object.keys(target.lipsync));
-    } catch (e) {
-      console.error("Failed to load lipsync module:", e);
-    }
-  })();
-
-  await lipsyncReadyPromise;
+  if (!target.lipsync.en) {
+    console.log("Initializing LipsyncEn for head instance...");
+    const instance = new LipsyncClass();
+    target.lipsync.en = instance;
+    target.lipsyncs.en = instance;
+    console.log("LipsyncEn attached.");
+  }
 };
 
 export interface VisemeTimings {

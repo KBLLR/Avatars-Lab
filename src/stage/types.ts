@@ -98,6 +98,8 @@ export interface StageState {
   lyricActive: boolean;
   performing: boolean;
   avatarBaseUrl: string | null;
+  lastDirectorModel?: string;
+  lastDirectorStyle?: string;
 }
 
 export const createInitialState = (): StageState => ({
@@ -147,5 +149,7 @@ export const createInitialState = (): StageState => ({
   lyricIndex: 0,
   lyricActive: false,
   performing: false,
-  avatarBaseUrl: null
+  avatarBaseUrl: null,
+  lastDirectorModel: undefined,
+  lastDirectorStyle: undefined
 });

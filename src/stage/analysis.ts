@@ -80,19 +80,52 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
     const seed = state.analysisSeed || new Date().toISOString();
 
     if (!state.orchestrator) {
+      const isLargeModel = model.toLowerCase().includes("14b") || model.toLowerCase().includes("32b");
+      const safeMaxTokens = isLargeModel ? 2000 : 3000;
+
       const orchestrator = createOrchestrator({
         baseUrl: config.llmBaseUrl,
         model,
         style,
         seed,
-        timeoutMs: 60000,
-        maxTokens: 1500,
+        timeoutMs: isLargeModel ? 120000 : 90000,
+        maxTokens: safeMaxTokens,
         retries: 2,
         streaming: true,
         enableChunking: true,
-        parallelStageCamera: true
+        parallelStageCamera: false
       });
-      updateState({ orchestrator });
+      // Store current config in state to detect changes
+      updateState({ 
+        orchestrator,
+        lastDirectorModel: model,
+        lastDirectorStyle: style
+      });
+      return orchestrator;
+    }
+
+    // If model/style changed, recreate orchestrator
+    if (state.lastDirectorModel !== model || state.lastDirectorStyle !== style) {
+      const isLargeModel = model.toLowerCase().includes("14b") || model.toLowerCase().includes("32b");
+      const safeMaxTokens = isLargeModel ? 2000 : 3000;
+      
+      const orchestrator = createOrchestrator({
+        baseUrl: config.llmBaseUrl,
+        model,
+        style,
+        seed,
+        timeoutMs: isLargeModel ? 120000 : 90000,
+        maxTokens: safeMaxTokens,
+        retries: 2,
+        streaming: true,
+        enableChunking: true,
+        parallelStageCamera: false
+      });
+      updateState({ 
+        orchestrator,
+        lastDirectorModel: model,
+        lastDirectorStyle: style
+      });
       return orchestrator;
     }
 

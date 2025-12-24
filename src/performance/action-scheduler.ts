@@ -1,4 +1,9 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
+import {
+  dolly, pan, tilt, orbit, shake, punch, sweep,
+  type DollyConfig, type PanConfig, type TiltConfig,
+  type OrbitConfig, type ShakeConfig, type PunchConfig, type SweepConfig
+} from "../camera";
 import type { PlanSection, PlanAction, Mood, CameraView } from "../directors/types";
 import type { ScheduledMarkers } from "./types";
 import { gestures } from "../stage/constants";
@@ -123,6 +128,27 @@ export const scheduleAction = (
         break;
       case "set_light_preset":
         if (args.preset) ctx.applyLightPreset(args.preset as string);
+        break;
+      case "camera_dolly":
+        dolly(head, args as unknown as DollyConfig);
+        break;
+      case "camera_pan":
+        pan(head, args as unknown as PanConfig);
+        break;
+      case "camera_tilt":
+        tilt(head, args as unknown as TiltConfig);
+        break;
+      case "camera_orbit":
+        orbit(head, args as unknown as OrbitConfig);
+        break;
+      case "camera_shake":
+        shake(head, args as unknown as ShakeConfig);
+        break;
+      case "camera_punch":
+        punch(head, args as unknown as PunchConfig);
+        break;
+      case "camera_sweep":
+        sweep(head, args as unknown as SweepConfig);
         break;
       default:
         break;

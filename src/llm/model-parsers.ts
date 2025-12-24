@@ -32,8 +32,32 @@ export interface ModelParserConfig {
 }
 
 /**
+ * Check if a JSON-like string is actually a schema example (not real JSON)
+ * Schema examples contain unquoted type placeholders like: number, string, boolean
+ */
+function isSchemaExample(jsonLike: string): boolean {
+  // Look for unquoted type placeholders that indicate this is a schema, not data
+  // Match patterns like `: number` or `: string` that are NOT inside quotes
+  const schemaPatterns = [
+    /:\s*number\s*[,}\]]/,      // "field": number,
+    /:\s*string\s*[,}\]]/,      // "field": string,
+    /:\s*boolean\s*[,}\]]/,     // "field": boolean,
+    /:\s*object\s*[,}\]]/,      // "field": object,
+    /:\s*array\s*[,}\]]/,       // "field": array,
+    /"\s*\|\s*"/,               // "value1" | "value2" (union types)
+  ];
+
+  for (const pattern of schemaPatterns) {
+    if (pattern.test(jsonLike)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Find all JSON objects in a string
- * Returns array of matched object strings
+ * Returns array of matched object strings, filtering out schema examples
  */
 function findAllJsonObjects(text: string): string[] {
   const objects: string[] = [];
@@ -67,7 +91,11 @@ function findAllJsonObjects(text: string): string[] {
     } else if (char === "}") {
       depth--;
       if (depth === 0 && start >= 0) {
-        objects.push(text.slice(start, i + 1));
+        const obj = text.slice(start, i + 1);
+        // Filter out schema examples
+        if (!isSchemaExample(obj)) {
+          objects.push(obj);
+        }
         start = -1;
       }
     }
@@ -112,6 +140,23 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
         }
       }
 
+      // Specific fix for "analysis" prefix common in GPT-OSS
+      // It often outputs "analysis ..." before the JSON
+      if (/^analysis\s+/i.test(cleaned)) {
+         const jsonStart = cleaned.indexOf("{");
+         if (jsonStart >= 0) {
+           cleaned = cleaned.slice(jsonStart);
+         }
+      }
+
+      // If still no valid start, find the first '{' that looks like a JSON object start
+      if (!cleaned.trim().startsWith("{")) {
+        const jsonStart = cleaned.indexOf("{");
+        if (jsonStart >= 0) {
+          cleaned = cleaned.slice(jsonStart);
+        }
+      }
+
       // If no main response pattern found, fall back to finding the largest JSON object
       if (!mainResponsePatterns.some(p => p.test(cleaned))) {
         const allObjects = findAllJsonObjects(cleaned);
@@ -127,6 +172,10 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
       // GPT-OSS sometimes uses single quotes - convert to double
       // But only outside of already quoted strings
       cleaned = cleaned.replace(/(?<![\\])'([^']*)'(?=\s*[,}\]:)])/g, '"$1"');
+
+      // Fix unquoted property names like {mood:"angry"} -> {"mood":"angry"}
+      // Matches word characters followed by colon, not inside quotes
+      cleaned = cleaned.replace(/(?<!")(\b\w+\b)(?=\s*:)/g, '"$1"');
 
       return cleaned;
     },
@@ -219,6 +268,19 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
     name: "Mistral",
     stripMarkdown: true,
     notes: "Mistral models typically produce clean JSON"
+  },
+  {
+    pattern: /deepseek/i,
+    name: "DeepSeek",
+    stripMarkdown: true,
+    stripPreamble: true,
+    preprocess: (raw) => {
+      let cleaned = raw;
+      // DeepSeek often outputs thought chains in <think> tags
+      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, "");
+      return cleaned;
+    },
+    notes: "DeepSeek models using Chain of Thought"
   }
 ];
 

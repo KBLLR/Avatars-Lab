@@ -284,10 +284,10 @@ export abstract class BaseDirector {
    * Estimate max tokens needed based on section count
    */
   protected estimateMaxTokens(sectionCount: number): number {
-    const baseTokens = 600;
-    const perSectionTokens = 100;
+    const baseTokens = 1000;
+    const perSectionTokens = 150;
     const estimated = baseTokens + sectionCount * perSectionTokens;
-    return Math.min(Math.max(estimated, this.maxTokens), 4000);
+    return Math.min(Math.max(estimated, this.maxTokens), 8096);
   }
 
   /**
@@ -312,6 +312,17 @@ export abstract class BaseDirector {
         "actions": [{ "time_ms": number, "action": "action_name", "args": {} }]
       }
     ]
+  }
+}
+
+EXAMPLE:
+{
+  "thoughts_summary": "High energy intro transitioning to emotional verse.",
+  "analysis": "Song is about overcoming struggle.",
+  "selection_reason": "Chosen red lighting for intensity.",
+  "plan": {
+    "title": "Phoenix Rising",
+    "sections": []
   }
 }`;
   }

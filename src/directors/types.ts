@@ -343,6 +343,16 @@ export const CAMERA_ACTIONS_COMPACT = [
   "make_eye_contact(t: ms)"
 ];
 
+export const CAMERA_MOVEMENT_ACTIONS = [
+  "camera_dolly(distance: number, duration_ms: number, easing?: linear|easeIn|easeOut|easeInOut)",
+  "camera_pan(angle: number, duration_ms: number, easing?: linear|easeIn|easeOut|easeInOut)",
+  "camera_tilt(angle: number, duration_ms: number, easing?: linear|easeIn|easeOut|easeInOut)",
+  "camera_orbit(angle: number, duration_ms: number, easing?: linear|easeIn|easeOut|easeInOut)",
+  "camera_shake(intensity: 0-1, duration_ms: number)",
+  "camera_punch(factor: number, duration_ms: number)",
+  "camera_sweep(startAngle: number, endAngle: number, duration_ms: number, easing?: string)"
+] as const;
+
 // ─────────────────────────────────────────────────────────────
 // JSON Schema for Output Validation
 // ─────────────────────────────────────────────────────────────

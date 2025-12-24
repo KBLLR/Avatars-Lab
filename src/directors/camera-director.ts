@@ -4,7 +4,7 @@
  */
 
 import { BaseDirector, DirectorOptions } from "./base-director";
-import { CAMERA_ACTIONS_COMPACT, InputSection, DirectorPlan, CAMERA_VIEWS } from "./types";
+import { CAMERA_ACTIONS_COMPACT, CAMERA_MOVEMENT_ACTIONS, InputSection, DirectorPlan, CAMERA_VIEWS } from "./types";
 
 export interface CameraDirectorContext {
   performancePlan: DirectorPlan;
@@ -48,6 +48,8 @@ CONSTRAINTS:
 - Match camera energy to section mood and role
 - Use camera changes sparingly - 1-2 per section max
 - thoughts_summary: ≤40 words, speakable, NO chain-of-thought
+- IMPORTANT: You MUST output valid JSON only. Start your response immediately with "{".
+
 
 CAMERA VIEWS: ${CAMERA_VIEWS.join(", ")}
 - full: wide shot, full body
@@ -57,6 +59,18 @@ CAMERA VIEWS: ${CAMERA_VIEWS.join(", ")}
 
 CAMERA ACTIONS:
 ${CAMERA_ACTIONS_COMPACT.join("\n")}
+
+CAMERA MOVEMENTS (cinematic):
+${CAMERA_MOVEMENT_ACTIONS.join("\n")}
+
+MOVEMENT GUIDE:
+- dolly: Move toward (negative) or away (positive) from subject
+- pan: Horizontal rotation in degrees
+- tilt: Vertical rotation in degrees
+- orbit: Circular path around subject
+- shake: Handheld camera effect for intensity/energy
+- punch: Quick zoom for impact moments
+- sweep: Arc movement from start to end angle
 
 CAMERA LANGUAGE GUIDE:
 - High energy moments → quick cuts, closer shots
@@ -81,8 +95,8 @@ ${JSON.stringify(compactSections, null, 1)}`;
    * Override max tokens - camera director needs less
    */
   protected estimateMaxTokens(sectionCount: number): number {
-    const baseTokens = 400;
-    const perSectionTokens = 60;
-    return Math.min(baseTokens + sectionCount * perSectionTokens, 2500);
+    const baseTokens = 800;
+    const perSectionTokens = 150;
+    return Math.min(baseTokens + sectionCount * perSectionTokens, 4000);
   }
 }
