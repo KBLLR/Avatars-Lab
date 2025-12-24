@@ -29,7 +29,8 @@ import {
   refreshRuntimePanel as refreshRuntimePanelModule,
   loadRuntimeModel as loadRuntimeModelModule,
   unloadRuntimeModel as unloadRuntimeModelModule,
-  setRuntimeStatusText as setRuntimeStatusTextModule
+  setRuntimeStatusText as setRuntimeStatusTextModule,
+  initTtsSelectors
 } from "./runtime/index";
 import {
   ensureLipsync,
@@ -339,91 +340,6 @@ const transcribeAudio = async () => {
 // fallbackPlan wrapper using imported createFallbackPlan
 const fallbackPlan = (durationMs: number, timings: WordTiming | null): MergedPlan =>
   createFallbackPlan(durationMs, timings, state.transcriptText);
-
-// ─────────────────────────────────────────────────────────────
-// Dynamic Configuration Fetching
-// ─────────────────────────────────────────────────────────────
-
-const fetchTtsModels = async () => {
-  if (!config.audioBaseUrl) return;
-  // User requested to stop TTS/ignore failures.
-  // We will try gracefully but suppress errors.
-  try {
-    const response = await fetch(`${config.audioBaseUrl}/v1/audio/models`);
-    if (response.ok) {
-      const data = await response.json();
-      updateState({ availableTtsModels: data.data || [] });
-      populateTtsModelSelect();
-    }
-  } catch (e) {
-    console.warn("Failed to fetch TTS models:", e);
-  }
-};
-
-const fetchTtsVoices = async (modelId: string) => {
-  if (!config.audioBaseUrl) return;
-  try {
-    const url = new URL(`${config.audioBaseUrl}/v1/audio/voices`);
-    if (modelId) url.searchParams.set("model_id", modelId);
-    
-    const response = await fetch(url.toString());
-    if (response.ok) {
-      const data = await response.json();
-      updateState({ availableVoices: data.data || [] });
-      populateVoiceSelect();
-    }
-  } catch (e) {
-    console.warn(`Failed to fetch voices for ${modelId}:`, e);
-    // Fallback if fetch fails but we have a default list?
-    // state.availableVoices = voiceOptions;
-  }
-};
-
-const populateTtsModelSelect = () => {
-    els.ttsModelSelect.innerHTML = "";
-    if (state.availableTtsModels.length === 0) {
-        // Fallback or empty state
-        const op = document.createElement("option");
-        op.value = config.ttsModel || "";
-        op.textContent = "Default (Configured)";
-        els.ttsModelSelect.appendChild(op);
-        return;
-    }
-    
-    state.availableTtsModels.forEach(m => {
-        const op = document.createElement("option");
-        op.value = m.id;
-        op.textContent = m.id.split("/").pop() || m.id;
-        if (m.id === config.ttsModel) op.selected = true;
-        els.ttsModelSelect.appendChild(op);
-    });
-    
-    // Trigger voice refresh for selected model
-    if (els.ttsModelSelect.value) {
-        fetchTtsVoices(els.ttsModelSelect.value);
-    }
-};
-
-const populateVoiceSelect = () => {
-    const current = els.voiceSelect.value;
-    els.voiceSelect.innerHTML = "";
-    
-    if (state.availableVoices.length === 0) {
-       const op = document.createElement("option");
-       op.value = "default";
-       op.textContent = "Default";
-       els.voiceSelect.appendChild(op);
-       return;
-    }
-
-    state.availableVoices.forEach(v => {
-        const op = document.createElement("option");
-        op.value = v;
-        op.textContent = v;
-        if (v === current) op.selected = true;
-        els.voiceSelect.appendChild(op);
-    });
-};
 
 const renderPlan = (sections: PlanSection[]) => {
   els.planList.innerHTML = "";
@@ -859,22 +775,16 @@ const init = async () => {
 
   // Initial fetches
   // TTS Disabled as per user request
-  // fetchTtsModels().then(() => {
-  //    if (config.ttsModel) {
-  //        fetchTtsVoices(config.ttsModel).catch(e => console.warn("TTS Voices check skipped/failed:", e));
-  //    }
-  // }).catch(e => console.warn("TTS Models check skipped/failed:", e));
-
-  // Event Listeners for Dynamic Selection
-  els.ttsModelSelect.addEventListener("change", (e) => {
-      const modelId = (e.target as HTMLSelectElement).value;
-      config.ttsModel = modelId; // Update config ref
-      fetchTtsVoices(modelId);
-  });
-  
-  els.voiceSelect.addEventListener("change", (e) => {
-      config.ttsVoice = (e.target as HTMLSelectElement).value;
-  });
+  await initTtsSelectors(
+    {
+      els,
+      config,
+      getState: () => state,
+      updateState,
+      setOverride
+    },
+    { autoFetch: false }
+  );
 
   initStage();
 };

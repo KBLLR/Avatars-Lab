@@ -149,14 +149,6 @@ export const bindControls = ({
     }
   });
 
-  els.ttsModelSelect.addEventListener("change", () => {
-    const value = els.ttsModelSelect.value;
-    if (value) {
-      config.ttsModel = value;
-      setOverride("ttsModel", value);
-    }
-  });
-
   els.llmRuntimeRefresh.addEventListener("click", () => {
     refreshRuntimePanel().catch(() => {
       setRuntimeStatusText("Failed to refresh LLM status.");
