@@ -825,6 +825,29 @@ const renderPlan = (sections: PlanSection[]) => {
     return;
   }
 
+  const clonePlan = (plan: MergedPlan): MergedPlan => ({
+    ...plan,
+    sections: plan.sections.map((section) => ({
+      ...section,
+      actions: section.actions?.map((action) => ({
+        ...action,
+        args: action.args ? { ...action.args } : undefined
+      }))
+    })),
+    actions: plan.actions?.map((action) => ({
+      ...action,
+      args: action.args ? { ...action.args } : undefined
+    }))
+  });
+
+  const updatePlanState = (mutate: (plan: MergedPlan) => void): MergedPlan | null => {
+    if (!state.plan) return null;
+    const nextPlan = clonePlan(state.plan);
+    mutate(nextPlan);
+    updateState({ plan: nextPlan });
+    return nextPlan;
+  };
+
   const actionTypeOptions = [
     { value: "set_mood", label: "Mood" },
     { value: "play_gesture", label: "Gesture" },
@@ -856,11 +879,13 @@ const renderPlan = (sections: PlanSection[]) => {
         { value: "ensemble", label: "Ensemble" }
       ],
       (next) => {
-        if (!state.plan) return;
-        state.plan.sections[index].role = next as "solo" | "ensemble";
+        const nextPlan = updatePlanState((plan) => {
+          plan.sections[index].role = next as "solo" | "ensemble";
+        });
+        if (!nextPlan) return;
         applyPlanDirty();
-        updatePlanDetails(els, state.plan.sections, state);
-        renderPlan(state.plan.sections);
+        updatePlanDetails(els, nextPlan.sections, state);
+        renderPlan(nextPlan.sections);
       }
     );
 
@@ -869,10 +894,12 @@ const renderPlan = (sections: PlanSection[]) => {
       section.mood || "neutral",
       moods.map((mood) => ({ value: mood, label: `Mood:${mood}` })),
       (next) => {
-        if (!state.plan) return;
-        state.plan.sections[index].mood = next as Mood;
+        const nextPlan = updatePlanState((plan) => {
+          plan.sections[index].mood = next as Mood;
+        });
+        if (!nextPlan) return;
         applyPlanDirty();
-        updatePlanDetails(els, state.plan.sections, state);
+        updatePlanDetails(els, nextPlan.sections, state);
       }
     );
 
@@ -881,10 +908,12 @@ const renderPlan = (sections: PlanSection[]) => {
       section.camera || state.cameraSettings.view,
       cameraViews.map((view) => ({ value: view, label: `Cam:${view}` })),
       (next) => {
-        if (!state.plan) return;
-        state.plan.sections[index].camera = next as CameraView;
+        const nextPlan = updatePlanState((plan) => {
+          plan.sections[index].camera = next as CameraView;
+        });
+        if (!nextPlan) return;
         applyPlanDirty();
-        updatePlanDetails(els, state.plan.sections, state);
+        updatePlanDetails(els, nextPlan.sections, state);
       }
     );
 
@@ -893,10 +922,12 @@ const renderPlan = (sections: PlanSection[]) => {
       section.light || state.lightPreset,
       Object.keys(lightPresets).map((key) => ({ value: key, label: `Light:${key}` })),
       (next) => {
-        if (!state.plan) return;
-        state.plan.sections[index].light = next as LightPreset;
+        const nextPlan = updatePlanState((plan) => {
+          plan.sections[index].light = next as LightPreset;
+        });
+        if (!nextPlan) return;
         applyPlanDirty();
-        updatePlanDetails(els, state.plan.sections, state);
+        updatePlanDetails(els, nextPlan.sections, state);
       }
     );
 
@@ -914,13 +945,15 @@ const renderPlan = (sections: PlanSection[]) => {
           action.action,
           actionTypeOptions,
           (next) => {
-            if (!state.plan) return;
-            const target = state.plan.sections[index].actions?.[actionIndex];
-            if (!target) return;
+            const nextPlan = updatePlanState((plan) => {
+              const target = plan.sections[index].actions?.[actionIndex];
+              if (!target) return;
               target.action = next;
               target.args = {};
-              applyPlanDirty();
-              renderPlan(state.plan.sections);
+            });
+            if (!nextPlan) return;
+            applyPlanDirty();
+            renderPlan(nextPlan.sections);
           }
         );
         actionWrap.appendChild(typeSelect);
@@ -932,12 +965,14 @@ const renderPlan = (sections: PlanSection[]) => {
               action.args?.mood as Mood || section.mood || "neutral",
               moods.map((mood) => ({ value: mood, label: mood })),
               (next) => {
-                if (!state.plan) return;
-                const target = state.plan.sections[index].actions?.[actionIndex];
-                if (!target) return;
-                target.args = { ...target.args, mood: next as Mood };
+                const nextPlan = updatePlanState((plan) => {
+                  const target = plan.sections[index].actions?.[actionIndex];
+                  if (!target) return;
+                  target.args = { ...target.args, mood: next as Mood };
+                });
+                if (!nextPlan) return;
                 applyPlanDirty();
-                updatePlanDetails(els, state.plan.sections, state);
+                updatePlanDetails(els, nextPlan.sections, state);
               }
             )
           );
@@ -948,36 +983,42 @@ const renderPlan = (sections: PlanSection[]) => {
               (action.args?.gesture as string) || (action.args?.name as string) || gestures[0],
               gestures.map((gesture) => ({ value: gesture, label: gesture })),
               (next) => {
-                if (!state.plan) return;
-                const target = state.plan.sections[index].actions?.[actionIndex];
-                if (!target) return;
-                target.args = { ...target.args, gesture: next };
+                const nextPlan = updatePlanState((plan) => {
+                  const target = plan.sections[index].actions?.[actionIndex];
+                  if (!target) return;
+                  target.args = { ...target.args, gesture: next };
+                });
+                if (!nextPlan) return;
                 applyPlanDirty();
-                updatePlanDetails(els, state.plan.sections, state);
+                updatePlanDetails(els, nextPlan.sections, state);
               }
             )
           );
         } else if (action.action === "make_facial_expression") {
           actionWrap.appendChild(
             createInlineInput("Emoji", (action.args?.emoji as string) || "🙂", (next) => {
-              if (!state.plan) return;
-              const target = state.plan.sections[index].actions?.[actionIndex];
-              if (!target) return;
-              target.args = { ...target.args, emoji: next };
+              const nextPlan = updatePlanState((plan) => {
+                const target = plan.sections[index].actions?.[actionIndex];
+                if (!target) return;
+                target.args = { ...target.args, emoji: next };
+              });
+              if (!nextPlan) return;
               applyPlanDirty();
-              updatePlanDetails(els, state.plan.sections, state);
+              updatePlanDetails(els, nextPlan.sections, state);
             })
           );
         } else if (action.action === "speak_break") {
           actionWrap.appendChild(
             createInlineInput("Break ms", String(action.args?.duration_ms ?? 400), (next) => {
-              if (!state.plan) return;
-              const target = state.plan.sections[index].actions?.[actionIndex];
-              if (!target) return;
-              const ms = Number(next);
-              target.args = { ...target.args, duration_ms: Number.isFinite(ms) ? ms : 400 };
+              const nextPlan = updatePlanState((plan) => {
+                const target = plan.sections[index].actions?.[actionIndex];
+                if (!target) return;
+                const ms = Number(next);
+                target.args = { ...target.args, duration_ms: Number.isFinite(ms) ? ms : 400 };
+              });
+              if (!nextPlan) return;
               applyPlanDirty();
-              updatePlanDetails(els, state.plan.sections, state);
+              updatePlanDetails(els, nextPlan.sections, state);
             })
           );
         } else if (action.action === "set_view") {
@@ -987,12 +1028,14 @@ const renderPlan = (sections: PlanSection[]) => {
               (action.args?.view as CameraView) || section.camera || "upper",
               cameraViews.map((view) => ({ value: view, label: view })),
               (next) => {
-                if (!state.plan) return;
-                const target = state.plan.sections[index].actions?.[actionIndex];
-                if (!target) return;
-                target.args = { ...target.args, view: next as CameraView };
+                const nextPlan = updatePlanState((plan) => {
+                  const target = plan.sections[index].actions?.[actionIndex];
+                  if (!target) return;
+                  target.args = { ...target.args, view: next as CameraView };
+                });
+                if (!nextPlan) return;
                 applyPlanDirty();
-                updatePlanDetails(els, state.plan.sections, state);
+                updatePlanDetails(els, nextPlan.sections, state);
               }
             )
           );
@@ -1003,12 +1046,14 @@ const renderPlan = (sections: PlanSection[]) => {
               (action.args?.preset as LightPreset) || section.light || state.lightPreset,
               Object.keys(lightPresets).map((key) => ({ value: key, label: key })),
               (next) => {
-                if (!state.plan) return;
-                const target = state.plan.sections[index].actions?.[actionIndex];
-                if (!target) return;
-                target.args = { ...target.args, preset: next as LightPreset };
+                const nextPlan = updatePlanState((plan) => {
+                  const target = plan.sections[index].actions?.[actionIndex];
+                  if (!target) return;
+                  target.args = { ...target.args, preset: next as LightPreset };
+                });
+                if (!nextPlan) return;
                 applyPlanDirty();
-                updatePlanDetails(els, state.plan.sections, state);
+                updatePlanDetails(els, nextPlan.sections, state);
               }
             )
           );
