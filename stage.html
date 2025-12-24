@@ -40,11 +40,16 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr) 420px;
         min-height: 100vh;
+        padding: 20px;
+        gap: 20px;
       }
 
       #stage {
         position: relative;
         overflow: hidden;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(5, 8, 14, 0.6);
       }
 
       #avatar {
@@ -343,11 +348,13 @@
           rgba(15, 22, 36, 0.98),
           rgba(10, 14, 24, 0.98)
         );
-        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
         display: grid;
         gap: 14px;
         overflow-y: auto;
-        height: 100vh;
+        height: calc(100vh - 40px);
+        align-content: start;
       }
 
       h1 {
@@ -436,6 +443,26 @@
         grid-template-columns: 1fr 48px;
         align-items: center;
         gap: 8px;
+      }
+
+      .slider-row.icon {
+        grid-template-columns: 34px 1fr 48px;
+      }
+
+      .slider-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 24px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
 
       button {
@@ -660,10 +687,13 @@
       @media (max-width: 1100px) {
         #app {
           grid-template-columns: 1fr;
+          padding: 12px;
+          gap: 12px;
+        }
+        #stage {
+          min-height: 50vh;
         }
         #panel {
-          border-left: none;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
           height: auto;
           overflow-y: visible;
         }
@@ -699,6 +729,9 @@
               <div class="analysis-stage-badge" id="stageBadgeStage">Stage</div>
               <div class="analysis-stage-badge" id="stageBadgeCamera">
                 Camera
+              </div>
+              <div class="analysis-stage-badge" id="stageBadgePostFx">
+                PostFX
               </div>
             </div>
             <div id="analysisThoughts">Awaiting performance analysis.</div>
@@ -753,6 +786,36 @@
         </div>
 
         <div class="card">
+          <div class="card-title">Director Setup</div>
+          <div class="plan-section">
+             <label>Director Style</label>
+             <select id="directorStyle">
+                <option value="cinematic">Cinematic</option>
+                <option value="intimate">Intimate</option>
+                <option value="hype">Hype</option>
+                <option value="minimal">Minimal</option>
+                <option value="experimental">Experimental</option>
+             </select>
+             <div class="toggle">
+               <input id="directorEnablePerformance" type="checkbox" checked disabled />
+               <label for="directorEnablePerformance" style="opacity: 0.7">Performance (Base)</label>
+             </div>
+             <div class="toggle">
+               <input id="directorEnableStage" type="checkbox" checked />
+               <label for="directorEnableStage">Stage Director</label>
+             </div>
+             <div class="toggle">
+               <input id="directorEnableCamera" type="checkbox" checked />
+               <label for="directorEnableCamera">Camera Director</label>
+             </div>
+             <div class="toggle">
+               <input id="directorEnablePostFx" type="checkbox" checked />
+               <label for="directorEnablePostFx">PostFX Director</label>
+             </div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title">Performance Controls</div>
           <div class="row">
             <button id="playBtn" class="primary" disabled>AI Perform</button>
@@ -763,24 +826,45 @@
             <input id="soloOnly" type="checkbox" checked />
             <label for="soloOnly">Solo-only lip sync</label>
           </div>
-          <label>Director Style</label>
-          <select id="directorStyle">
-            <option value="cinematic">Cinematic</option>
-            <option value="intimate">Intimate</option>
-            <option value="hype">Hype</option>
-            <option value="minimal">Minimal</option>
-            <option value="experimental">Experimental</option>
-          </select>
+
+        </div>
+
+        <div class="card">
+          <div class="card-title">Performance Library</div>
+          <label>Title</label>
+          <input
+            id="dataPoolTitle"
+            type="text"
+            placeholder="Name this performance"
+          />
+          <div class="toggle">
+            <input id="dataPoolIncludeAudio" type="checkbox" checked />
+            <label for="dataPoolIncludeAudio">Include audio (base64)</label>
+          </div>
+          <div class="row">
+            <button id="dataPoolSave" class="primary">Save</button>
+            <button id="dataPoolRefresh" class="ghost">Refresh</button>
+          </div>
+          <label>Saved Performances</label>
+          <select id="dataPoolSelect"></select>
+          <div class="row">
+            <button id="dataPoolLoad">Load</button>
+          </div>
+          <div class="runtime-status" id="dataPoolStatus">Data pool idle.</div>
         </div>
 
         <div class="card">
           <div class="card-title">Model Routing</div>
           <label>Chat LLM Model</label>
           <select id="llmModelSelect"></select>
+          <label>VLM Model</label>
+          <select id="vlmModelSelect"></select>
           <label>Director Model</label>
           <select id="directorModelSelect"></select>
           <label>STT Model</label>
           <select id="sttModelSelect"></select>
+          <label>Embeddings Model</label>
+          <select id="embedModelSelect"></select>
           <label>TTS Model</label>
           <select id="ttsModelSelect"></select>
           <label>Voice ID</label>
@@ -837,10 +921,11 @@
           <select id="cameraView">
             <option value="full">Full</option>
             <option value="mid">Mid</option>
-            <option value="upper" selected>Upper</option>
-            <option value="head">Head</option>
+            <option value="upper">Upper</option>
+            <option value="head" selected>Head</option>
           </select>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Distance">Dst</span>
             <input
               id="cameraDistance"
               type="range"
@@ -850,15 +935,18 @@
             />
             <span id="cameraDistanceVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="X Offset">X</span>
             <input id="cameraX" type="range" min="-1" max="1" step="0.05" />
             <span id="cameraXVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Y Offset">Y</span>
             <input id="cameraY" type="range" min="-1" max="1" step="0.05" />
             <span id="cameraYVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Rotate X">RX</span>
             <input
               id="cameraRotateX"
               type="range"
@@ -868,7 +956,8 @@
             />
             <span id="cameraRotateXVal"></span>
           </div>
-          <div class="slider-row">
+          <div class="slider-row icon">
+            <span class="slider-icon" title="Rotate Y">RY</span>
             <input
               id="cameraRotateY"
               type="range"
@@ -883,7 +972,8 @@
               <input id="autoRotate" type="checkbox" />
               <label for="autoRotate">Auto Rotate</label>
             </div>
-            <div class="slider-row">
+            <div class="slider-row icon">
+              <span class="slider-icon" title="Auto Rotate Speed">AR</span>
               <input
                 id="autoRotateSpeed"
                 type="range"
@@ -967,8 +1057,10 @@
           </div>
           <div class="chips">
             <span class="chip" id="chatChip">Chat: -</span>
+            <span class="chip" id="vlmChip">VLM: -</span>
             <span class="chip" id="llmChip">LLM: -</span>
             <span class="chip" id="sttChip">STT: -</span>
+            <span class="chip" id="embedChip">Embed: -</span>
             <span class="chip" id="audioChip">Audio: -</span>
           </div>
         </div>

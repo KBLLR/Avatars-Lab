@@ -1,8 +1,10 @@
 type MlxOverrides = {
   llmModel?: string;
+  vlmModel?: string;
   sttModel?: string;
   ttsModel?: string;
   directorModel?: string;
+  embedModel?: string;
 };
 
 const STORAGE_KEY = "avatarLabs.mlxOverrides";
@@ -35,17 +37,29 @@ const setOverride = (key: keyof MlxOverrides, value: string | undefined) => {
 const getMlxConfig = () => {
   const overrides = readOverrides();
   const llmModel = overrides.llmModel || import.meta.env.VITE_MLX_DEFAULT_LLM_MODEL;
+  const vlmModel = overrides.vlmModel || import.meta.env.VITE_MLX_DEFAULT_VLM_MODEL || llmModel;
   const sttModel = overrides.sttModel || import.meta.env.VITE_MLX_DEFAULT_STT_MODEL;
   const ttsModel = overrides.ttsModel || import.meta.env.VITE_MLX_DEFAULT_TTS_MODEL;
   const directorModel = overrides.directorModel || llmModel;
+  const embedModel = overrides.embedModel || import.meta.env.VITE_MLX_DEFAULT_EMBED_MODEL;
 
   return {
     llmBaseUrl: import.meta.env.VITE_MLX_LLM_BASE_URL,
     audioBaseUrl: import.meta.env.VITE_MLX_AUDIO_BASE_URL,
+    vlmBaseUrl:
+      import.meta.env.VITE_MLX_VLM_BASE_URL ||
+      import.meta.env.VITE_MLX_VLM_URL ||
+      "http://127.0.0.1:8082",
+    dataLakeUrl:
+      import.meta.env.VITE_DATA_LAKE_URL ||
+      import.meta.env.VITE_MLX_DATA_LAKE_URL ||
+      "http://127.0.0.1:8012",
     llmModel,
+    vlmModel,
     sttModel,
     ttsModel,
     directorModel,
+    embedModel,
     ttsVoice: import.meta.env.VITE_MLX_DEFAULT_TTS_VOICE || "default"
   };
 };

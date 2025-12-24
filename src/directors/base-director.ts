@@ -4,7 +4,7 @@
  */
 
 import { requestLLM, LLMRequestError } from "../llm/request";
-import { parseDirectorResponse, IncrementalJsonValidator } from "../llm/streaming-parser";
+import { parseDirectorResponse, IncrementalJsonValidator, type ParseContext } from "../llm/streaming-parser";
 import type {
   DirectorConfig,
   DirectorPlan,
@@ -15,6 +15,7 @@ import type {
   StreamChunkEvent,
   DEFAULT_DIRECTOR_CONFIG
 } from "./types";
+import { formatDirectorStylePrompt } from "./style-templates";
 
 export interface DirectorOptions {
   baseUrl: string;
@@ -34,6 +35,16 @@ export interface AnalyzeOptions {
   onThoughts?: (thoughts: string) => void;
 }
 
+export interface DirectorResultMeta {
+  model: string;
+  style: string;
+  seed: string;
+  timestamp: string;
+  sectionCount: number;
+  parseAttempts?: number;
+  parseSuccess: boolean;
+}
+
 export interface DirectorResult {
   plan: DirectorPlan | null;
   response: DirectorResponse | null;
@@ -42,6 +53,7 @@ export interface DirectorResult {
   selectionReason?: string;
   error?: Error;
   durationMs: number;
+  meta?: DirectorResultMeta;
 }
 
 /**
@@ -57,6 +69,7 @@ export abstract class BaseDirector {
   protected readonly maxTokens: number;
   protected readonly retries: number;
   protected readonly streaming: boolean;
+  private styleValidated = false;
 
   constructor(stage: DirectorStage, options: DirectorOptions) {
     this.stage = stage;
@@ -91,6 +104,19 @@ export abstract class BaseDirector {
     return names[this.stage];
   }
 
+  protected buildStylePrompt(): string {
+    return formatDirectorStylePrompt(this.style);
+  }
+
+  protected validateStylePrompt(prompt: string): void {
+    if (this.styleValidated) return;
+    this.styleValidated = true;
+    if (!import.meta.env.DEV) return;
+    if (!prompt.includes("STYLE_GUIDANCE:")) {
+      console.warn(`${this.getStageName()} prompt missing STYLE_GUIDANCE for style "${this.style}".`);
+    }
+  }
+
   /**
    * Analyze sections and generate a plan
    */
@@ -112,7 +138,11 @@ export abstract class BaseDirector {
 
     try {
       const prompt = this.buildPrompt(sections, durationMs, context);
-      const validator = new IncrementalJsonValidator();
+      this.validateStylePrompt(prompt);
+      const validator = new IncrementalJsonValidator({
+        modelId: this.model,
+        debug: import.meta.env.DEV
+      });
       let thoughtsEmitted = false;
 
       const response = await requestLLM({
@@ -161,9 +191,22 @@ export abstract class BaseDirector {
         }
       });
 
-      // Parse the response
+      // Parse the response with model-aware parsing
       const rawContent = this.streaming ? validator.getBuffer() : response.content;
-      const parsed = parseDirectorResponse(rawContent, durationMs);
+      const parseContext: ParseContext = {
+        modelId: this.model,
+        debug: import.meta.env.DEV
+      };
+      const parsed = parseDirectorResponse(rawContent, durationMs, parseContext);
+
+      const baseMeta: DirectorResultMeta = {
+        model: this.model,
+        style: this.style,
+        seed: this.seed,
+        timestamp: new Date().toISOString(),
+        sectionCount: 0,
+        parseSuccess: false
+      };
 
       if (!parsed) {
         onProgress?.({
@@ -176,7 +219,8 @@ export abstract class BaseDirector {
           plan: null,
           response: null,
           error: new Error("Failed to parse director response as valid JSON"),
-          durationMs: Date.now() - startTime
+          durationMs: Date.now() - startTime,
+          meta: baseMeta
         };
       }
 
@@ -199,7 +243,12 @@ export abstract class BaseDirector {
         thoughts: parsed.thoughts_summary,
         analysis: parsed.analysis,
         selectionReason: parsed.selection_reason,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        meta: {
+          ...baseMeta,
+          sectionCount: parsed.plan.sections.length,
+          parseSuccess: true
+        }
       };
 
     } catch (error) {
@@ -218,7 +267,15 @@ export abstract class BaseDirector {
         plan: null,
         response: null,
         error: err,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        meta: {
+          model: this.model,
+          style: this.style,
+          seed: this.seed,
+          timestamp: new Date().toISOString(),
+          sectionCount: 0,
+          parseSuccess: false
+        }
       };
     }
   }
@@ -227,10 +284,10 @@ export abstract class BaseDirector {
    * Estimate max tokens needed based on section count
    */
   protected estimateMaxTokens(sectionCount: number): number {
-    const baseTokens = 600;
-    const perSectionTokens = 100;
+    const baseTokens = 1000;
+    const perSectionTokens = 150;
     const estimated = baseTokens + sectionCount * perSectionTokens;
-    return Math.min(Math.max(estimated, this.maxTokens), 4000);
+    return Math.min(Math.max(estimated, this.maxTokens), 8096);
   }
 
   /**
@@ -255,6 +312,17 @@ export abstract class BaseDirector {
         "actions": [{ "time_ms": number, "action": "action_name", "args": {} }]
       }
     ]
+  }
+}
+
+EXAMPLE:
+{
+  "thoughts_summary": "High energy intro transitioning to emotional verse.",
+  "analysis": "Song is about overcoming struggle.",
+  "selection_reason": "Chosen red lighting for intensity.",
+  "plan": {
+    "title": "Phoenix Rising",
+    "sections": []
   }
 }`;
   }

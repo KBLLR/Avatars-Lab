@@ -1,0 +1,45 @@
+export type { RegistryModel, ModelRuntimeStatus } from "../stage/types";
+
+export interface RuntimePanelElements {
+  llmRuntimeLoaded: HTMLElement;
+  llmRuntimeModel: HTMLElement;
+  llmRuntimeType: HTMLElement;
+  llmRuntimeQueue: HTMLElement;
+  llmRuntimeActive: HTMLElement;
+  llmRuntimeConfig: HTMLElement;
+  llmRuntimeStatus: HTMLElement;
+  llmRuntimeModelSelect: HTMLSelectElement;
+  llmRuntimeRefresh: HTMLButtonElement;
+  llmRuntimeUnload: HTMLButtonElement;
+  llmRuntimeLoad: HTMLButtonElement;
+  llmRuntimeForce: HTMLInputElement;
+}
+
+export interface ModelSelectorElements {
+  llmModelSelect: HTMLSelectElement;
+  vlmModelSelect: HTMLSelectElement;
+  directorModelSelect: HTMLSelectElement;
+  sttModelSelect: HTMLSelectElement;
+  ttsModelSelect: HTMLSelectElement;
+  embedModelSelect: HTMLSelectElement;
+  llmRuntimeModelSelect: HTMLSelectElement;
+  sttChip: HTMLElement;
+  chatChip: HTMLElement;
+  vlmChip: HTMLElement;
+  llmChip: HTMLElement;
+  embedChip: HTMLElement;
+}
+
+export interface MlxConfig {
+  llmBaseUrl?: string;
+  audioBaseUrl?: string;
+  vlmBaseUrl?: string;
+  dataLakeUrl?: string;
+  llmModel?: string;
+  vlmModel?: string;
+  sttModel?: string;
+  ttsModel?: string;
+  directorModel?: string;
+  embedModel?: string;
+  ttsVoice?: string;
+}

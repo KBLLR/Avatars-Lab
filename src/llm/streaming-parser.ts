@@ -1,9 +1,15 @@
 /**
  * Streaming JSON Parser
  * Parses partial JSON and extracts readable progress as it streams
+ * Includes model-specific handling for different LLM output formats
  */
 
 import type { DirectorResponse, PlanSection } from "../directors/types";
+import {
+  preprocessForModel,
+  extractJsonFromResponse,
+  getModelParser
+} from "./model-parsers";
 
 export interface StreamingProgress {
   thoughtsSummary?: string;
@@ -60,43 +66,90 @@ export function extractStreamingProgress(partialJson: string): StreamingProgress
 }
 
 /**
+ * Parse context for model-specific handling
+ */
+export interface ParseContext {
+  modelId?: string;
+  debug?: boolean;
+}
+
+/**
  * Attempt to parse complete or partial director response
+ * Now with model-specific preprocessing and handling
  */
 export function parseDirectorResponse(
   raw: string,
-  durationMs: number
+  durationMs: number,
+  context?: ParseContext
 ): DirectorResponse | null {
-  // Clean up common LLM output issues
-  let cleaned = raw.trim();
+  const modelId = context?.modelId;
+  const debug = context?.debug ?? false;
+  const modelConfig = modelId ? getModelParser(modelId) : null;
 
-  // Remove markdown code blocks if present
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.slice(3);
+  if (debug && modelConfig) {
+    console.log(`[Parser] Using config for model: ${modelConfig.name}`);
   }
-  if (cleaned.endsWith("```")) {
-    cleaned = cleaned.slice(0, -3);
+
+  // Apply model-specific preprocessing
+  let cleaned = preprocessForModel(raw, modelId);
+
+  if (debug) {
+    console.log(`[Parser] After preprocessing (${cleaned.length} chars):`, cleaned.slice(0, 200));
   }
-  cleaned = cleaned.trim();
 
   // Try to parse as-is first
   try {
     const parsed = JSON.parse(cleaned);
-    return normalizeDirectorResponse(parsed, durationMs);
-  } catch {
-    // Continue with repair attempts
+    return normalizeDirectorResponse(parsed, durationMs, modelConfig?.lenientStructure);
+  } catch (e) {
+    if (debug) {
+      console.log(`[Parser] Direct parse failed:`, (e as Error).message);
+    }
+  }
+
+  // Try model-aware JSON extraction
+  const extracted = extractJsonFromResponse(raw, modelId);
+  if (extracted && extracted !== cleaned) {
+    if (debug) {
+      console.log(`[Parser] Trying extracted JSON (${extracted.length} chars)`);
+    }
+    try {
+      const parsed = JSON.parse(extracted);
+      return normalizeDirectorResponse(parsed, durationMs, modelConfig?.lenientStructure);
+    } catch {
+      // Continue with repair
+    }
   }
 
   // Try to repair truncated JSON
   const repaired = attemptJsonRepair(cleaned);
   if (repaired) {
+    if (debug) {
+      console.log(`[Parser] Trying repaired JSON (${repaired.length} chars)`);
+    }
     try {
       const parsed = JSON.parse(repaired);
-      return normalizeDirectorResponse(parsed, durationMs);
+      return normalizeDirectorResponse(parsed, durationMs, modelConfig?.lenientStructure);
     } catch {
       // Repair failed
     }
+  }
+
+  // Last resort: try extracted + repair
+  if (extracted) {
+    const extractedRepaired = attemptJsonRepair(extracted);
+    if (extractedRepaired) {
+      try {
+        const parsed = JSON.parse(extractedRepaired);
+        return normalizeDirectorResponse(parsed, durationMs, modelConfig?.lenientStructure);
+      } catch {
+        // All attempts failed
+      }
+    }
+  }
+
+  if (debug) {
+    console.log(`[Parser] All parsing attempts failed for model: ${modelId || 'unknown'}`);
   }
 
   return null;
@@ -104,10 +157,12 @@ export function parseDirectorResponse(
 
 /**
  * Normalize the director response to ensure consistent structure
+ * @param lenient - If true, be more flexible with structure (accept nested formats)
  */
 function normalizeDirectorResponse(
   parsed: unknown,
-  durationMs: number
+  durationMs: number,
+  lenient = false
 ): DirectorResponse | null {
   if (!parsed || typeof parsed !== "object") {
     return null;
@@ -116,9 +171,29 @@ function normalizeDirectorResponse(
   const obj = parsed as Record<string, unknown>;
 
   // Handle both { plan: { sections: [...] } } and { sections: [...] } formats
-  const planObj = (obj.plan && typeof obj.plan === "object")
+  let planObj = (obj.plan && typeof obj.plan === "object")
     ? obj.plan as Record<string, unknown>
     : obj;
+
+  // Lenient mode: try deeper nesting if sections not found
+  if (lenient && !Array.isArray(planObj.sections)) {
+    // Try { response: { plan: { sections: [...] } } }
+    if (obj.response && typeof obj.response === "object") {
+      const respObj = obj.response as Record<string, unknown>;
+      if (respObj.plan && typeof respObj.plan === "object") {
+        planObj = respObj.plan as Record<string, unknown>;
+      } else if (Array.isArray(respObj.sections)) {
+        planObj = respObj;
+      }
+    }
+    // Try { result: { sections: [...] } }
+    if (!Array.isArray(planObj.sections) && obj.result && typeof obj.result === "object") {
+      const resultObj = obj.result as Record<string, unknown>;
+      if (Array.isArray(resultObj.sections)) {
+        planObj = resultObj;
+      }
+    }
+  }
 
   if (!Array.isArray(planObj.sections)) {
     return null;
@@ -273,10 +348,22 @@ function clamp(value: number, min: number, max: number): number {
 
 /**
  * Create an incremental JSON validator that processes chunks
+ * Now with model-aware parsing support
  */
 export class IncrementalJsonValidator {
   private buffer = "";
   private lastProgress: StreamingProgress | null = null;
+  private modelId?: string;
+  private debug = false;
+
+  constructor(options?: { modelId?: string; debug?: boolean }) {
+    this.modelId = options?.modelId;
+    this.debug = options?.debug ?? false;
+  }
+
+  setModelId(modelId: string): void {
+    this.modelId = modelId;
+  }
 
   append(chunk: string): StreamingProgress {
     this.buffer += chunk;
@@ -292,8 +379,15 @@ export class IncrementalJsonValidator {
     return this.lastProgress;
   }
 
+  getModelId(): string | undefined {
+    return this.modelId;
+  }
+
   parse(durationMs: number): DirectorResponse | null {
-    return parseDirectorResponse(this.buffer, durationMs);
+    return parseDirectorResponse(this.buffer, durationMs, {
+      modelId: this.modelId,
+      debug: this.debug
+    });
   }
 
   reset(): void {

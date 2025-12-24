@@ -1,7 +1,16 @@
 {
-  "generated_at": "2025-12-24T00:53:22.346Z",
+  "generated_at": "2025-12-24T21:30:20.220Z",
   "registry_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/registry.json",
   "models": [
+    {
+      "id": "flux-schnell",
+      "type": "image-generation",
+      "capabilities": [
+        "image-generation"
+      ],
+      "description": null,
+      "tags": []
+    },
     {
       "id": "audio/kokoro-voices",
       "type": "assets",
@@ -321,6 +330,26 @@
       "type": "embedding",
       "capabilities": [
         "embedding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__Qwen2.5-14B-Instruct-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "hf/mlx-community__DeepSeek-R1-Distill-Qwen-7B-4bit",
+      "type": "text-generation",
+      "capabilities": [
+        "chat",
+        "streaming"
       ],
       "description": null,
       "tags": []
