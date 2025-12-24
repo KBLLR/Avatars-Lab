@@ -325,7 +325,9 @@ const transcribeAudio = async () => {
 
   els.transcript.value = text;
   setAnalysisOverlay(els, false);
-  resetAnalysisThoughts(els, state, "Transcript ready. Analyze performance.");
+  updateState({
+    analysisSegments: resetAnalysisThoughts(els, "Transcript ready. Analyze performance.")
+  });
   els.playBtn.disabled = true;
   applyPlanApproved(false);
   renderPlan([]);
@@ -695,7 +697,9 @@ const handleFile = async (file: File) => {
   els.transcript.value = "";
   applyPlanApproved(false);
   setAnalysisOverlay(els, false);
-  resetAnalysisThoughts(els, state, "Awaiting performance analysis.");
+  updateState({
+    analysisSegments: resetAnalysisThoughts(els, "Awaiting performance analysis.")
+  });
   renderPlan([]);
   updateStatus(els, "Loading audio...");
   resetHead();

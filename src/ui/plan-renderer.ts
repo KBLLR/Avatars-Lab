@@ -13,7 +13,6 @@ export const setPlanApproved = (
   state: PlanState,
   approved: boolean
 ): void => {
-  state.planApproved = approved;
   els.approveBtn.disabled = approved || !state.plan;
   els.playBtn.disabled = !approved;
   els.planStatus.textContent = approved

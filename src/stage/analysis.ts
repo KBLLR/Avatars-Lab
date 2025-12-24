@@ -167,11 +167,12 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
     els.analysisHint.textContent = config.ttsModel
       ? "Voiceover will play when available."
       : "Voiceover disabled (missing TTS model).";
-    resetAnalysisThoughts(
-      els,
-      getState(),
-      `Creative seed: ${analysisSeed}\nPerformance Director: listening to the lyrics...`
-    );
+    updateState({
+      analysisSegments: resetAnalysisThoughts(
+        els,
+        `Creative seed: ${analysisSeed}\nPerformance Director: listening to the lyrics...`
+      )
+    });
     renderPlan([]);
 
     updateProgressBar(els.analysisProgressBar, 0);
@@ -229,10 +230,22 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
               };
               updateProgressBar(els.analysisProgressBar, completedProgress[event.stage]);
 
-              appendAnalysisThought(els, getState(), `${stageName}: Complete`);
+              updateState({
+                analysisSegments: appendAnalysisThought(
+                  els,
+                  getState().analysisSegments,
+                  `${stageName}: Complete`
+                )
+              });
             } else if (event.status === "failed") {
               updateStageBadges(els, event.stage, "failed");
-              appendAnalysisThought(els, getState(), `${stageName}: ${event.message || "Failed"}`);
+              updateState({
+                analysisSegments: appendAnalysisThought(
+                  els,
+                  getState().analysisSegments,
+                  `${stageName}: ${event.message || "Failed"}`
+                )
+              });
             }
           },
           onChunk: () => {
@@ -241,7 +254,9 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
           onThoughts: (stage, thoughts) => {
             const stageName = getStageDisplayName(stage);
             const displayText = `${stageName}: ${thoughts}`;
-            appendAnalysisThought(els, getState(), displayText);
+            updateState({
+              analysisSegments: appendAnalysisThought(els, getState().analysisSegments, displayText)
+            });
             enqueueAnalysisVoice(`${stageName}. ${thoughts}`);
 
             const nextNotes = [getState().directorNotes, displayText]
@@ -251,7 +266,13 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
             els.directorNotes.textContent = nextNotes;
           },
           onFallback: (reason) => {
-            appendAnalysisThought(els, getState(), `Using fallback plan: ${reason}`);
+            updateState({
+              analysisSegments: appendAnalysisThought(
+                els,
+                getState().analysisSegments,
+                `Using fallback plan: ${reason}`
+              )
+            });
             updateStatus(els, `Fallback: ${reason}`);
           }
         }

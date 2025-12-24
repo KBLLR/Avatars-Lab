@@ -1,9 +1,5 @@
 import type { StatusElements } from "./types";
 
-export interface AnalysisState {
-  analysisSegments: string[];
-}
-
 export const setAnalysisOverlay = (
   els: Pick<StatusElements, "analysisOverlay" | "analysisStepText">,
   active: boolean,
@@ -17,21 +13,22 @@ export const setAnalysisOverlay = (
 
 export const resetAnalysisThoughts = (
   els: Pick<StatusElements, "analysisThoughts">,
-  state: AnalysisState,
   text: string
-): void => {
-  state.analysisSegments = text ? [text] : [];
-  els.analysisThoughts.textContent = state.analysisSegments.join("\n\n") || "Awaiting performance analysis.";
+): string[] => {
+  const segments = text ? [text] : [];
+  els.analysisThoughts.textContent = segments.join("\n\n") || "Awaiting performance analysis.";
+  return segments;
 };
 
 export const appendAnalysisThought = (
   els: Pick<StatusElements, "analysisThoughts">,
-  state: AnalysisState,
+  segments: string[],
   text: string
-): void => {
-  if (!text) return;
-  state.analysisSegments.push(text.trim());
-  els.analysisThoughts.textContent = state.analysisSegments.join("\n\n");
+): string[] => {
+  if (!text) return segments;
+  const next = [...segments, text.trim()];
+  els.analysisThoughts.textContent = next.join("\n\n");
+  return next;
 };
 
 export const truncateForVoice = (text: string, max = 360): string => {
