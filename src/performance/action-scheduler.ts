@@ -1,0 +1,197 @@
+import type { TalkingHead } from "@met4citizen/talkinghead";
+import type { PlanSection, PlanAction, Mood, CameraView } from "../directors/types";
+import type { ScheduledMarkers } from "./types";
+import { gestures } from "../stage/constants";
+import { randomItem } from "./fallback-plan";
+
+export type ActionHandler = (action: PlanAction) => void;
+export type UpdateStatusFn = (msg: string) => void;
+export type ApplyCameraSettingsFn = () => void;
+export type ApplyLightPresetFn = (preset: string) => void;
+
+export interface SchedulerContext {
+  head: TalkingHead;
+  cameraSettings: {
+    view: string;
+    distance: number;
+    x: number;
+    y: number;
+    rotateX: number;
+    rotateY: number;
+    autoRotate: boolean;
+    autoRotateSpeed: number;
+  };
+  lightPreset: string;
+  updateStatus: UpdateStatusFn;
+  applyCameraSettings: ApplyCameraSettingsFn;
+  applyLightPreset: ApplyLightPresetFn;
+}
+
+export const scheduleAction = (
+  action: PlanAction,
+  markers: Array<() => void>,
+  mtimes: number[],
+  ctx: SchedulerContext
+): void => {
+  const time = Math.max(0, Math.round(action.time_ms));
+  markers.push(() => {
+    const { head } = ctx;
+    if (!head) return;
+
+    const args = action.args || {};
+    const gesture = args.gesture || args.name;
+
+    switch (action.action) {
+      case "set_mood":
+        if (args.mood) head.setMood(args.mood as Mood);
+        break;
+      case "play_gesture":
+        if (gesture) {
+          head.playGesture(gesture as string, args.duration ?? 2.5, args.mirror ?? false, args.ms ?? 800);
+        }
+        break;
+      case "stop_gesture":
+        head.stopGesture(args.ms ?? 800);
+        break;
+      case "speak_emoji":
+      case "make_facial_expression":
+        if (args.emoji) head.speakEmoji(args.emoji as string);
+        break;
+      case "speak_break":
+        if (typeof args.duration_ms === "number") {
+          head.speakBreak(args.duration_ms);
+        }
+        break;
+      case "speak_marker":
+        if (args.marker) {
+          ctx.updateStatus(`Marker: ${args.marker}`);
+        }
+        break;
+      case "look_at":
+        if (typeof args.x === "number" && typeof args.y === "number") {
+          head.lookAt(args.x, args.y, args.t ?? 600);
+        }
+        break;
+      case "look_at_camera":
+      case "make_eye_contact":
+        head.lookAtCamera(args.ms ?? args.t ?? 600);
+        break;
+      case "set_value":
+        if (args.mt && typeof args.value === "number") {
+          head.setValue(args.mt as string, args.value, typeof args.ms === "number" ? args.ms : null);
+        }
+        break;
+      case "get_value":
+        if (args.mt) {
+          const value = head.getValue(args.mt as string);
+          ctx.updateStatus(`Value ${args.mt}: ${value ?? "n/a"}`);
+        }
+        break;
+      case "play_background_audio":
+        if (args.url) {
+          head.audioCtx.resume().catch(() => null);
+          head.playBackgroundAudio(args.url as string);
+          if (typeof args.volume === "number") {
+            const vol = Math.min(1, Math.max(0, args.volume));
+            head.setMixerGain(null, vol);
+          }
+        }
+        break;
+      case "stop_background_audio":
+        head.stopBackgroundAudio();
+        break;
+      case "start":
+        head.audioCtx.resume().catch(() => null);
+        head.start();
+        break;
+      case "stop":
+        head.stop();
+        break;
+      case "start_listening":
+      case "stop_listening":
+        break;
+      case "set_view":
+        if (args.view) {
+          ctx.cameraSettings.view = args.view as CameraView;
+          if (typeof args.cameraDistance === "number") ctx.cameraSettings.distance = args.cameraDistance;
+          if (typeof args.cameraX === "number") ctx.cameraSettings.x = args.cameraX;
+          if (typeof args.cameraY === "number") ctx.cameraSettings.y = args.cameraY;
+          if (typeof args.cameraRotateX === "number") ctx.cameraSettings.rotateX = args.cameraRotateX;
+          if (typeof args.cameraRotateY === "number") ctx.cameraSettings.rotateY = args.cameraRotateY;
+          ctx.applyCameraSettings();
+        }
+        break;
+      case "set_light_preset":
+        if (args.preset) ctx.applyLightPreset(args.preset as string);
+        break;
+      default:
+        break;
+    }
+  });
+  mtimes.push(time);
+};
+
+export const buildMarkersFromPlan = (
+  plan: { sections: PlanSection[]; actions?: PlanAction[] },
+  durationMs: number,
+  ctx: SchedulerContext
+): ScheduledMarkers => {
+  const markers: Array<() => void> = [];
+  const mtimes: number[] = [];
+
+  plan.sections.forEach((section) => {
+    scheduleAction(
+      {
+        time_ms: section.start_ms,
+        action: "set_mood",
+        args: { mood: section.mood || "neutral" }
+      },
+      markers,
+      mtimes,
+      ctx
+    );
+    scheduleAction(
+      {
+        time_ms: section.start_ms,
+        action: "set_view",
+        args: { view: section.camera || ctx.cameraSettings.view }
+      },
+      markers,
+      mtimes,
+      ctx
+    );
+    scheduleAction(
+      {
+        time_ms: section.start_ms,
+        action: "set_light_preset",
+        args: { preset: section.light || ctx.lightPreset }
+      },
+      markers,
+      mtimes,
+      ctx
+    );
+
+    const actionCount = Math.min(3, Math.max(1, Math.floor((section.end_ms - section.start_ms) / 8000)));
+    for (let i = 0; i < actionCount; i += 1) {
+      const time = section.start_ms + (i + 1) * ((section.end_ms - section.start_ms) / (actionCount + 1));
+      scheduleAction(
+        {
+          time_ms: time,
+          action: "play_gesture",
+          args: { gesture: randomItem(gestures), duration: 2.5 }
+        },
+        markers,
+        mtimes,
+        ctx
+      );
+    }
+
+    if (section.actions) {
+      section.actions.forEach((action) => scheduleAction(action, markers, mtimes, ctx));
+    }
+  });
+
+  plan.actions?.forEach((action) => scheduleAction(action, markers, mtimes, ctx));
+
+  return { markers, mtimes };
+};
