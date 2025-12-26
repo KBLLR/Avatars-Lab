@@ -1,9 +1,72 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# Test outputs
 playwright-report/
 test-results/
 results/
+
+# Environment
 .env
 .env.local
+.env.*.local
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===========================================
+# Large Assets - Download separately
+# ===========================================
+
+# Avatars (GLB/FBX models are large, download from asset server)
+public/avatars/
+!public/avatars/.gitkeep
+!public/avatars/manifest.json
+
+# Animations (Mixamo FBX files)
+public/animations/
+!public/animations/.gitkeep
+
+# Large audio files
+*.mp3
+*.wav
+*.ogg
+*.flac
+
+# Large binary assets
+*.glb
+*.gltf
+*.fbx
+*.bin
+*.hdr
+*.exr
+
+# Large image assets
+*.psd
+*.ai
+*.sketch
+
+# ===========================================
+# Exceptions - Keep in repo
+# ===========================================
+
+# Test fixtures (small, required for CI)
+!fixtures/**/*.glb
+!fixtures/**/*.wav
+
+# Keep manifest files
+!public/**/manifest.json
