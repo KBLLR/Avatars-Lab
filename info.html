@@ -3,112 +3,378 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Avatar Labs Info</title>
+    <title>Lab Info - Avatar Labs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg: #0b0f16;
-        --panel: #111826;
-        --accent: #ffb347;
-        --text: #f7f3ee;
-        --muted: #9fb0c2;
-        --border: rgba(255, 255, 255, 0.1);
+        --bg: #fafafa;
+        --fg: #0a0a0a;
+        --muted: #71717a;
+        --border: #e4e4e7;
+        --surface: #ffffff;
+        --hover: #f4f4f5;
+        --code-bg: #f4f4f5;
       }
 
-      * { box-sizing: border-box; }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #09090b;
+          --fg: #fafafa;
+          --muted: #a1a1aa;
+          --border: #27272a;
+          --surface: #18181b;
+          --hover: #27272a;
+          --code-bg: #27272a;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+      }
 
       body {
-        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
         min-height: 100vh;
-        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
-        color: var(--text);
-        background: radial-gradient(circle at 20% 20%, #1b2738 0%, transparent 55%),
-          radial-gradient(circle at 80% 15%, #2b1a2e 0%, transparent 50%),
-          linear-gradient(150deg, #0b0f16, #111827);
       }
 
-      main {
-        max-width: 980px;
+      .container {
+        max-width: 800px;
         margin: 0 auto;
-        padding: 64px 24px 80px;
-        display: grid;
-        gap: 24px;
+        padding: 0 24px;
       }
 
-      h1 { margin: 0; font-size: 34px; }
-      h2 { margin: 0; font-size: 20px; }
-
-      .card {
-        padding: 20px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: rgba(17, 24, 38, 0.9);
-        display: grid;
-        gap: 12px;
+      /* Navigation */
+      nav {
+        padding: 20px 0;
+        border-bottom: 1px solid var(--border);
       }
 
-      p { margin: 0; color: var(--muted); }
+      .nav-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-      ul {
-        margin: 0;
-        padding-left: 18px;
+      .nav-brand {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
         color: var(--muted);
+        text-decoration: none;
       }
 
-      .grid {
+      .nav-back {
+        font-size: 13px;
+        color: var(--muted);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: color 0.15s;
+      }
+
+      .nav-back:hover {
+        color: var(--fg);
+      }
+
+      /* Header */
+      header {
+        padding: 60px 0 40px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      h1 {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 16px;
+      }
+
+      .lead {
+        font-size: 16px;
+        color: var(--muted);
+        max-width: 600px;
+        line-height: 1.7;
+      }
+
+      /* Sections */
+      section {
+        padding: 48px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      section:last-of-type {
+        border-bottom: none;
+      }
+
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 12px;
+      }
+
+      h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+        margin-bottom: 16px;
+      }
+
+      p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* Cards */
+      .card-grid {
         display: grid;
         gap: 16px;
       }
 
-      a { color: var(--accent); text-decoration: none; }
+      .card {
+        padding: 24px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+      }
+
+      .card-link {
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        transition: all 0.15s;
+      }
+
+      .card-link:hover {
+        background: var(--hover);
+        color: var(--fg);
+      }
+
+      /* Lists */
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      ul li {
+        position: relative;
+        padding-left: 16px;
+        font-size: 14px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        line-height: 1.6;
+      }
+
+      ul li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 10px;
+        width: 4px;
+        height: 4px;
+        background: var(--border);
+        border-radius: 50%;
+      }
+
+      /* Code */
+      code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        padding: 2px 6px;
+        background: var(--code-bg);
+        border-radius: 4px;
+      }
+
+      /* Feature Grid */
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 32px;
+      }
+
+      @media (max-width: 600px) {
+        .feature-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .feature {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .feature-number {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Footer */
+      footer {
+        padding: 32px 0;
+        text-align: center;
+      }
+
+      .footer-text {
+        font-size: 12px;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
-    <main>
-      <header class="card">
-        <h1>Avatar Labs</h1>
-        <p>Purpose: validate avatar pipelines locally with MLX services, deterministic fixtures, and browser harnesses. This lab focuses on real-time viseme sync, streaming playback, and audio-driven stage performances.</p>
+    <div class="container">
+      <nav>
+        <div class="nav-inner">
+          <a href="/" class="nav-brand">Avatar Labs</a>
+          <a href="/" class="nav-back">&larr; Back</a>
+        </div>
+      </nav>
+
+      <header>
+        <h1>Lab Info</h1>
+        <p class="lead">
+          Avatar Labs is a local-first validation environment for real-time avatar pipelines.
+          Built on Apple Silicon with MLX-optimized models for speech, vision, and generation.
+        </p>
       </header>
 
-      <section class="grid">
-        <div class="card">
-          <h2>TalkingHead</h2>
-          <p>3D avatar runtime for real-time speech + lip-sync, streaming audio, gestures, and expressions.</p>
-          <ul>
-            <li>Streaming: `streamStart()` + `streamAudio()` with PCM16LE + optional viseme/word timings.</li>
-            <li>Local GLB avatars (no Ready Player Me dependency).</li>
-          </ul>
-          <a href="https://github.com/met4citizen/TalkingHead" target="_blank" rel="noreferrer">Repo</a>
-        </div>
-
-        <div class="card">
-          <h2>HeadAudio</h2>
-          <p>AudioWorklet for real-time viseme detection. Emits Oculus viseme blend-shape values in the [0,1] range.</p>
-          <ul>
-            <li>Worklet + model are loaded locally from the package dist.</li>
-            <li>Used in Stage + Conversation lab pages.</li>
-          </ul>
-          <a href="https://github.com/met4citizen/HeadAudio" target="_blank" rel="noreferrer">Repo</a>
-        </div>
-
-        <div class="card">
-          <h2>HeadTTS</h2>
-          <p>Reference REST/WebSocket TTS with word + viseme timing arrays. We provide a minimal bridge backed by MLX Audio.</p>
-          <ul>
-            <li>Bridge: `packages/headtts-bridge/server.mjs` (local only).</li>
-            <li>Timing arrays are approximate in the bridge.</li>
-          </ul>
-          <a href="https://github.com/met4citizen/HeadTTS" target="_blank" rel="noreferrer">Repo</a>
+      <section>
+        <div class="section-label">Purpose</div>
+        <div class="feature-grid">
+          <div class="feature">
+            <span class="feature-number">01</span>
+            <h3>Validate Pipelines</h3>
+            <p>Test TalkingHead, HeadAudio, and HeadTTS integrations with deterministic fixtures and browser harnesses.</p>
+          </div>
+          <div class="feature">
+            <span class="feature-number">02</span>
+            <h3>Experiment Freely</h3>
+            <p>Realtime MLX conversation loops, viseme sync, streaming playback, and generative composition.</p>
+          </div>
+          <div class="feature">
+            <span class="feature-number">03</span>
+            <h3>Local-First</h3>
+            <p>All services run locally. No cloud dependencies, no API keys required for core functionality.</p>
+          </div>
+          <div class="feature">
+            <span class="feature-number">04</span>
+            <h3>Apple Silicon</h3>
+            <p>MLX-optimized models for M1/M2/M3. Metal GPU acceleration for inference and rendering.</p>
+          </div>
         </div>
       </section>
 
-      <section class="card">
-        <h2>Lab Experiments</h2>
-        <ul>
-          <li>MLX Conversation: mic → STT → LLM → TTS → TalkingHead.</li>
-          <li>Stage (music video): upload songs, generate transcript, perform with visemes + lighting.</li>
-          <li>HeadAudio harness: deterministic viseme callbacks for regression.</li>
-        </ul>
+      <section>
+        <div class="section-label">Core Dependencies</div>
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-header">
+              <h2>TalkingHead</h2>
+              <a href="https://github.com/met4citizen/TalkingHead" target="_blank" rel="noreferrer" class="card-link">GitHub</a>
+            </div>
+            <p>3D avatar runtime for real-time speech synthesis with lip-sync, gestures, and expressions.</p>
+            <ul>
+              <li>Streaming via <code>streamStart()</code> + <code>streamAudio()</code> with PCM16LE</li>
+              <li>Optional viseme and word timing arrays</li>
+              <li>Local GLB avatars without Ready Player Me dependency</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>HeadAudio</h2>
+              <a href="https://github.com/met4citizen/HeadAudio" target="_blank" rel="noreferrer" class="card-link">GitHub</a>
+            </div>
+            <p>AudioWorklet for real-time viseme detection. Emits Oculus blend-shape values in [0,1] range.</p>
+            <ul>
+              <li>Worklet and model loaded locally from package dist</li>
+              <li>Used in Stage and Conversation harnesses</li>
+              <li>Deterministic callbacks for regression testing</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>HeadTTS</h2>
+              <a href="https://github.com/met4citizen/HeadTTS" target="_blank" rel="noreferrer" class="card-link">GitHub</a>
+            </div>
+            <p>REST/WebSocket TTS with word and viseme timing arrays.</p>
+            <ul>
+              <li>Bridge: <code>packages/headtts-bridge/server.mjs</code></li>
+              <li>Backed by MLX Audio locally</li>
+              <li>Timing arrays are approximate in bridge mode</li>
+            </ul>
+          </div>
+        </div>
       </section>
-    </main>
+
+      <section>
+        <div class="section-label">Experiments</div>
+        <div class="card">
+          <ul>
+            <li><strong>MLX Conversation</strong> &mdash; Mic &rarr; STT &rarr; LLM &rarr; TTS &rarr; TalkingHead pipeline</li>
+            <li><strong>Stage</strong> &mdash; Upload songs, generate transcripts, perform with visemes and lighting</li>
+            <li><strong>HeadAudio Harness</strong> &mdash; Deterministic viseme callbacks for regression testing</li>
+            <li><strong>Multi-Modal</strong> &mdash; Combined audio, visual, and text input processing</li>
+            <li><strong>Composition Layer</strong> &mdash; AI poster generator with mflux, typography presets, and WebGL effects</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-label">Running Tests</div>
+        <div class="card">
+          <p>Use the provided shell scripts for automated test runs:</p>
+          <ul>
+            <li><code>scripts/smoke.zsh</code> &mdash; Quick smoke tests for all harnesses</li>
+            <li><code>scripts/e2e.zsh</code> &mdash; Full end-to-end test suite with Playwright</li>
+          </ul>
+        </div>
+      </section>
+
+      <footer>
+        <p class="footer-text">Part of the HTDI ecosystem</p>
+      </footer>
+    </div>
   </body>
 </html>

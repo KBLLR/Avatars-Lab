@@ -4,17 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Avatar Labs Stage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg: #05070d;
-        --panel: #0f1624;
-        --accent: #ffb347;
-        --accent-2: #ff5f7a;
-        --accent-3: #5bf2d6;
-        --text: #f8f4ee;
-        --muted: #9aa9c2;
-        --card: rgba(15, 25, 40, 0.9);
-        --line: rgba(255, 255, 255, 0.1);
+        /* Swiss design tokens */
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --surface: #18181b;
+        --hover: #27272a;
+        --code-bg: #27272a;
+        /* Accent colors - kept warm for stage energy */
+        --accent: #f97316;
+        --accent-2: #ef4444;
+        --accent-3: #22c55e;
+        /* Legacy aliases */
+        --panel: var(--surface);
+        --text: var(--fg);
+        --card: var(--surface);
+        --line: var(--border);
       }
 
       * {
@@ -24,16 +35,11 @@
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
-        color: var(--text);
-        background: radial-gradient(
-            circle at 15% 20%,
-            #1a2434 0%,
-            transparent 55%
-          ),
-          radial-gradient(circle at 85% 10%, #281329 0%, transparent 60%),
-          linear-gradient(150deg, #05070d, #0b1322 70%, #0f0b18);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
         overflow: hidden;
+        -webkit-font-smoothing: antialiased;
       }
 
       #app {
@@ -47,9 +53,9 @@
       #stage {
         position: relative;
         overflow: hidden;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(5, 8, 14, 0.6);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #000;
       }
 
       #avatar {
@@ -278,49 +284,104 @@
         }
       }
 
-      #stageHud {
+      /* Floating Action Bar */
+      .stage-actions {
         position: absolute;
-        top: 18px;
-        left: 18px;
-        padding: 14px 16px;
-        border-radius: 14px;
-        background: rgba(7, 11, 20, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(8px);
-        min-width: 220px;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        background: rgba(9, 9, 11, 0.85);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(16px) saturate(1.2);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s, transform 0.2s;
+        z-index: 5;
       }
 
-      #hero {
-        position: absolute;
-        top: 24px;
-        right: 24px;
-        padding: 16px 18px;
-        border-radius: 16px;
-        background: rgba(5, 8, 14, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(10px);
-        text-align: right;
-        max-width: 320px;
+      #stage:hover .stage-actions,
+      .stage-actions:focus-within,
+      .stage-actions.visible {
+        opacity: 1;
+        pointer-events: auto;
       }
 
-      #heroTitle {
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      #heroSubtitle {
+      .stage-actions button {
+        padding: 6px 14px;
         font-size: 12px;
-        color: var(--muted);
-        margin-top: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.2em;
+        border-radius: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--fg);
       }
 
+      .stage-actions button.primary {
+        background: var(--fg);
+        color: var(--bg);
+        border: none;
+      }
+
+      .stage-actions button:hover {
+        background: var(--hover);
+        border-color: var(--muted);
+      }
+
+      .stage-actions button.primary:hover {
+        opacity: 0.9;
+        background: var(--fg);
+      }
+
+      .stage-actions .divider {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+      }
+
+      /* Minimal HUD - bottom left */
+      .stage-hud-mini {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        display: flex;
+        gap: 8px;
+        font-size: 10px;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--muted);
+        opacity: 0.7;
+        transition: opacity 0.2s;
+        z-index: 3;
+      }
+
+      #stage:hover .stage-hud-mini {
+        opacity: 1;
+      }
+
+      .stage-hud-mini span {
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: rgba(9, 9, 11, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      /* Lyrics overlay - centered bottom */
       #heroLyrics {
-        margin-top: 10px;
-        font-size: 14px;
-        line-height: 1.5;
-        color: #f8f4ee;
+        position: absolute;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        font-size: 16px;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        max-width: 80%;
+        pointer-events: none;
+        z-index: 3;
       }
 
       #heroLyrics .current {
@@ -328,30 +389,37 @@
         font-weight: 600;
       }
 
-      .hud-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
-        color: var(--muted);
-        margin-bottom: 6px;
+      /* Canvas resize handle */
+      .stage-resize {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        cursor: ns-resize;
+        background: transparent;
+        transition: background 0.2s;
+        z-index: 6;
       }
 
-      .hud-row strong {
-        color: var(--text);
-        font-weight: 600;
+      .stage-resize:hover,
+      .stage-resize.dragging {
+        background: linear-gradient(to top, var(--accent) 0%, transparent 100%);
+      }
+
+      /* Hidden legacy elements */
+      #stageHud,
+      #hero {
+        display: none;
       }
 
       #panel {
-        padding: 22px;
-        background: linear-gradient(
-          180deg,
-          rgba(15, 22, 36, 0.98),
-          rgba(10, 14, 24, 0.98)
-        );
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
         display: grid;
-        gap: 14px;
+        gap: 12px;
         overflow-y: auto;
         height: calc(100vh - 40px);
         align-content: start;
@@ -374,26 +442,81 @@
 
       .status {
         padding: 10px 12px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        background: var(--hover);
         font-size: 13px;
         color: var(--muted);
+        border: 1px solid var(--border);
       }
 
       .card {
-        padding: 14px;
-        border-radius: 14px;
-        background: var(--card);
-        border: 1px solid var(--line);
+        padding: 16px;
+        border-radius: 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
         display: grid;
-        gap: 10px;
+        gap: 12px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        margin: -16px -16px 0;
+        padding: 12px 16px;
+        border-radius: 8px 8px 0 0;
+        transition: background 0.15s;
+        user-select: none;
+      }
+
+      .card-header:hover {
+        background: var(--hover);
       }
 
       .card-title {
-        font-size: 12px;
+        font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.1em;
         color: var(--muted);
+        margin: 0;
+      }
+
+      .card-toggle {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 10px;
+      }
+
+      .card.collapsed .card-toggle {
+        transform: rotate(-90deg);
+      }
+
+      .card-body {
+        display: grid;
+        gap: 12px;
+        transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.2s ease;
+        grid-template-rows: 1fr;
+      }
+
+      .card.collapsed .card-body {
+        grid-template-rows: 0fr;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .card-body-inner {
+        overflow: hidden;
+        display: grid;
+        gap: 12px;
       }
 
       label {
@@ -409,16 +532,26 @@
       input[type="color"],
       textarea {
         width: 100%;
-        padding: 9px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: rgba(15, 25, 40, 0.9);
-        color: var(--text);
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--fg);
         font-size: 13px;
+        font-family: inherit;
+        transition: border-color 0.15s;
+      }
+
+      select:focus,
+      input[type="text"]:focus,
+      input[type="number"]:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--muted);
       }
 
       textarea {
-        min-height: 130px;
+        min-height: 120px;
         resize: vertical;
       }
 
@@ -453,93 +586,101 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
+        width: 32px;
         height: 24px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
         color: var(--muted);
         font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 0.02em;
         text-transform: uppercase;
       }
 
       button {
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 999px;
-        padding: 9px 14px;
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--text);
-        font-weight: 600;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 16px;
+        background: var(--surface);
+        color: var(--fg);
+        font-size: 13px;
+        font-weight: 500;
+        font-family: inherit;
         cursor: pointer;
-        transition: transform 0.2s ease, background 0.2s ease;
+        transition: all 0.15s;
+      }
+
+      button:hover {
+        background: var(--hover);
+        border-color: var(--muted);
       }
 
       button.primary {
-        background: linear-gradient(120deg, #ffb347, #ff5f7a);
-        color: #1a0f18;
+        background: var(--fg);
+        color: var(--bg);
         border: none;
+      }
+
+      button.primary:hover {
+        opacity: 0.9;
       }
 
       button.ghost {
         background: transparent;
+        border-color: transparent;
+      }
+
+      button.ghost:hover {
+        background: var(--hover);
+        border-color: var(--border);
       }
 
       button.cancel-mode {
-        background: linear-gradient(120deg, #ff5f7a, #ff3355);
+        background: var(--accent-2);
         color: white;
         border: none;
-        animation: cancel-pulse 0.8s ease-in-out infinite;
-      }
-
-      @keyframes cancel-pulse {
-        0%,
-        100% {
-          box-shadow: 0 0 0 0 rgba(255, 95, 122, 0.5);
-        }
-        50% {
-          box-shadow: 0 0 12px 4px rgba(255, 95, 122, 0.3);
-        }
-      }
-
-      button:hover {
-        transform: translateY(-1px);
       }
 
       button[disabled] {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
-        transform: none;
+      }
+
+      button[disabled]:hover {
+        background: var(--surface);
+        border-color: var(--border);
       }
 
       .chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
 
       .chip {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-size: 11px;
+        font-family: 'JetBrains Mono', monospace;
         color: var(--muted);
       }
 
       .runtime-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 8px;
       }
 
       .runtime-item {
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: rgba(10, 14, 22, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        min-height: 58px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        min-height: 54px;
       }
 
       .runtime-item span {
@@ -548,13 +689,14 @@
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--muted);
-        margin-bottom: 6px;
+        margin-bottom: 4px;
       }
 
       .runtime-value {
         font-size: 12px;
-        font-weight: 600;
-        color: var(--text);
+        font-weight: 500;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--fg);
         word-break: break-all;
       }
 
@@ -580,7 +722,7 @@
       .plan {
         display: grid;
         gap: 8px;
-        max-height: 260px;
+        max-height: 240px;
         overflow-y: auto;
       }
 
@@ -598,20 +740,21 @@
 
       .plan-details {
         font-size: 12px;
+        line-height: 1.6;
         color: var(--muted);
-        background: rgba(6, 10, 20, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
-        padding: 10px;
-        min-height: 120px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px;
+        min-height: 100px;
         white-space: pre-wrap;
       }
 
       .plan-item {
-        padding: 8px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(6, 10, 20, 0.6);
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface);
         font-size: 12px;
       }
 
@@ -637,32 +780,32 @@
 
       .chip-select {
         appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(12, 18, 32, 0.9);
-        color: var(--text);
-        border-radius: 999px;
-        padding: 4px 12px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--fg);
+        border-radius: 4px;
+        padding: 4px 10px;
         font-size: 11px;
-        letter-spacing: 0.02em;
+        font-family: inherit;
       }
 
       .chip-select.mood {
-        border-color: rgba(91, 242, 214, 0.4);
+        border-color: var(--accent-3);
       }
       .chip-select.gesture {
-        border-color: rgba(255, 179, 71, 0.5);
+        border-color: var(--accent);
       }
       .chip-select.camera {
-        border-color: rgba(255, 95, 122, 0.5);
+        border-color: var(--accent-2);
       }
       .chip-select.light {
-        border-color: rgba(120, 180, 255, 0.5);
+        border-color: #60a5fa;
       }
       .chip-select.role {
-        border-color: rgba(255, 255, 255, 0.2);
+        border-color: var(--muted);
       }
       .chip-select.action {
-        border-color: rgba(173, 130, 255, 0.4);
+        border-color: #a78bfa;
       }
 
       .chip-inline {
@@ -670,44 +813,141 @@
         align-items: center;
         gap: 6px;
         padding: 4px 10px;
-        border-radius: 999px;
-        background: rgba(12, 18, 32, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
         font-size: 11px;
       }
 
       .chip-inline input {
-        width: 110px;
+        width: 100px;
         border: none;
         background: transparent;
-        color: var(--text);
+        color: var(--fg);
         font-size: 11px;
+        font-family: inherit;
+      }
+
+      /* Stage Hero */
+      .stage-column {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .stage-hero {
+        padding: 16px 4px 12px;
+        background: transparent;
+      }
+
+      .stage-hero + #stage {
+        border-radius: 12px;
+      }
+
+      .stage-hero .eyebrow {
+        display: block;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      .stage-hero .hero-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--fg);
+        margin: 0 0 8px 0;
+        line-height: 1.1;
+      }
+
+      .stage-hero .hero-desc {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0;
+        line-height: 1.5;
+        max-width: 400px;
       }
 
       @media (max-width: 1100px) {
         #app {
-          grid-template-columns: 1fr;
+          display: flex;
+          flex-direction: column;
           padding: 12px;
           gap: 12px;
+          min-height: auto;
+        }
+        .stage-column {
+          position: sticky;
+          top: 12px;
+          z-index: 10;
+        }
+        .stage-hero {
+          padding: 12px 4px 8px;
+        }
+        .stage-hero .hero-title {
+          font-size: 20px;
         }
         #stage {
-          min-height: 50vh;
+          min-height: 40vh;
+          max-height: 50vh;
+          border-radius: 12px;
+          margin-bottom: 0;
         }
         #panel {
           height: auto;
           overflow-y: visible;
+          padding: 16px;
+          gap: 12px;
         }
         body {
           overflow: auto;
+        }
+        /* Smaller card padding on mobile */
+        .card {
+          padding: 14px;
+        }
+        .card-header {
+          margin: -14px -14px 0;
+          padding: 12px 14px;
         }
       }
     </style>
   </head>
   <body>
     <div id="app">
-      <div id="stage">
-        <div id="avatar"></div>
-        <div id="spotlights"></div>
+      <div class="stage-column">
+        <div class="stage-hero">
+          <span class="eyebrow">Avatar Labs</span>
+          <h2 class="hero-title">Stage Director</h2>
+          <p class="hero-desc" id="stageHeroDesc">Upload a song to begin staging your AI performance.</p>
+        </div>
+        <div id="stage">
+          <div id="avatar"></div>
+          <div id="spotlights"></div>
+
+          <!-- Floating Action Bar -->
+          <div class="stage-actions" id="stageActions">
+            <button id="stagePlayBtn" class="primary" disabled>Perform</button>
+            <button id="stageLipsyncBtn" disabled>Lipsync</button>
+            <span class="divider"></span>
+            <button id="stageStopBtn">Stop</button>
+          </div>
+
+          <!-- Minimal HUD -->
+          <div class="stage-hud-mini">
+            <span id="hudMiniScene">Idle</span>
+            <span id="hudMiniCamera">Head</span>
+            <span id="hudMiniLights">Neon</span>
+          </div>
+
+          <!-- Lyrics Overlay -->
+          <div id="heroLyrics"></div>
+
+          <!-- Resize Handle -->
+          <div class="stage-resize" id="stageResize"></div>
+
         <div id="analysisOverlay">
           <div id="analysisCard">
             <div class="analysis-title">Director Feed</div>
@@ -741,7 +981,6 @@
         <div id="hero">
           <div id="heroTitle">Stage Ready</div>
           <div id="heroSubtitle">Awaiting Audio</div>
-          <div id="heroLyrics">Upload a song to render timed lyrics.</div>
         </div>
         <div id="stageHud">
           <div class="hud-row">
@@ -758,315 +997,466 @@
           </div>
         </div>
       </div>
+      </div>
 
       <div id="panel">
         <h1>Stage Director <span>Avatar Labs</span></h1>
         <div class="status" id="status">Upload a song to begin staging.</div>
 
-        <div class="card">
-          <div class="card-title">Audio & Transcript</div>
-          <div class="section">
-            <label>Avatar</label>
-            <select id="avatarSelect"></select>
+        <div class="card collapsed" id="cardAudio">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Audio & Transcript</div>
+            <span class="card-toggle">▼</span>
           </div>
-          <div class="section">
-            <label>Song File</label>
-            <input
-              id="songInput"
-              type="file"
-              accept=".m4a,.mp3,.webm,.mp4,.mpga,.wav,.mpeg"
-            />
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="section">
+                <label>Avatar</label>
+                <select id="avatarSelect"></select>
+              </div>
+              <div class="section">
+                <label>Song File</label>
+                <input
+                  id="songInput"
+                  type="file"
+                  accept=".m4a,.mp3,.webm,.mp4,.mpga,.wav,.mpeg"
+                />
+              </div>
+              <div class="row">
+                <button id="transcribeBtn">Transcribe</button>
+                <button id="analyzeBtn">Analyze Performance</button>
+              </div>
+              <label>Transcript</label>
+              <textarea id="transcript" readonly></textarea>
+            </div>
           </div>
-          <div class="row">
-            <button id="transcribeBtn">Transcribe</button>
-            <button id="analyzeBtn">Analyze Performance</button>
-          </div>
-          <label>Transcript</label>
-          <textarea id="transcript" readonly></textarea>
         </div>
 
-        <div class="card">
-          <div class="card-title">Director Setup</div>
-          <div class="plan-section">
-             <label>Director Style</label>
-             <select id="directorStyle">
+        <div class="card collapsed" id="cardDirector" data-collapse-mobile>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Director Setup</div>
+            <span class="card-toggle">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <label>Director Style</label>
+              <select id="directorStyle">
                 <option value="cinematic">Cinematic</option>
                 <option value="intimate">Intimate</option>
                 <option value="hype">Hype</option>
                 <option value="minimal">Minimal</option>
                 <option value="experimental">Experimental</option>
-             </select>
-             <div class="toggle">
-               <input id="directorEnablePerformance" type="checkbox" checked disabled />
-               <label for="directorEnablePerformance" style="opacity: 0.7">Performance (Base)</label>
-             </div>
-             <div class="toggle">
-               <input id="directorEnableStage" type="checkbox" checked />
-               <label for="directorEnableStage">Stage Director</label>
-             </div>
-             <div class="toggle">
-               <input id="directorEnableCamera" type="checkbox" checked />
-               <label for="directorEnableCamera">Camera Director</label>
-             </div>
-             <div class="toggle">
-               <input id="directorEnablePostFx" type="checkbox" checked />
-               <label for="directorEnablePostFx">PostFX Director</label>
-             </div>
+              </select>
+              <div class="toggle">
+                <input id="directorEnablePerformance" type="checkbox" checked disabled />
+                <label for="directorEnablePerformance" style="opacity: 0.7">Performance (Base)</label>
+              </div>
+              <div class="toggle">
+                <input id="directorEnableStage" type="checkbox" checked />
+                <label for="directorEnableStage">Stage Director</label>
+              </div>
+              <div class="toggle">
+                <input id="directorEnableCamera" type="checkbox" checked />
+                <label for="directorEnableCamera">Camera Director</label>
+              </div>
+              <div class="toggle">
+                <input id="directorEnablePostFx" type="checkbox" checked />
+                <label for="directorEnablePostFx">PostFX Director</label>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Performance Controls</div>
-          <div class="row">
-            <button id="playBtn" class="primary" disabled>AI Perform</button>
-            <button id="lipsyncBtn" class="primary" disabled>Lipsync</button>
-            <button id="stopBtn" class="ghost">Stop</button>
+        <div class="card collapsed" id="cardControls">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Performance Controls</div>
+            <span class="card-toggle">▼</span>
           </div>
-          <div class="toggle">
-            <input id="soloOnly" type="checkbox" checked />
-            <label for="soloOnly">Solo-only lip sync</label>
-          </div>
-
-        </div>
-
-        <div class="card">
-          <div class="card-title">Performance Library</div>
-          <label>Title</label>
-          <input
-            id="dataPoolTitle"
-            type="text"
-            placeholder="Name this performance"
-          />
-          <div class="toggle">
-            <input id="dataPoolIncludeAudio" type="checkbox" checked />
-            <label for="dataPoolIncludeAudio">Include audio (base64)</label>
-          </div>
-          <div class="row">
-            <button id="dataPoolSave" class="primary">Save</button>
-            <button id="dataPoolRefresh" class="ghost">Refresh</button>
-          </div>
-          <label>Saved Performances</label>
-          <select id="dataPoolSelect"></select>
-          <div class="row">
-            <button id="dataPoolLoad">Load</button>
-          </div>
-          <div class="runtime-status" id="dataPoolStatus">Data pool idle.</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Model Routing</div>
-          <label>Chat LLM Model</label>
-          <select id="llmModelSelect"></select>
-          <label>VLM Model</label>
-          <select id="vlmModelSelect"></select>
-          <label>Director Model</label>
-          <select id="directorModelSelect"></select>
-          <label>STT Model</label>
-          <select id="sttModelSelect"></select>
-          <label>Embeddings Model</label>
-          <select id="embedModelSelect"></select>
-          <label>TTS Model</label>
-          <select id="ttsModelSelect"></select>
-          <label>Voice ID</label>
-          <select id="voiceSelect"></select>
-        </div>
-
-        <div class="card">
-          <div class="card-title">LLM Runtime</div>
-          <div class="runtime-grid">
-            <div class="runtime-item">
-              <span>Loaded</span>
-              <div class="runtime-value" id="llmRuntimeLoaded">-</div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="row">
+                <button id="playBtn" class="primary" disabled>AI Perform</button>
+                <button id="lipsyncBtn" class="primary" disabled>Lipsync</button>
+                <button id="stopBtn" class="ghost">Stop</button>
+              </div>
+              <div class="toggle">
+                <input id="soloOnly" type="checkbox" checked />
+                <label for="soloOnly">Solo-only lip sync</label>
+              </div>
             </div>
-            <div class="runtime-item">
-              <span>Model Type</span>
-              <div class="runtime-value" id="llmRuntimeType">-</div>
-            </div>
-            <div class="runtime-item">
-              <span>Model ID</span>
-              <div class="runtime-value" id="llmRuntimeModel">-</div>
-            </div>
-            <div class="runtime-item">
-              <span>Queue</span>
-              <div class="runtime-value" id="llmRuntimeQueue">-</div>
-            </div>
-            <div class="runtime-item">
-              <span>Active</span>
-              <div class="runtime-value" id="llmRuntimeActive">-</div>
-            </div>
-            <div class="runtime-item">
-              <span>Config</span>
-              <div class="runtime-value" id="llmRuntimeConfig">-</div>
-            </div>
-          </div>
-          <label>Load Model</label>
-          <select id="llmRuntimeModelSelect"></select>
-          <div class="toggle">
-            <input id="llmRuntimeForce" type="checkbox" />
-            <label for="llmRuntimeForce">Force load/unload</label>
-          </div>
-          <div class="runtime-actions">
-            <button id="llmRuntimeRefresh" class="ghost">Refresh</button>
-            <button id="llmRuntimeUnload">Unload</button>
-            <button id="llmRuntimeLoad" class="primary">Load</button>
-          </div>
-          <div class="runtime-status" id="llmRuntimeStatus">
-            Awaiting status.
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Camera Rig</div>
-          <label>View</label>
-          <select id="cameraView">
-            <option value="full">Full</option>
-            <option value="mid">Mid</option>
-            <option value="upper">Upper</option>
-            <option value="head" selected>Head</option>
-          </select>
-          <div class="slider-row icon">
-            <span class="slider-icon" title="Distance">Dst</span>
-            <input
-              id="cameraDistance"
-              type="range"
-              min="-2"
-              max="4"
-              step="0.1"
-            />
-            <span id="cameraDistanceVal"></span>
+        <div class="card collapsed" id="cardLibrary" data-collapse-mobile>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Performance Library</div>
+            <span class="card-toggle">▼</span>
           </div>
-          <div class="slider-row icon">
-            <span class="slider-icon" title="X Offset">X</span>
-            <input id="cameraX" type="range" min="-1" max="1" step="0.05" />
-            <span id="cameraXVal"></span>
-          </div>
-          <div class="slider-row icon">
-            <span class="slider-icon" title="Y Offset">Y</span>
-            <input id="cameraY" type="range" min="-1" max="1" step="0.05" />
-            <span id="cameraYVal"></span>
-          </div>
-          <div class="slider-row icon">
-            <span class="slider-icon" title="Rotate X">RX</span>
-            <input
-              id="cameraRotateX"
-              type="range"
-              min="-1"
-              max="1"
-              step="0.05"
-            />
-            <span id="cameraRotateXVal"></span>
-          </div>
-          <div class="slider-row icon">
-            <span class="slider-icon" title="Rotate Y">RY</span>
-            <input
-              id="cameraRotateY"
-              type="range"
-              min="-1"
-              max="1"
-              step="0.05"
-            />
-            <span id="cameraRotateYVal"></span>
-          </div>
-          <div class="row">
-            <div class="toggle">
-              <input id="autoRotate" type="checkbox" />
-              <label for="autoRotate">Auto Rotate</label>
-            </div>
-            <div class="slider-row icon">
-              <span class="slider-icon" title="Auto Rotate Speed">AR</span>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <label>Title</label>
               <input
-                id="autoRotateSpeed"
-                type="range"
-                min="0"
-                max="2"
-                step="0.05"
+                id="dataPoolTitle"
+                type="text"
+                placeholder="Name this performance"
               />
-              <span id="autoRotateSpeedVal"></span>
+              <div class="toggle">
+                <input id="dataPoolIncludeAudio" type="checkbox" checked />
+                <label for="dataPoolIncludeAudio">Include audio (base64)</label>
+              </div>
+              <div class="row">
+                <button id="dataPoolSave" class="primary">Save</button>
+                <button id="dataPoolRefresh" class="ghost">Refresh</button>
+              </div>
+              <label>Saved Performances</label>
+              <select id="dataPoolSelect"></select>
+              <div class="row">
+                <button id="dataPoolLoad">Load</button>
+              </div>
+              <div class="runtime-status" id="dataPoolStatus">Data pool idle.</div>
             </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Lighting</div>
-          <label>Preset</label>
-          <select id="lightPreset"></select>
-          <div class="triple">
-            <div>
-              <label>Ambient</label>
-              <input id="ambientColor" type="color" />
+        <div class="card collapsed" id="cardModels" data-collapse-mobile>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Model Routing</div>
+            <span class="card-toggle">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <label>Chat LLM Model</label>
+              <select id="llmModelSelect"></select>
+              <label>VLM Model</label>
+              <select id="vlmModelSelect"></select>
+              <label>Director Model</label>
+              <select id="directorModelSelect"></select>
+              <label>STT Model</label>
+              <select id="sttModelSelect"></select>
+              <label>Embeddings Model</label>
+              <select id="embedModelSelect"></select>
+              <label>TTS Model</label>
+              <select id="ttsModelSelect"></select>
+              <label>Voice ID</label>
+              <select id="voiceSelect"></select>
             </div>
-            <div>
-              <label>Direct</label>
-              <input id="directColor" type="color" />
-            </div>
-            <div>
-              <label>Spot</label>
-              <input id="spotColor" type="color" />
-            </div>
-          </div>
-          <div class="slider-row">
-            <input
-              id="ambientIntensity"
-              type="range"
-              min="0"
-              max="4"
-              step="0.1"
-            />
-            <span id="ambientIntensityVal"></span>
-          </div>
-          <div class="slider-row">
-            <input
-              id="directIntensity"
-              type="range"
-              min="0"
-              max="30"
-              step="0.5"
-            />
-            <span id="directIntensityVal"></span>
-          </div>
-          <div class="slider-row">
-            <input
-              id="spotIntensity"
-              type="range"
-              min="0"
-              max="30"
-              step="0.5"
-            />
-            <span id="spotIntensityVal"></span>
-          </div>
-          <div class="toggle">
-            <input id="lightPulse" type="checkbox" checked />
-            <label for="lightPulse">Audio-reactive pulse</label>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Performance Plan</div>
-          <div class="plan-toolbar">
-            <button id="approveBtn" class="primary" disabled>
-              Approve Plan
-            </button>
-            <span class="plan-status" id="planStatus">Pending analysis</span>
+        <div class="card collapsed" id="cardRuntime" data-collapse-mobile>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">LLM Runtime</div>
+            <span class="card-toggle">▼</span>
           </div>
-          <div class="plan" id="planList"></div>
-          <div class="plan-details" id="planDetails">
-            No performance plan yet.
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="runtime-grid">
+                <div class="runtime-item">
+                  <span>Loaded</span>
+                  <div class="runtime-value" id="llmRuntimeLoaded">-</div>
+                </div>
+                <div class="runtime-item">
+                  <span>Model Type</span>
+                  <div class="runtime-value" id="llmRuntimeType">-</div>
+                </div>
+                <div class="runtime-item">
+                  <span>Model ID</span>
+                  <div class="runtime-value" id="llmRuntimeModel">-</div>
+                </div>
+                <div class="runtime-item">
+                  <span>Queue</span>
+                  <div class="runtime-value" id="llmRuntimeQueue">-</div>
+                </div>
+                <div class="runtime-item">
+                  <span>Active</span>
+                  <div class="runtime-value" id="llmRuntimeActive">-</div>
+                </div>
+                <div class="runtime-item">
+                  <span>Config</span>
+                  <div class="runtime-value" id="llmRuntimeConfig">-</div>
+                </div>
+              </div>
+              <label>Load Model</label>
+              <select id="llmRuntimeModelSelect"></select>
+              <div class="toggle">
+                <input id="llmRuntimeForce" type="checkbox" />
+                <label for="llmRuntimeForce">Force load/unload</label>
+              </div>
+              <div class="runtime-actions">
+                <button id="llmRuntimeRefresh" class="ghost">Refresh</button>
+                <button id="llmRuntimeUnload">Unload</button>
+                <button id="llmRuntimeLoad" class="primary">Load</button>
+              </div>
+              <div class="runtime-status" id="llmRuntimeStatus">
+                Awaiting status.
+              </div>
+            </div>
           </div>
-          <div class="plan-details" id="directorNotes">
-            Director notes will appear here after analysis.
+        </div>
+
+        <div class="card collapsed" id="cardCamera" data-collapse-mobile>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Camera Rig</div>
+            <span class="card-toggle">▼</span>
           </div>
-          <div class="chips">
-            <span class="chip" id="chatChip">Chat: -</span>
-            <span class="chip" id="vlmChip">VLM: -</span>
-            <span class="chip" id="llmChip">LLM: -</span>
-            <span class="chip" id="sttChip">STT: -</span>
-            <span class="chip" id="embedChip">Embed: -</span>
-            <span class="chip" id="audioChip">Audio: -</span>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <label>View</label>
+              <select id="cameraView">
+                <option value="full">Full</option>
+                <option value="mid">Mid</option>
+                <option value="upper">Upper</option>
+                <option value="head" selected>Head</option>
+              </select>
+              <div class="slider-row icon">
+                <span class="slider-icon" title="Distance">Dst</span>
+                <input
+                  id="cameraDistance"
+                  type="range"
+                  min="-2"
+                  max="4"
+                  step="0.1"
+                />
+                <span id="cameraDistanceVal"></span>
+              </div>
+              <div class="slider-row icon">
+                <span class="slider-icon" title="X Offset">X</span>
+                <input id="cameraX" type="range" min="-1" max="1" step="0.05" />
+                <span id="cameraXVal"></span>
+              </div>
+              <div class="slider-row icon">
+                <span class="slider-icon" title="Y Offset">Y</span>
+                <input id="cameraY" type="range" min="-1" max="1" step="0.05" />
+                <span id="cameraYVal"></span>
+              </div>
+              <div class="slider-row icon">
+                <span class="slider-icon" title="Rotate X">RX</span>
+                <input
+                  id="cameraRotateX"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.05"
+                />
+                <span id="cameraRotateXVal"></span>
+              </div>
+              <div class="slider-row icon">
+                <span class="slider-icon" title="Rotate Y">RY</span>
+                <input
+                  id="cameraRotateY"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.05"
+                />
+                <span id="cameraRotateYVal"></span>
+              </div>
+              <div class="row">
+                <div class="toggle">
+                  <input id="autoRotate" type="checkbox" />
+                  <label for="autoRotate">Auto Rotate</label>
+                </div>
+                <div class="slider-row icon">
+                  <span class="slider-icon" title="Auto Rotate Speed">AR</span>
+                  <input
+                    id="autoRotateSpeed"
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.05"
+                  />
+                  <span id="autoRotateSpeedVal"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card collapsed" id="cardLighting" data-collapse-mobile>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Lighting</div>
+            <span class="card-toggle">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <label>Preset</label>
+              <select id="lightPreset"></select>
+              <div class="triple">
+                <div>
+                  <label>Ambient</label>
+                  <input id="ambientColor" type="color" />
+                </div>
+                <div>
+                  <label>Direct</label>
+                  <input id="directColor" type="color" />
+                </div>
+                <div>
+                  <label>Spot</label>
+                  <input id="spotColor" type="color" />
+                </div>
+              </div>
+              <div class="slider-row">
+                <input
+                  id="ambientIntensity"
+                  type="range"
+                  min="0"
+                  max="4"
+                  step="0.1"
+                />
+                <span id="ambientIntensityVal"></span>
+              </div>
+              <div class="slider-row">
+                <input
+                  id="directIntensity"
+                  type="range"
+                  min="0"
+                  max="30"
+                  step="0.5"
+                />
+                <span id="directIntensityVal"></span>
+              </div>
+              <div class="slider-row">
+                <input
+                  id="spotIntensity"
+                  type="range"
+                  min="0"
+                  max="30"
+                  step="0.5"
+                />
+                <span id="spotIntensityVal"></span>
+              </div>
+              <div class="toggle">
+                <input id="lightPulse" type="checkbox" checked />
+                <label for="lightPulse">Audio-reactive pulse</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card collapsed" id="cardPlan">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="card-title">Performance Plan</div>
+            <span class="card-toggle">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="plan-toolbar">
+                <button id="approveBtn" class="primary" disabled>
+                  Approve Plan
+                </button>
+                <span class="plan-status" id="planStatus">Pending analysis</span>
+              </div>
+              <div class="plan" id="planList"></div>
+              <div class="plan-details" id="planDetails">
+                No performance plan yet.
+              </div>
+              <div class="plan-details" id="directorNotes">
+                Director notes will appear here after analysis.
+              </div>
+              <div class="chips">
+                <span class="chip" id="chatChip">Chat: -</span>
+                <span class="chip" id="vlmChip">VLM: -</span>
+                <span class="chip" id="llmChip">LLM: -</span>
+                <span class="chip" id="sttChip">STT: -</span>
+                <span class="chip" id="embedChip">Embed: -</span>
+                <span class="chip" id="audioChip">Audio: -</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <script type="module" src="/src/stage.ts"></script>
+    <script>
+      // Stage resize functionality
+      (function() {
+        const stage = document.getElementById('stage');
+        const resize = document.getElementById('stageResize');
+        if (!stage || !resize) return;
+
+        let startY, startHeight;
+
+        const onMouseMove = (e) => {
+          const delta = e.clientY - startY;
+          const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight + delta));
+          stage.style.height = newHeight + 'px';
+          stage.style.minHeight = newHeight + 'px';
+          stage.style.maxHeight = 'none';
+        };
+
+        const onMouseUp = () => {
+          resize.classList.remove('dragging');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        resize.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          startY = e.clientY;
+          startHeight = stage.offsetHeight;
+          resize.classList.add('dragging');
+          document.body.style.cursor = 'ns-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+
+        // Double-click to reset
+        resize.addEventListener('dblclick', () => {
+          stage.style.height = '';
+          stage.style.minHeight = '';
+          stage.style.maxHeight = '';
+        });
+      })();
+
+      // Sync floating action bar with panel buttons
+      (function() {
+        const sync = (floatingId, panelId) => {
+          const floating = document.getElementById(floatingId);
+          const panel = document.getElementById(panelId);
+          if (!floating || !panel) return;
+
+          // Forward click events
+          floating.addEventListener('click', () => panel.click());
+
+          // Sync disabled state
+          const observer = new MutationObserver(() => {
+            floating.disabled = panel.disabled;
+            floating.className = panel.className;
+          });
+          observer.observe(panel, { attributes: true, attributeFilter: ['disabled', 'class'] });
+          floating.disabled = panel.disabled;
+        };
+
+        sync('stagePlayBtn', 'playBtn');
+        sync('stageLipsyncBtn', 'lipsyncBtn');
+        sync('stageStopBtn', 'stopBtn');
+
+        // Sync mini HUD with main HUD
+        const syncHud = () => {
+          const hudScene = document.getElementById('hudScene');
+          const hudCamera = document.getElementById('hudCamera');
+          const hudLights = document.getElementById('hudLights');
+          const miniScene = document.getElementById('hudMiniScene');
+          const miniCamera = document.getElementById('hudMiniCamera');
+          const miniLights = document.getElementById('hudMiniLights');
+
+          if (hudScene && miniScene) miniScene.textContent = hudScene.textContent;
+          if (hudCamera && miniCamera) miniCamera.textContent = hudCamera.textContent;
+          if (hudLights && miniLights) miniLights.textContent = hudLights.textContent;
+        };
+
+        // Observe HUD changes
+        const hudContainer = document.getElementById('stageHud');
+        if (hudContainer) {
+          const observer = new MutationObserver(syncHud);
+          observer.observe(hudContainer, { subtree: true, characterData: true, childList: true });
+        }
+        syncHud();
+      })();
+    </script>
   </body>
 </html>

@@ -14,7 +14,8 @@ export const updateStageBadges = (
   const badges: Record<DirectorStage, HTMLElement | null> = {
     performance: els.stageBadgePerformance,
     stage: els.stageBadgeStage,
-    camera: els.stageBadgeCamera
+    camera: els.stageBadgeCamera,
+    postfx: els.stageBadgePostFx
   };
 
   const badge = badges[stage];
@@ -35,7 +36,8 @@ export const resetStageBadges = (els: BadgeElements): void => {
   const badges = [
     els.stageBadgePerformance,
     els.stageBadgeStage,
-    els.stageBadgeCamera
+    els.stageBadgeCamera,
+    els.stageBadgePostFx
   ];
   badges.forEach((badge) => {
     if (badge) {

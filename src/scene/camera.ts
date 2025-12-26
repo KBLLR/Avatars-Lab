@@ -1,7 +1,7 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
-import type { CameraSettings } from "./types";
+import type { CameraSettings, SetHudFn } from "./types";
 
-export type SetHudFn = (scene: string, camera: string, lights: string, mode: string) => void;
+export type { SetHudFn };
 
 export interface CameraHudElements {
   hudScene: HTMLElement;

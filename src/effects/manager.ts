@@ -112,14 +112,14 @@ export class EffectsManager {
     }
   }
 
-  setChromaticAberration(amount: number, radialModulation = true, modulationOffset = 0.0) {
+  setChromaticAberration(options: { amount: number; radialModulation?: boolean; modulationOffset?: number }) {
     if (this.rgbShiftPass) {
-      this.rgbShiftPass.uniforms["amount"].value = amount;
+      this.rgbShiftPass.uniforms["amount"].value = options.amount;
       // TODO: Implement radial modulation if supported by the shader
     }
   }
 
-  setPixelation(pixelSize: number, normalEdgeStrength = 0.3, depthEdgeStrength = 0.4) {
+  setPixelation(options: { pixelSize: number; normalEdgeStrength?: number; depthEdgeStrength?: number }) {
      // TODO: Implement Pixelation shader/pass if needed.
      // For now, maybe just ignore or use low resolution render target?
      // Ignoring to save complexity for this sprint.

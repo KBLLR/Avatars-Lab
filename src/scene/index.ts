@@ -1,3 +1,4 @@
 export * from "./types";
 export * from "./lighting";
-export * from "./camera";
+export { applyCameraSettings } from "./camera";
+export type { CameraHudElements } from "./camera";

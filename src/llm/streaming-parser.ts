@@ -8,7 +8,9 @@ import type { DirectorResponse, PlanSection } from "../directors/types";
 import {
   preprocessForModel,
   extractJsonFromResponse,
-  getModelParser
+  getModelParser,
+  parseHarmonyFormat,
+  extractJsonFromHarmony
 } from "./model-parsers";
 
 export interface StreamingProgress {
@@ -90,6 +92,35 @@ export function parseDirectorResponse(
     console.log(`[Parser] Using config for model: ${modelConfig.name}`);
   }
 
+  // For harmony-enabled models, show channel breakdown
+  if (debug && modelConfig?.useHarmonyParser) {
+    const channels = parseHarmonyFormat(raw);
+    console.log(`[Parser] Harmony channels detected:`);
+    console.log(`  - ANALYSIS: ${channels.analysis?.length ?? 0} chars`);
+    console.log(`  - COMMENTARY: ${channels.commentary?.length ?? 0} chars`);
+    console.log(`  - FINAL: ${channels.final?.length ?? 0} chars`);
+    if (channels.final) {
+      console.log(`  - FINAL preview: ${channels.final.slice(0, 200)}...`);
+    }
+
+    // Try to extract JSON from harmony and show result
+    const harmonyJson = extractJsonFromHarmony(raw);
+    if (harmonyJson) {
+      console.log(`[Parser] Harmony JSON extracted (${harmonyJson.length} chars):`);
+      console.log(`  - Preview: ${harmonyJson.slice(0, 200)}...`);
+
+      // Validate it's parseable
+      try {
+        JSON.parse(harmonyJson);
+        console.log(`[Parser] Harmony JSON is valid!`);
+      } catch (e) {
+        console.log(`[Parser] Harmony JSON parse error: ${(e as Error).message}`);
+      }
+    } else {
+      console.log(`[Parser] No JSON found in harmony output`);
+    }
+  }
+
   // Apply model-specific preprocessing
   let cleaned = preprocessForModel(raw, modelId);
 
@@ -150,6 +181,11 @@ export function parseDirectorResponse(
 
   if (debug) {
     console.log(`[Parser] All parsing attempts failed for model: ${modelId || 'unknown'}`);
+    console.log(`[Parser] Raw input (first 500 chars): ${raw.slice(0, 500)}`);
+    console.log(`[Parser] Cleaned input (first 500 chars): ${cleaned.slice(0, 500)}`);
+    if (extracted) {
+      console.log(`[Parser] Extracted JSON (first 500 chars): ${extracted.slice(0, 500)}`);
+    }
   }
 
   return null;

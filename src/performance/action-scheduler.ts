@@ -188,16 +188,20 @@ export const scheduleAction = (
         break;
       case "post_chromatic_aberration":
         if (ctx.effectsManager) {
-          ctx.effectsManager.setChromaticAberration(
-            typeof args.offset === "number" ? args.offset : 0.005
-          );
+          ctx.effectsManager.setChromaticAberration({
+            amount: typeof args.offset === "number" ? args.offset : 0.005,
+            radialModulation: typeof args.radialModulation === "boolean" ? args.radialModulation : true,
+            modulationOffset: typeof args.modulationOffset === "number" ? args.modulationOffset : 0.0
+          });
         }
         break;
       case "post_pixelation":
         if (ctx.effectsManager) {
-          ctx.effectsManager.setPixelation(
-            typeof args.pixelSize === "number" ? args.pixelSize : 1.0
-          );
+          ctx.effectsManager.setPixelation({
+            pixelSize: typeof args.pixelSize === "number" ? args.pixelSize : 1.0,
+            normalEdgeStrength: typeof args.normalEdgeStrength === "number" ? args.normalEdgeStrength : 0.3,
+            depthEdgeStrength: typeof args.depthEdgeStrength === "number" ? args.depthEdgeStrength : 0.4
+          });
         }
         break;
       case "post_glitch":
@@ -281,6 +285,14 @@ export const buildMarkersFromPlan = (
   });
 
   plan.actions?.forEach((action) => scheduleAction(action, markers, mtimes, ctx));
+
+  // Add END marker to reset to spotlight when performance finishes
+  const endTime = Math.max(durationMs - 500, durationMs * 0.99);
+  markers.push(() => {
+    ctx.applyLightPreset("spotlight");
+    ctx.updateStatus("Performance complete. Ready for next act.");
+  });
+  mtimes.push(endTime);
 
   return { markers, mtimes };
 };

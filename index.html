@@ -4,164 +4,408 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Avatar Labs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg-1: #0f1b2b;
-        --bg-2: #12283a;
-        --accent: #f2c14e;
-        --surface: rgba(255, 255, 255, 0.08);
-        --text: #f5f3ee;
-        --muted: #b7c4d0;
-        --border: rgba(242, 193, 78, 0.25);
+        --bg: #fafafa;
+        --fg: #0a0a0a;
+        --muted: #71717a;
+        --border: #e4e4e7;
+        --accent: #18181b;
+        --surface: #ffffff;
+        --hover: #f4f4f5;
       }
 
-      * { box-sizing: border-box; }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #09090b;
+          --fg: #fafafa;
+          --muted: #a1a1aa;
+          --border: #27272a;
+          --accent: #fafafa;
+          --surface: #18181b;
+          --hover: #27272a;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
 
       body {
-        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
         min-height: 100vh;
-        font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
-        color: var(--text);
-        background: radial-gradient(1200px circle at 15% 20%, #193751 0%, transparent 55%),
-          radial-gradient(900px circle at 85% 10%, #2b4b38 0%, transparent 50%),
-          linear-gradient(140deg, var(--bg-1), var(--bg-2));
       }
 
-      main {
-        max-width: 900px;
+      /* Layout */
+      .container {
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 72px 24px 80px;
+        padding: 0 24px;
       }
 
+      /* Header */
       header {
-        display: grid;
-        gap: 16px;
+        padding: 80px 0 60px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .logo {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 24px;
       }
 
       h1 {
-        margin: 0;
-        font-size: 44px;
-        letter-spacing: -0.02em;
+        font-size: clamp(48px, 8vw, 72px);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+        margin-bottom: 20px;
       }
 
-      p {
-        margin: 0;
+      .tagline {
+        font-size: 18px;
         color: var(--muted);
-        font-size: 16px;
-        max-width: 680px;
+        max-width: 560px;
+        font-weight: 400;
       }
 
-      .card-grid {
-        margin-top: 36px;
+      /* Navigation Grid */
+      .nav-section {
+        padding: 60px 0;
+      }
+
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .section-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .nav-grid {
         display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+      }
+
+      .nav-item {
+        background: var(--surface);
+        padding: 28px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s ease;
+      }
+
+      .nav-item:hover {
+        background: var(--hover);
+      }
+
+      .nav-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .nav-item-title {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .nav-item-arrow {
+        font-size: 14px;
+        color: var(--muted);
+        transition: transform 0.15s ease;
+      }
+
+      .nav-item:hover .nav-item-arrow {
+        transform: translateX(4px);
+      }
+
+      .nav-item-desc {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .nav-item-tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        background: var(--hover);
+        border-radius: 3px;
+        color: var(--muted);
+        margin-top: 8px;
+        width: fit-content;
+      }
+
+      .nav-item-tag.new {
+        background: var(--fg);
+        color: var(--bg);
+      }
+
+      /* Feature Section */
+      .features {
+        padding: 60px 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 48px;
+      }
+
+      @media (max-width: 768px) {
+        .features-grid {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+      }
+
+      .feature {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .feature-number {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .feature-title {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .feature-desc {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      /* Footer */
+      footer {
+        padding: 40px 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
         gap: 16px;
       }
 
-      .card {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 12px;
-        padding: 18px 20px;
-        border-radius: 14px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        backdrop-filter: blur(6px);
-      }
-
-      .card-title {
-        font-weight: 600;
-      }
-
-      .card-desc {
-        margin: 4px 0 0;
+      .footer-left {
+        font-size: 12px;
         color: var(--muted);
-        font-size: 13px;
       }
 
-      a {
-        color: var(--text);
+      .footer-right {
+        display: flex;
+        gap: 24px;
+      }
+
+      .footer-link {
+        font-size: 12px;
+        color: var(--muted);
         text-decoration: none;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        transition: transform 0.2s ease, background 0.2s ease;
+        transition: color 0.15s ease;
       }
 
-      a:hover {
-        background: rgba(242, 193, 78, 0.15);
-        transform: translateY(-1px);
+      .footer-link:hover {
+        color: var(--fg);
       }
 
-      footer {
-        margin-top: 48px;
-        font-size: 13px;
+      /* Status indicator */
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
         color: var(--muted);
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #22c55e;
       }
     </style>
   </head>
   <body>
-    <main>
+    <div class="container">
       <header>
+        <div class="logo">HTDI Labs</div>
         <h1>Avatar Labs</h1>
-        <p>
-          Local-first validation for TalkingHead + HeadAudio + MLX services. Use the
-          harness links below to run the browser tests.
-        </p>
-        <p>
-          Experiments: realtime MLX conversation loop, HeadAudio viseme callbacks,
-          and TalkingHead streaming playback.
+        <p class="tagline">
+          Local-first validation harnesses for TalkingHead, HeadAudio, and MLX services.
+          Experiments in realtime conversation, viseme callbacks, and generative composition.
         </p>
       </header>
 
-      <section class="card-grid">
-        <div class="card">
-          <div>
-            <div class="card-title">HeadAudio Viseme Harness</div>
-            <div class="card-desc">Deterministic viseme callbacks from fixed audio.</div>
-          </div>
-          <a href="/head-audio.html">Open</a>
+      <nav class="nav-section">
+        <div class="section-label">Harnesses</div>
+        <div class="nav-grid">
+          <a href="/head-audio.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">HeadAudio Viseme</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">Deterministic viseme callbacks from fixed audio files.</p>
+            <span class="nav-item-tag">Testing</span>
+          </a>
+          <a href="/mlx-conversation.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">MLX Realtime</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">Mic &rarr; STT &rarr; LLM &rarr; TTS with gestures and moods.</p>
+            <span class="nav-item-tag">Experiment</span>
+          </a>
+          <a href="/e2e.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">TalkingHead E2E</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">Streaming playback with local GLB avatar rendering.</p>
+            <span class="nav-item-tag">Testing</span>
+          </a>
+          <a href="/stage.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Stage</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">Upload songs, generate transcripts, perform with HeadAudio.</p>
+            <span class="nav-item-tag">Music Video</span>
+          </a>
+          <a href="/multi-modal.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Multi-Modal</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">Combined audio, visual, and text input processing.</p>
+            <span class="nav-item-tag">Experiment</span>
+          </a>
+          <a href="/composition-layer.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Composition Layer</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">AI poster generator with mflux, typography presets, and WebGL effects.</p>
+            <span class="nav-item-tag new">New</span>
+          </a>
         </div>
-        <div class="card">
-          <div>
-            <div class="card-title">MLX Realtime Demo</div>
-            <div class="card-desc">Mic → STT → LLM → TTS with gestures + moods.</div>
-          </div>
-          <a href="/mlx-conversation.html">Open</a>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="section-label">Documentation</div>
+        <div class="nav-grid">
+          <a href="/info.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Lab Info</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">What this lab validates and repository links.</p>
+          </a>
+          <a href="/settings.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Settings</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">MLX endpoints, registry models, and HeadTTS options.</p>
+          </a>
         </div>
-        <div class="card">
-          <div>
-            <div class="card-title">Lab Info</div>
-            <div class="card-desc">What this lab validates and repo links.</div>
+      </nav>
+
+      <section class="features">
+        <div class="section-label">Capabilities</div>
+        <div class="features-grid">
+          <div class="feature">
+            <span class="feature-number">01</span>
+            <h3 class="feature-title">Local-First</h3>
+            <p class="feature-desc">
+              All services run locally on Apple Silicon. MLX-optimized models for
+              fast inference without cloud dependencies.
+            </p>
           </div>
-          <a href="/info.html">Open</a>
-        </div>
-        <div class="card">
-          <div>
-            <div class="card-title">Settings + Models</div>
-            <div class="card-desc">View MLX endpoints, registry models, and HeadTTS options.</div>
+          <div class="feature">
+            <span class="feature-number">02</span>
+            <h3 class="feature-title">Realtime Processing</h3>
+            <p class="feature-desc">
+              Sub-100ms latency for speech-to-text, LLM responses, and text-to-speech
+              synthesis with streaming playback.
+            </p>
           </div>
-          <a href="/settings.html">Open</a>
-        </div>
-        <div class="card">
-          <div>
-            <div class="card-title">Stage (Music Video)</div>
-            <div class="card-desc">Upload songs, get transcript, perform with HeadAudio.</div>
+          <div class="feature">
+            <span class="feature-number">03</span>
+            <h3 class="feature-title">Generative Media</h3>
+            <p class="feature-desc">
+              mflux image generation, procedural textures, and AI-driven composition
+              for creative visual outputs.
+            </p>
           </div>
-          <a href="/stage.html">Open</a>
-        </div>
-        <div class="card">
-          <div>
-            <div class="card-title">TalkingHead E2E Harness</div>
-            <div class="card-desc">Streaming playback + local GLB avatar.</div>
-          </div>
-          <a href="/e2e.html">Open</a>
         </div>
       </section>
 
       <footer>
-        Use `scripts/smoke.zsh` or `scripts/e2e.zsh` for automated runs.
+        <div class="footer-content">
+          <div class="footer-left">
+            <span class="status">
+              <span class="status-dot"></span>
+              All systems operational
+            </span>
+          </div>
+          <div class="footer-right">
+            <span class="footer-link">scripts/smoke.zsh</span>
+            <span class="footer-link">scripts/e2e.zsh</span>
+          </div>
+        </div>
       </footer>
-    </main>
+    </div>
   </body>
 </html>

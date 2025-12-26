@@ -27,3 +27,38 @@ export const updateHero = (
   els.heroTitle.textContent = `${avatarLabel.replace(/\.glb$/i, "")}`;
   els.heroSubtitle.textContent = sectionLabel ? `${songLabel} · ${sectionLabel}` : songLabel;
 };
+
+export type StagePhase =
+  | "idle"
+  | "audio-loaded"
+  | "transcribing"
+  | "transcribed"
+  | "analyzing"
+  | "plan-ready"
+  | "performing"
+  | "complete";
+
+const phaseDescriptions: Record<StagePhase, string> = {
+  idle: "Upload a song to begin staging your AI performance.",
+  "audio-loaded": "Song loaded. Click Transcribe to extract lyrics.",
+  transcribing: "Processing audio to extract lyrics...",
+  transcribed: "Lyrics ready. Click Analyze to plan the performance.",
+  analyzing: "Directors are crafting your performance plan...",
+  "plan-ready": "Plan ready. Review and Approve to enable AI Perform.",
+  performing: "Performance in progress. Sit back and enjoy.",
+  complete: "Performance complete. Load another song or adjust settings."
+};
+
+export const updateStageHeroDesc = (
+  els: Pick<HeroElements, "stageHeroDesc">,
+  phase: StagePhase
+): void => {
+  els.stageHeroDesc.textContent = phaseDescriptions[phase];
+};
+
+export const setStageHeroDescText = (
+  els: Pick<HeroElements, "stageHeroDesc">,
+  text: string
+): void => {
+  els.stageHeroDesc.textContent = text;
+};

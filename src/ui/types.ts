@@ -30,6 +30,7 @@ export interface HeroElements {
   heroSubtitle: HTMLElement;
   heroLyrics: HTMLElement;
   avatarSelect: HTMLSelectElement;
+  stageHeroDesc: HTMLElement;
 }
 
 export interface PlanElements {

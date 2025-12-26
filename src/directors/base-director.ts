@@ -99,7 +99,8 @@ export abstract class BaseDirector {
     const names: Record<DirectorStage, string> = {
       performance: "Performance Director",
       stage: "Stage Director",
-      camera: "Camera Director"
+      camera: "Camera Director",
+      postfx: "PostFX Director"
     };
     return names[this.stage];
   }
@@ -197,6 +198,14 @@ export abstract class BaseDirector {
         modelId: this.model,
         debug: import.meta.env.DEV
       };
+
+      // Debug: Log raw response for troubleshooting
+      if (import.meta.env.DEV) {
+        console.log(`[${this.getStageName()}] Raw LLM response (${rawContent.length} chars):`);
+        console.log(`[${this.getStageName()}] First 500 chars: ${rawContent.slice(0, 500)}`);
+        console.log(`[${this.getStageName()}] Last 300 chars: ${rawContent.slice(-300)}`);
+      }
+
       const parsed = parseDirectorResponse(rawContent, durationMs, parseContext);
 
       const baseMeta: DirectorResultMeta = {

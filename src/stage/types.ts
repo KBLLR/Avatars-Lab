@@ -127,14 +127,14 @@ export const createInitialState = (): StageState => ({
     autoRotateSpeed: 0
   },
   stageLightingBase: {
-    ambient: 0.5,
-    direct: 0.8,
-    spot: 2.0
+    ambient: 0.1,
+    direct: 2,
+    spot: 28
   },
-  lightPreset: "neon",
+  lightPreset: "spotlight",
   lightColors: {
-    ambient: "#ffffff",
-    direct: "#ffffff",
+    ambient: "#0a0a0a",
+    direct: "#1a1a1a",
     spot: "#ffffff"
   },
   lightPulse: true,
