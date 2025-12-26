@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Labs - Gesture Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --surface: #18181b;
+        --hover: #27272a;
+        --accent: #f97316;
+        --accent-2: #22c55e;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #app {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        min-height: 100vh;
+        padding: 20px;
+        gap: 20px;
+      }
+
+      #preview {
+        position: relative;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #000;
+        overflow: hidden;
+      }
+
+      #avatar {
+        position: absolute;
+        inset: 0;
+      }
+
+      #sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+        max-height: 100vh;
+        padding-right: 8px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .card-body {
+        padding: 16px;
+      }
+
+      label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input[type="text"], textarea, select {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 13px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--fg);
+        margin-bottom: 12px;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        margin-bottom: 12px;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--fg);
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      button:hover {
+        background: var(--hover);
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #000;
+      }
+
+      button.primary:hover {
+        opacity: 0.9;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .row > * {
+        flex: 1;
+      }
+
+      .gesture-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .gesture-btn {
+        padding: 10px 4px;
+        font-size: 11px;
+        text-align: center;
+        border-radius: 4px;
+      }
+
+      .gesture-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #000;
+      }
+
+      .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      .emoji-btn {
+        padding: 8px;
+        font-size: 18px;
+        border-radius: 4px;
+        text-align: center;
+      }
+
+      .emoji-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .tag {
+        padding: 4px 10px;
+        font-size: 11px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+      }
+
+      .tag.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #000;
+      }
+
+      .library-item {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .library-item:hover {
+        background: var(--hover);
+      }
+
+      .library-item.active {
+        border-color: var(--accent);
+      }
+
+      .library-item-name {
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+
+      .library-item-tags {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      #status {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        padding: 8px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .slider-row label {
+        flex: 0 0 100px;
+        margin: 0;
+      }
+
+      .slider-row input[type="range"] {
+        flex: 1;
+        margin: 0;
+      }
+
+      .slider-row .val {
+        flex: 0 0 40px;
+        font-size: 11px;
+        color: var(--muted);
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="preview">
+        <div id="avatar"></div>
+      </div>
+
+      <div id="sidebar">
+        <div class="card">
+          <div class="card-header">Preview Avatar</div>
+          <div class="card-body">
+            <label>Avatar</label>
+            <select id="avatarSelect"></select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Clip Editor</div>
+          <div class="card-body">
+            <label>Clip Name</label>
+            <input type="text" id="clipName" placeholder="e.g. Friendly Wave" />
+
+            <label>Description</label>
+            <textarea id="clipDescription" rows="2" placeholder="What does this gesture convey?"></textarea>
+
+            <label>Duration (ms)</label>
+            <input type="text" id="clipDuration" value="2000" />
+
+            <label>Gesture (built-in)</label>
+            <div class="gesture-grid" id="gestureGrid"></div>
+
+            <label>Emoji Expression</label>
+            <div class="emoji-grid" id="emojiGrid"></div>
+
+            <label>Mood</label>
+            <select id="moodSelect">
+              <option value="">None</option>
+              <option value="neutral">Neutral</option>
+              <option value="happy">Happy</option>
+              <option value="sad">Sad</option>
+              <option value="angry">Angry</option>
+              <option value="fear">Fear</option>
+              <option value="love">Love</option>
+            </select>
+
+            <label>Tags</label>
+            <div class="tag-list" id="tagList"></div>
+
+            <div class="row">
+              <button id="previewBtn" class="primary">Preview</button>
+              <button id="saveBtn">Save Clip</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Morph Targets</div>
+          <div class="card-body">
+            <div class="slider-row">
+              <label>browInnerUp</label>
+              <input type="range" id="morphBrowInnerUp" min="0" max="1" step="0.01" value="0" />
+              <span class="val" id="morphBrowInnerUpVal">0</span>
+            </div>
+            <div class="slider-row">
+              <label>eyeSquint</label>
+              <input type="range" id="morphEyeSquint" min="0" max="1" step="0.01" value="0" />
+              <span class="val" id="morphEyeSquintVal">0</span>
+            </div>
+            <div class="slider-row">
+              <label>mouthSmile</label>
+              <input type="range" id="morphMouthSmile" min="0" max="1" step="0.01" value="0" />
+              <span class="val" id="morphMouthSmileVal">0</span>
+            </div>
+            <div class="slider-row">
+              <label>jawOpen</label>
+              <input type="range" id="morphJawOpen" min="0" max="1" step="0.01" value="0" />
+              <span class="val" id="morphJawOpenVal">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Library</div>
+          <div class="card-body">
+            <div id="libraryList"></div>
+            <div class="row">
+              <button id="exportBtn">Export JSON</button>
+              <button id="importBtn">Import</button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display: none;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status">Ready</div>
+
+    <script type="module" src="/src/gestures-lab.ts"></script>
+  </body>
+</html>

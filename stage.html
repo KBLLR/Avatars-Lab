@@ -1083,6 +1083,30 @@
                 <input id="soloOnly" type="checkbox" checked />
                 <label for="soloOnly">Solo-only lip sync</label>
               </div>
+              <div class="toggle">
+                <input id="duoModeToggle" type="checkbox" />
+                <label for="duoModeToggle">Duo Mode (two avatars)</label>
+              </div>
+              <div id="duoModeOptions" style="display: none; margin-top: 8px;">
+                <div class="row" style="gap: 8px;">
+                  <div style="flex: 1;">
+                    <label style="font-size: 11px;">Avatar A</label>
+                    <select id="avatarASelect" style="width: 100%;"></select>
+                  </div>
+                  <div style="flex: 1;">
+                    <label style="font-size: 11px;">Avatar B</label>
+                    <select id="avatarBSelect" style="width: 100%;"></select>
+                  </div>
+                </div>
+                <div class="row" style="gap: 8px; margin-top: 8px;">
+                  <button id="duoMutualGazeBtn" class="ghost" style="flex: 1;">Mutual Gaze</button>
+                  <button id="duoFaceCameraBtn" class="ghost" style="flex: 1;">Face Camera</button>
+                </div>
+                <div class="row" style="gap: 8px; margin-top: 4px;">
+                  <button id="duoTestABtn" class="ghost" style="flex: 1;">Test A</button>
+                  <button id="duoTestBBtn" class="ghost" style="flex: 1;">Test B</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

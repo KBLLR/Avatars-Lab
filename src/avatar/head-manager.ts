@@ -61,8 +61,21 @@ export const createHead = (config: HeadConfig): TalkingHead => {
 };
 
 export const disposeHead = (head: TalkingHead): void => {
-  if (typeof head.dispose === "function") {
-    head.dispose();
+  if (!head) return;
+
+  try {
+    // Stop any running animations/audio first
+    if (typeof head.stop === "function") {
+      head.stop();
+    }
+
+    // TalkingHead.dispose() may fail if avatar wasn't fully loaded
+    // (e.g., setPoseFromTemplate tries to clone undefined poses)
+    if (typeof head.dispose === "function") {
+      head.dispose();
+    }
+  } catch (err) {
+    console.warn("disposeHead: error during disposal (avatar may not be fully loaded):", err);
   }
 };
 

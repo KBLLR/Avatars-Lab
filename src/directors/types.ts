@@ -194,6 +194,35 @@ export interface SetBackgroundAction extends PlanAction {
   };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Duo Mode Actions
+// ─────────────────────────────────────────────────────────────
+
+export type AvatarId = "avatar_a" | "avatar_b";
+export type SpeakTarget = AvatarId | "camera";
+
+export interface SpeakToAction extends PlanAction {
+  action: "speak_to";
+  args: {
+    speaker: AvatarId;
+    target: SpeakTarget;
+    text?: string;
+    audio_url?: string;
+    emotion?: Mood;
+    gesture_hint?: string;
+    gesture_clip_id?: string;
+    markers?: string[];
+  };
+}
+
+export interface SetSpeakerTargetAction extends PlanAction {
+  action: "set_speaker_target";
+  args: {
+    speaker: AvatarId;
+    target: SpeakTarget;
+  };
+}
+
 export type TypedPlanAction =
   | SetMoodAction
   | PlayGestureAction
@@ -222,6 +251,8 @@ export type TypedPlanAction =
   | PostResetAction
   | SetEnvironmentAction
   | SetBackgroundAction
+  | SpeakToAction
+  | SetSpeakerTargetAction
   | PlanAction;
 
 // ─────────────────────────────────────────────────────────────

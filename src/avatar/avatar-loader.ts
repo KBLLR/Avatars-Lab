@@ -74,6 +74,30 @@ export const loadAvatarList = async (
   return { avatars, baseUrl };
 };
 
+/**
+ * Populate additional select elements with the same avatar list
+ */
+export const populateAvatarSelects = (
+  avatars: string[],
+  ...selects: HTMLSelectElement[]
+): void => {
+  selects.forEach((select, idx) => {
+    select.innerHTML = "";
+    avatars.forEach((name: string) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name.replace(/\.glb$/i, "");
+      select.appendChild(option);
+    });
+    // Select different avatars for A/B if possible
+    if (avatars.length > 1) {
+      select.value = avatars[idx % avatars.length];
+    } else if (avatars.length === 1) {
+      select.value = avatars[0];
+    }
+  });
+};
+
 export const loadAvatar = async (
   head: TalkingHead,
   avatarName: string,

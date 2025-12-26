@@ -94,6 +94,15 @@ export interface StageElements {
   directorEnableStage: HTMLInputElement;
   directorEnableCamera: HTMLInputElement;
   directorEnablePostFx: HTMLInputElement;
+  // Duo Mode
+  duoModeToggle: HTMLInputElement;
+  duoModeOptions: HTMLElement;
+  avatarASelect: HTMLSelectElement;
+  avatarBSelect: HTMLSelectElement;
+  duoMutualGazeBtn: HTMLButtonElement;
+  duoFaceCameraBtn: HTMLButtonElement;
+  duoTestABtn: HTMLButtonElement;
+  duoTestBBtn: HTMLButtonElement;
 }
 
 let cachedElements: StageElements | null = null;
@@ -196,7 +205,16 @@ export const getElements = (): StageElements => {
     directorEnablePerformance: document.getElementById("directorEnablePerformance") as HTMLInputElement,
     directorEnableStage: document.getElementById("directorEnableStage") as HTMLInputElement,
     directorEnableCamera: document.getElementById("directorEnableCamera") as HTMLInputElement,
-    directorEnablePostFx: document.getElementById("directorEnablePostFx") as HTMLInputElement
+    directorEnablePostFx: document.getElementById("directorEnablePostFx") as HTMLInputElement,
+    // Duo Mode
+    duoModeToggle: document.getElementById("duoModeToggle") as HTMLInputElement,
+    duoModeOptions: document.getElementById("duoModeOptions") as HTMLElement,
+    avatarASelect: document.getElementById("avatarASelect") as HTMLSelectElement,
+    avatarBSelect: document.getElementById("avatarBSelect") as HTMLSelectElement,
+    duoMutualGazeBtn: document.getElementById("duoMutualGazeBtn") as HTMLButtonElement,
+    duoFaceCameraBtn: document.getElementById("duoFaceCameraBtn") as HTMLButtonElement,
+    duoTestABtn: document.getElementById("duoTestABtn") as HTMLButtonElement,
+    duoTestBBtn: document.getElementById("duoTestBBtn") as HTMLButtonElement
   };
 
   return cachedElements;

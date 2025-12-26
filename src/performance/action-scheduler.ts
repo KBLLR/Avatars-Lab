@@ -7,6 +7,7 @@ import {
 import { applyEnvironment, getEnvironmentPreset } from "../environments";
 import type { Environment } from "../environments";
 import type { EffectsManager } from "../effects/manager";
+import type { DuoHeadManager, AvatarId, SpeakTarget } from "../avatar/duo-head-manager";
 import type { PlanSection, PlanAction, Mood, CameraView } from "../directors/types";
 import type { ScheduledMarkers } from "./types";
 import { gestures } from "../stage/constants";
@@ -34,6 +35,7 @@ export interface SchedulerContext {
   applyCameraSettings: ApplyCameraSettingsFn;
   applyLightPreset: ApplyLightPresetFn;
   effectsManager?: EffectsManager;
+  duoManager?: DuoHeadManager;
 }
 
 export const scheduleAction = (
@@ -216,6 +218,55 @@ export const scheduleAction = (
         if (ctx.effectsManager) {
           ctx.effectsManager.resetEffects();
         }
+        break;
+      // Duo Mode Actions
+      case "speak_to":
+        if (ctx.duoManager) {
+          const speaker = args.speaker as AvatarId;
+          const target = args.target as SpeakTarget;
+          ctx.duoManager.setSpeakTo(speaker, target);
+          if (args.emotion) {
+            ctx.duoManager.setMood(speaker, args.emotion as string);
+          }
+          if (args.gesture_hint) {
+            ctx.duoManager.playGesture(speaker, args.gesture_hint as string);
+          }
+          ctx.updateStatus(`${speaker} speaking to ${target}`);
+        }
+        break;
+      case "set_speaker_target":
+        if (ctx.duoManager) {
+          const speaker = args.speaker as AvatarId;
+          const target = args.target as SpeakTarget;
+          ctx.duoManager.setSpeakTo(speaker, target);
+        }
+        break;
+      // Dance/Animation Actions
+      case "play_animation":
+        if (args.url) {
+          head.playAnimation(
+            args.url as string,
+            null, // progressCallback
+            typeof args.duration === "number" ? args.duration : undefined,
+            null  // onComplete
+          );
+          ctx.updateStatus(`Animation: ${args.name || args.url}`);
+        }
+        break;
+      case "play_pose":
+        if (args.url) {
+          head.playPose(
+            args.url as string,
+            null, // progressCallback
+            typeof args.duration === "number" ? args.duration : undefined
+          );
+          ctx.updateStatus(`Pose: ${args.name || args.url}`);
+        }
+        break;
+      case "stop_animation":
+        // TalkingHead will handle animation cleanup via stop()
+        head.stop();
+        head.start();
         break;
       default:
         break;

@@ -45,7 +45,10 @@ import {
   initHeadAudio as initHeadAudioModule,
   getDefaultHeadAudioConfig,
   loadAvatar as loadAvatarModule,
-  loadAvatarList as loadAvatarListModule
+  loadAvatarList as loadAvatarListModule,
+  populateAvatarSelects,
+  DuoHeadManager,
+  resolveAvatarUrl
 } from "./avatar/index";
 import {
   updateStageLighting as updateStageLightingModule,
@@ -137,6 +140,26 @@ const bindStateUi = () => {
         );
       }
     }
+    // Duo Mode state changes
+    if (changed.duoMode !== undefined) {
+      if (nextState.duoMode) {
+        initDuoMode().catch((err) => {
+          console.error("Failed to init duo mode:", err);
+          updateStatus(els, "Duo Mode init failed.");
+          updateState({ duoMode: false });
+        });
+      } else if (!nextState.duoMode && nextState.duoManager) {
+        disposeDuoMode();
+      }
+    }
+    // Reload duo avatars when selection changes
+    if (nextState.duoMode && nextState.duoManager) {
+      if (changed.avatarAUrl !== undefined || changed.avatarBUrl !== undefined) {
+        reloadDuoAvatars().catch((err) => {
+          console.error("Failed to reload duo avatars:", err);
+        });
+      }
+    }
   });
 };
 
@@ -202,6 +225,75 @@ const resetHead = () => {
   }
   const head = createHead();
   updateState({ head, headaudio: null, audioBuffer: null });
+};
+
+// ─────────────────────────────────────────────────────────────
+// Duo Mode
+// ─────────────────────────────────────────────────────────────
+
+const initDuoMode = async () => {
+  if (state.duoManager) return; // Already initialized
+
+  const avatarAName = els.avatarASelect.value;
+  const avatarBName = els.avatarBSelect.value;
+
+  if (!avatarAName || !avatarBName) {
+    updateStatus(els, "Select both avatars for Duo Mode.");
+    return;
+  }
+
+  updateStatus(els, "Initializing Duo Mode...");
+
+  // Dispose solo head if exists
+  if (state.head) {
+    disposeHead(state.head);
+    updateState({ head: null, headaudio: null });
+  }
+
+  const duoManager = new DuoHeadManager({
+    container: els.avatar,
+    cameraSettings: state.cameraSettings,
+    lightingBase: state.stageLightingBase,
+    avatarAUrl: resolveAvatarUrl(avatarAName, state.avatarBaseUrl),
+    avatarBUrl: resolveAvatarUrl(avatarBName, state.avatarBaseUrl),
+    avatarABody: "F",
+    avatarBBody: "M",
+    spacing: 0.8
+  });
+
+  await duoManager.init(updateStageLighting);
+  duoManager.start();
+
+  // Set mutual gaze by default
+  duoManager.setMutualGaze();
+
+  updateState({
+    duoManager,
+    avatarAUrl: avatarAName,
+    avatarBUrl: avatarBName
+  });
+
+  updateStatus(els, `Duo Mode active: ${avatarAName} + ${avatarBName}`);
+};
+
+const disposeDuoMode = () => {
+  if (state.duoManager) {
+    state.duoManager.dispose();
+    updateState({ duoManager: null });
+  }
+
+  // Restore solo head
+  resetHead();
+  updateStatus(els, "Solo mode restored.");
+};
+
+const reloadDuoAvatars = async () => {
+  if (!state.duoMode || !state.duoManager) return;
+
+  // Dispose and reinit with new selections
+  state.duoManager.dispose();
+  updateState({ duoManager: null });
+  await initDuoMode();
 };
 
 const initHeadAudio = async () => {
@@ -284,9 +376,17 @@ const unloadRuntimeModel = () => unloadRuntimeModelModule(els, config.llmBaseUrl
 const loadRuntimeModel = () => loadRuntimeModelModule(els, config.llmBaseUrl);
 
 const loadAvatarList = async () => {
-  const { baseUrl } = await loadAvatarListModule(els.avatarSelect);
+  const { avatars, baseUrl } = await loadAvatarListModule(els.avatarSelect);
   if (baseUrl) {
     updateState({ avatarBaseUrl: baseUrl });
+  }
+  // Also populate Duo Mode avatar selects
+  populateAvatarSelects(avatars, els.avatarASelect, els.avatarBSelect);
+  // Set initial values in state
+  if (avatars.length >= 2) {
+    updateState({ avatarAUrl: avatars[0], avatarBUrl: avatars[1] });
+  } else if (avatars.length === 1) {
+    updateState({ avatarAUrl: avatars[0], avatarBUrl: avatars[0] });
   }
 };
 
@@ -741,7 +841,34 @@ const init = async () => {
         refreshRuntimePanel,
         unloadRuntimeModel,
         loadRuntimeModel,
-        setRuntimeStatusText
+        setRuntimeStatusText,
+        // Duo Mode callbacks
+        onDuoMutualGaze: () => {
+          if (state.duoManager) {
+            state.duoManager.setMutualGaze();
+            updateStatus(els, "Avatars facing each other.");
+          }
+        },
+        onDuoFaceCamera: () => {
+          if (state.duoManager) {
+            state.duoManager.setFaceCamera();
+            updateStatus(els, "Avatars facing camera.");
+          }
+        },
+        onDuoTestA: () => {
+          if (state.duoManager) {
+            state.duoManager.setMood("avatar_a", "happy");
+            state.duoManager.playGesture("avatar_a", "handup", 2.5);
+            updateStatus(els, "Avatar A: wave gesture");
+          }
+        },
+        onDuoTestB: () => {
+          if (state.duoManager) {
+            state.duoManager.setMood("avatar_b", "happy");
+            state.duoManager.playGesture("avatar_b", "thumbup", 2.5);
+            updateStatus(els, "Avatar B: thumbs up gesture");
+          }
+        }
       }),
     setHud: (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode),
     setChip: (chip, label, value) => setChip(chip, label, value),

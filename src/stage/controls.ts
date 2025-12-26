@@ -52,6 +52,11 @@ export interface BindControlsDeps {
   unloadRuntimeModel: () => Promise<void>;
   loadRuntimeModel: () => Promise<void>;
   setRuntimeStatusText: (text: string) => void;
+  // Duo Mode callbacks
+  onDuoMutualGaze?: () => void;
+  onDuoFaceCamera?: () => void;
+  onDuoTestA?: () => void;
+  onDuoTestB?: () => void;
 }
 
 export const bindControls = ({
@@ -66,7 +71,11 @@ export const bindControls = ({
   refreshRuntimePanel,
   unloadRuntimeModel,
   loadRuntimeModel,
-  setRuntimeStatusText
+  setRuntimeStatusText,
+  onDuoMutualGaze,
+  onDuoFaceCamera,
+  onDuoTestA,
+  onDuoTestB
 }: BindControlsDeps): void => {
   const applyCameraInputState = () => {
     updateSliderReadouts(els);
@@ -217,5 +226,41 @@ export const bindControls = ({
 
   els.directorEnablePostFx.addEventListener("change", () => {
     updateDirectorState("postfx", els.directorEnablePostFx.checked);
+  });
+
+  // Duo Mode toggle
+  els.duoModeToggle.addEventListener("change", () => {
+    const enabled = els.duoModeToggle.checked;
+    els.duoModeOptions.style.display = enabled ? "block" : "none";
+    updateState({ duoMode: enabled });
+    updateStatus(enabled ? "Duo Mode enabled. Select avatars A & B." : "Solo mode.");
+  });
+
+  // Avatar A/B selection
+  els.avatarASelect.addEventListener("change", () => {
+    const url = els.avatarASelect.value;
+    if (url) updateState({ avatarAUrl: url });
+  });
+
+  els.avatarBSelect.addEventListener("change", () => {
+    const url = els.avatarBSelect.value;
+    if (url) updateState({ avatarBUrl: url });
+  });
+
+  // Duo Mode gaze controls
+  els.duoMutualGazeBtn.addEventListener("click", () => {
+    if (onDuoMutualGaze) onDuoMutualGaze();
+  });
+
+  els.duoFaceCameraBtn.addEventListener("click", () => {
+    if (onDuoFaceCamera) onDuoFaceCamera();
+  });
+
+  els.duoTestABtn.addEventListener("click", () => {
+    if (onDuoTestA) onDuoTestA();
+  });
+
+  els.duoTestBBtn.addEventListener("click", () => {
+    if (onDuoTestB) onDuoTestB();
   });
 };

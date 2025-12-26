@@ -2,6 +2,7 @@ import type { TalkingHead } from "@met4citizen/talkinghead";
 import type { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import type { DirectorOrchestrator } from "../pipeline/orchestrator";
 import type { MergedPlan, WordTiming, DirectorStage } from "../directors/types";
+import type { DuoHeadManager } from "../avatar/duo-head-manager";
 
 export type PerformancePlan = MergedPlan;
 
@@ -101,6 +102,11 @@ export interface StageState {
   lastDirectorModel?: string;
   lastDirectorStyle?: string;
   enabledDirectors: DirectorStage[];
+  // Duo Mode
+  duoMode: boolean;
+  duoManager: DuoHeadManager | null;
+  avatarAUrl: string | null;
+  avatarBUrl: string | null;
 }
 
 export const createInitialState = (): StageState => ({
@@ -153,5 +159,10 @@ export const createInitialState = (): StageState => ({
   avatarBaseUrl: null,
   lastDirectorModel: undefined,
   lastDirectorStyle: undefined,
-  enabledDirectors: ["performance", "stage", "camera", "postfx"]
+  enabledDirectors: ["performance", "stage", "camera", "postfx"],
+  // Duo Mode
+  duoMode: false,
+  duoManager: null,
+  avatarAUrl: null,
+  avatarBUrl: null
 });

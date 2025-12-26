@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "updated_at": "2025-12-26T10:00:00Z",
+  "clips": [
+    {
+      "id": "subtle-nod",
+      "name": "Subtle Nod",
+      "description": "A gentle acknowledgment nod",
+      "tags": ["listening", "subtle", "head", "neutral"],
+      "duration_ms": 800,
+      "created_at": "2025-12-26T10:00:00Z",
+      "mood": "neutral",
+      "morph_curves": [
+        {
+          "morph_target": "headRotateX",
+          "keyframes": [
+            { "time_ms": 0, "value": 0 },
+            { "time_ms": 300, "value": -0.1 },
+            { "time_ms": 600, "value": 0.05 },
+            { "time_ms": 800, "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "enthusiastic-wave",
+      "name": "Enthusiastic Wave",
+      "description": "Friendly wave gesture with happy expression",
+      "tags": ["happy", "hand", "greeting", "dramatic"],
+      "duration_ms": 2000,
+      "created_at": "2025-12-26T10:00:00Z",
+      "gesture": {
+        "name": "handup",
+        "duration": 2,
+        "mirror": false
+      },
+      "emoji": "👋",
+      "mood": "happy"
+    },
+    {
+      "id": "thoughtful-pause",
+      "name": "Thoughtful Pause",
+      "description": "Contemplative look with slight head tilt",
+      "tags": ["thinking", "subtle", "head", "neutral"],
+      "duration_ms": 1500,
+      "created_at": "2025-12-26T10:00:00Z",
+      "mood": "neutral",
+      "look_at": {
+        "x": 0.3,
+        "y": 0.6,
+        "t": 1000
+      },
+      "morph_curves": [
+        {
+          "morph_target": "browInnerUp",
+          "keyframes": [
+            { "time_ms": 0, "value": 0 },
+            { "time_ms": 500, "value": 0.3 },
+            { "time_ms": 1500, "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "thumbs-up-approval",
+      "name": "Thumbs Up Approval",
+      "description": "Classic thumbs up with a smile",
+      "tags": ["happy", "hand", "approval"],
+      "duration_ms": 2500,
+      "created_at": "2025-12-26T10:00:00Z",
+      "gesture": {
+        "name": "thumbup",
+        "duration": 2.5,
+        "mirror": false
+      },
+      "emoji": "😊",
+      "mood": "happy"
+    },
+    {
+      "id": "casual-shrug",
+      "name": "Casual Shrug",
+      "description": "Nonchalant shrug gesture",
+      "tags": ["neutral", "hand", "body"],
+      "duration_ms": 2000,
+      "created_at": "2025-12-26T10:00:00Z",
+      "gesture": {
+        "name": "shrug",
+        "duration": 2,
+        "mirror": false
+      },
+      "emoji": "🤷",
+      "mood": "neutral"
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+{
+  "version": "1.0",
+  "updated_at": "2024-12-26T00:00:00.000Z",
+  "animations": [
+    {
+      "id": "anim_hip_hop_groove",
+      "name": "Hip Hop Groove",
+      "description": "Basic hip hop bounce with head nods",
+      "url": "/animations/hip-hop-groove.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 4000,
+      "bpm": 100,
+      "loopable": true,
+      "tags": ["hip-hop", "energetic", "groove"],
+      "mood": "happy",
+      "intensity": "medium",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_house_step",
+      "name": "House Step",
+      "description": "Classic house dance stepping pattern",
+      "url": "/animations/house-step.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 3000,
+      "bpm": 125,
+      "loopable": true,
+      "tags": ["house", "energetic", "step"],
+      "mood": "happy",
+      "intensity": "high",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_robot_wave",
+      "name": "Robot Wave",
+      "description": "Mechanical robotic arm wave motion",
+      "url": "/animations/robot-wave.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 5000,
+      "bpm": 90,
+      "loopable": true,
+      "tags": ["robot", "smooth", "wave"],
+      "mood": "neutral",
+      "intensity": "low",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_pop_lock",
+      "name": "Pop and Lock",
+      "description": "Sharp popping and locking movements",
+      "url": "/animations/pop-lock.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 3500,
+      "bpm": 95,
+      "loopable": true,
+      "tags": ["popping", "locking", "dramatic"],
+      "mood": "angry",
+      "intensity": "high",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_sway_chill",
+      "name": "Chill Sway",
+      "description": "Relaxed swaying motion",
+      "url": "/animations/chill-sway.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 6000,
+      "bpm": 80,
+      "loopable": true,
+      "tags": ["freestyle", "chill", "smooth"],
+      "mood": "neutral",
+      "intensity": "low",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_victory_pump",
+      "name": "Victory Pump",
+      "description": "Energetic arm pump celebration",
+      "url": "/animations/victory-pump.fbx",
+      "source": "mixamo",
+      "type": "gesture",
+      "duration_ms": 2000,
+      "loopable": false,
+      "tags": ["energetic", "playful", "celebration"],
+      "mood": "happy",
+      "intensity": "high",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_tutting_box",
+      "name": "Tutting Box",
+      "description": "Angular arm tutting forming box shapes",
+      "url": "/animations/tutting-box.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 4000,
+      "bpm": 110,
+      "loopable": true,
+      "tags": ["tutting", "quirky", "geometric"],
+      "mood": "neutral",
+      "intensity": "medium",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "anim_shuffle_basic",
+      "name": "Basic Shuffle",
+      "description": "Melbourne shuffle footwork",
+      "url": "/animations/shuffle-basic.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 3000,
+      "bpm": 130,
+      "loopable": true,
+      "tags": ["shuffling", "energetic", "footwork"],
+      "mood": "happy",
+      "intensity": "high",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    }
+  ],
+  "poses": [
+    {
+      "id": "pose_hands_up",
+      "name": "Hands Up",
+      "description": "Arms raised overhead",
+      "url": "/poses/hands-up.fbx",
+      "source": "mixamo",
+      "duration_ms": 2000,
+      "tags": ["energetic", "celebration"],
+      "mood": "happy",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "pose_cool_lean",
+      "name": "Cool Lean",
+      "description": "Relaxed side lean pose",
+      "url": "/poses/cool-lean.fbx",
+      "source": "mixamo",
+      "duration_ms": 3000,
+      "tags": ["chill", "smooth"],
+      "mood": "neutral",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "pose_power_stance",
+      "name": "Power Stance",
+      "description": "Wide stance with crossed arms",
+      "url": "/poses/power-stance.fbx",
+      "source": "mixamo",
+      "duration_ms": 2500,
+      "tags": ["dramatic", "aggressive"],
+      "mood": "angry",
+      "created_at": "2024-12-26T00:00:00.000Z"
+    }
+  ],
+  "choreographies": [
+    {
+      "id": "choreo_demo_mix",
+      "name": "Demo Mix",
+      "description": "Sample choreography showcasing multiple styles",
+      "style": "freestyle",
+      "mood": "energetic",
+      "bpm": 110,
+      "duration_ms": 15000,
+      "steps": [
+        {
+          "clip_id": "anim_hip_hop_groove",
+          "start_ms": 0,
+          "duration_ms": 4000,
+          "transition": "cut"
+        },
+        {
+          "clip_id": "anim_pop_lock",
+          "start_ms": 4000,
+          "duration_ms": 3500,
+          "transition": "crossfade",
+          "transition_ms": 300
+        },
+        {
+          "clip_id": "anim_robot_wave",
+          "start_ms": 7500,
+          "duration_ms": 4000,
+          "transition": "crossfade",
+          "transition_ms": 500
+        },
+        {
+          "clip_id": "anim_victory_pump",
+          "start_ms": 11500,
+          "duration_ms": 2000,
+          "transition": "crossfade",
+          "transition_ms": 300
+        },
+        {
+          "clip_id": "anim_chill_sway",
+          "start_ms": 13500,
+          "duration_ms": 1500,
+          "transition": "blend"
+        }
+      ],
+      "created_at": "2024-12-26T00:00:00.000Z"
+    }
+  ]
+}

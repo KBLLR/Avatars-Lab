@@ -45,6 +45,8 @@ export default defineConfig({
         conversation: resolve(root, "mlx-conversation.html"),
         stage: resolve(root, "stage.html"),
         "multi-modal": resolve(root, "multi-modal.html"),
+        "gestures-lab": resolve(root, "gestures-lab.html"),
+        "dance-studio": resolve(root, "dance-studio.html"),
         info: resolve(root, "info.html"),
         settings: resolve(root, "settings.html")
       }

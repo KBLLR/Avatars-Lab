@@ -101,7 +101,17 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
 
   const performSong = async () => {
     const state = getState();
-    if (!state.head || !state.audioBuffer) return;
+    const isDuoMode = state.duoMode && state.duoManager;
+
+    // In Duo Mode, we use duoManager; otherwise require head
+    if (!isDuoMode && !state.head) {
+      updateStatus("Avatar not loaded.");
+      return;
+    }
+    if (!state.audioBuffer) {
+      updateStatus("Audio not loaded.");
+      return;
+    }
     if (!state.transcriptText) {
       updateStatus("Transcript required. Run transcribe first.");
       return;
@@ -114,8 +124,22 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
     const unlocked = await ensureAudioContext("Perform");
     if (!unlocked) return;
 
-    await ensureLipsync(state.head);
-    state.head.start();
+    // For Duo Mode, get the primary head from duoManager
+    const activeHead = isDuoMode
+      ? state.duoManager!.getHead("avatar_a")
+      : state.head;
+
+    if (!activeHead) {
+      updateStatus("No active avatar available.");
+      return;
+    }
+
+    await ensureLipsync(activeHead);
+    if (isDuoMode) {
+      state.duoManager!.start();
+    } else {
+      state.head!.start();
+    }
     const durationMs = state.audioBuffer.duration * 1000;
     const baseTimings =
       state.wordTimings || buildWordTimings(encodeWords(state.transcriptText), durationMs);
@@ -128,17 +152,18 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
     updateState({ plan: activePlan, planSource });
 
     const timings = els.soloOnly.checked ? filterWordsForSolo(baseTimings, activePlan.sections) : baseTimings;
-    const visemeTimings = buildVisemeTimings(state.head, timings);
+    const visemeTimings = buildVisemeTimings(activeHead, timings);
 
-    // Create context for scheduler
+    // Create context for scheduler (include duoManager if in Duo Mode)
     const schedulerContext: SchedulerContext = {
-        head: state.head,
+        head: activeHead,
         cameraSettings: state.cameraSettings,
         lightPreset: state.lightPreset,
         updateStatus,
         applyCameraSettings,
         applyLightPreset,
-        effectsManager
+        effectsManager,
+        duoManager: isDuoMode ? state.duoManager! : undefined
     };
 
     const markers = buildMarkersFromPlan(activePlan, durationMs, schedulerContext);
@@ -159,7 +184,7 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
     // Apply spotlight preset at performance start
     applyLightPreset("spotlight");
 
-    const playbackStart = state.head.audioCtx.currentTime;
+    const playbackStart = activeHead.audioCtx.currentTime;
     const lyricActive = Boolean(state.wordTimings?.words.length);
     updateState({
       performing: true,
@@ -178,13 +203,36 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
       startLyricsOverlay();
     }
     updateHero(undefined, state.audioFile ? state.audioFile.name : undefined, activePlan.title || "Performance");
-    state.head.speakAudio(audio);
+
+    // In Duo Mode, use duoManager.speak; otherwise use head.speakAudio
+    if (isDuoMode && state.duoManager) {
+      // For now, Avatar A speaks the performance
+      // Future: distribute based on speak_to actions in the plan
+      state.duoManager.speak("avatar_a", {
+        audio: state.audioBuffer,
+        words: timings.words,
+        wtimes: timings.wtimes,
+        wdurations: timings.wdurations,
+        visemes: hasVisemes ? visemeTimings.visemes : undefined,
+        vtimes: hasVisemes ? visemeTimings.vtimes : undefined,
+        vdurations: hasVisemes ? visemeTimings.vdurations : undefined,
+        markers: markers.markers,
+        mtimes: markers.mtimes
+      });
+    } else {
+      activeHead.speakAudio(audio);
+    }
   };
 
   const stopPerformance = () => {
     const state = getState();
-    if (!state.head) return;
-    state.head.stop();
+    const isDuoMode = state.duoMode && state.duoManager;
+
+    if (isDuoMode && state.duoManager) {
+      state.duoManager.stopAll();
+    } else if (state.head) {
+      state.head.stop();
+    }
 
     // Apply spotlight preset when stopped
     applyLightPreset("spotlight");

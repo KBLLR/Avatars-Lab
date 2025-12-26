@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Labs - Dance Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --surface: #18181b;
+        --hover: #27272a;
+        --accent: #8b5cf6;
+        --accent-2: #22c55e;
+        --accent-3: #f97316;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #app {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        min-height: 100vh;
+        padding: 20px;
+        gap: 20px;
+      }
+
+      #preview {
+        position: relative;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #000;
+        overflow: hidden;
+      }
+
+      #avatar {
+        position: absolute;
+        inset: 0;
+      }
+
+      #timeline {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        background: rgba(0,0,0,0.9);
+        border-top: 1px solid var(--border);
+        padding: 12px 16px;
+      }
+
+      #timelineTrack {
+        position: relative;
+        height: 40px;
+        background: var(--surface);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      #playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--accent);
+        z-index: 10;
+      }
+
+      .timeline-clip {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        background: var(--accent);
+        border-radius: 3px;
+        font-size: 10px;
+        padding: 4px;
+        overflow: hidden;
+        white-space: nowrap;
+        opacity: 0.8;
+        cursor: pointer;
+      }
+
+      .timeline-clip:hover {
+        opacity: 1;
+      }
+
+      #timelineControls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      #timelineControls button {
+        padding: 4px 12px;
+        font-size: 12px;
+      }
+
+      #timeDisplay {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      #sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+        max-height: 100vh;
+        padding-right: 8px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .card-body {
+        padding: 16px;
+      }
+
+      label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input[type="text"], input[type="number"], textarea, select {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 13px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--fg);
+        margin-bottom: 12px;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        margin-bottom: 12px;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--fg);
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      button:hover {
+        background: var(--hover);
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      button.primary:hover {
+        opacity: 0.9;
+      }
+
+      button.secondary {
+        background: var(--accent-3);
+        border-color: var(--accent-3);
+        color: #000;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .row > * {
+        flex: 1;
+      }
+
+      .style-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .style-btn {
+        padding: 8px 4px;
+        font-size: 11px;
+        text-align: center;
+        border-radius: 4px;
+      }
+
+      .style-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      .mood-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .mood-btn {
+        padding: 8px 4px;
+        font-size: 11px;
+        text-align: center;
+        border-radius: 4px;
+      }
+
+      .mood-btn.active {
+        background: var(--accent-3);
+        border-color: var(--accent-3);
+        color: #000;
+      }
+
+      .library-item {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .library-item:hover {
+        background: var(--hover);
+      }
+
+      .library-item.active {
+        border-color: var(--accent);
+      }
+
+      .library-item-info {
+        flex: 1;
+      }
+
+      .library-item-name {
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+
+      .library-item-meta {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .library-item-actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .library-item-actions button {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
+      .tab-bar {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .tab {
+        padding: 10px 16px;
+        font-size: 12px;
+        border: none;
+        background: none;
+        color: var(--muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+
+      .tab.active {
+        color: var(--fg);
+        border-bottom-color: var(--accent);
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      #status {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        padding: 8px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        z-index: 100;
+      }
+
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .slider-row label {
+        flex: 0 0 80px;
+        margin: 0;
+      }
+
+      .slider-row input[type="range"] {
+        flex: 1;
+        margin: 0;
+      }
+
+      .slider-row .val {
+        flex: 0 0 50px;
+        font-size: 11px;
+        color: var(--muted);
+        text-align: right;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 24px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .choreography-steps {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .step-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+
+      .step-item .step-num {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .step-item .step-name {
+        flex: 1;
+      }
+
+      .step-item .step-duration {
+        color: var(--muted);
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="preview">
+        <div id="avatar"></div>
+        <div id="timeline">
+          <div id="timelineTrack">
+            <div id="playhead" style="left: 0%"></div>
+          </div>
+          <div id="timelineControls">
+            <button id="playBtn">Play</button>
+            <button id="stopBtn">Stop</button>
+            <span id="timeDisplay">00:00 / 00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="sidebar">
+        <div class="card">
+          <div class="card-header">Preview Avatar</div>
+          <div class="card-body">
+            <label>Avatar</label>
+            <select id="avatarSelect"></select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="tab-bar">
+            <button class="tab active" data-tab="animations">Animations</button>
+            <button class="tab" data-tab="poses">Poses</button>
+            <button class="tab" data-tab="choreography">Choreography</button>
+          </div>
+
+          <!-- Animations Tab -->
+          <div class="tab-content active" id="animationsTab">
+            <div class="card-body">
+              <label>Dance Style</label>
+              <div class="style-grid" id="styleGrid"></div>
+
+              <label>Mood</label>
+              <div class="mood-grid" id="moodGrid"></div>
+
+              <div class="slider-row">
+                <label>BPM</label>
+                <input type="range" id="bpmSlider" min="60" max="180" value="120" />
+                <span class="val" id="bpmVal">120</span>
+              </div>
+
+              <label>Intensity</label>
+              <select id="intensitySelect">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+
+              <div class="row">
+                <button id="generateBtn" class="primary">Generate Choreography</button>
+              </div>
+
+              <label>Animation Library</label>
+              <div id="animationList"></div>
+
+              <div class="row">
+                <button id="addAnimationBtn">Add Animation</button>
+                <button id="importFbxBtn">Import FBX</button>
+              </div>
+              <input type="file" id="fbxFile" accept=".fbx" style="display: none;" />
+            </div>
+          </div>
+
+          <!-- Poses Tab -->
+          <div class="tab-content" id="posesTab">
+            <div class="card-body">
+              <label>Pose Library</label>
+              <div id="poseList"></div>
+
+              <div class="row">
+                <button id="addPoseBtn">Add Pose</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Choreography Tab -->
+          <div class="tab-content" id="choreographyTab">
+            <div class="card-body">
+              <label>Current Choreography</label>
+              <input type="text" id="choreoName" placeholder="Choreography name" />
+
+              <label>Steps</label>
+              <div class="choreography-steps" id="stepsList"></div>
+
+              <div class="row">
+                <button id="clearStepsBtn">Clear</button>
+                <button id="saveChoreoBtn" class="primary">Save Choreography</button>
+              </div>
+
+              <label>Saved Choreographies</label>
+              <div id="choreographyList"></div>
+
+              <div class="row">
+                <button id="exportChoreoBtn">Export JSON</button>
+                <button id="importChoreoBtn">Import</button>
+              </div>
+              <input type="file" id="importFile" accept=".json" style="display: none;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Playback</div>
+          <div class="card-body">
+            <div class="slider-row">
+              <label>Speed</label>
+              <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1" />
+              <span class="val" id="speedVal">1.0x</span>
+            </div>
+
+            <label for="loopToggle">
+              <input type="checkbox" id="loopToggle" /> Loop Playback
+            </label>
+
+            <div class="row" style="margin-top: 12px;">
+              <button id="playSelectedBtn" class="secondary">Play Selected</button>
+              <button id="queueBtn">Add to Queue</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status">Ready</div>
+
+    <script type="module" src="/src/dance-studio.ts"></script>
+  </body>
+</html>
