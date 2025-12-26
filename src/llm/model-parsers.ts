@@ -7,8 +7,152 @@
  * - Some add preamble text before JSON
  * - Some have specific formatting quirks
  *
+ * GPT-OSS models use the Harmony format with three channels:
+ * - ANALYSIS: Reasoning/thinking content
+ * - COMMENTARY: Tool/function calls
+ * - FINAL: Response text (this is where our JSON lives)
+ *
  * This module provides model-specific parsing strategies.
  */
+
+// ─────────────────────────────────────────────────────────────
+// Harmony Format Parser for GPT-OSS
+// ─────────────────────────────────────────────────────────────
+
+export interface HarmonyChannels {
+  analysis?: string;    // Reasoning content
+  commentary?: string;  // Tool calls
+  final?: string;       // Response text (contains JSON)
+}
+
+/**
+ * Parse GPT-OSS harmony format output
+ * Extracts content from ANALYSIS, COMMENTARY, and FINAL channels
+ * Exported for debugging
+ */
+export function parseHarmonyFormat(raw: string): HarmonyChannels {
+  const channels: HarmonyChannels = {};
+
+  // Remove <|end|> and <|endoftext|> tokens first
+  let cleaned = raw.replace(/<\|end(?:oftext)?\|>/gi, '');
+
+  // Common harmony channel markers (including GPT-OSS variations)
+  const channelMarkers = [
+    // Analysis/Reasoning variants
+    { marker: /<\|analysis\|>/gi, channel: 'analysis' as const },
+    { marker: /<\|reasoning\|>/gi, channel: 'analysis' as const },
+    { marker: /<\|thinking\|>/gi, channel: 'analysis' as const },
+    { marker: /<\|think\|>/gi, channel: 'analysis' as const },
+    { marker: /<\|inner_thoughts\|>/gi, channel: 'analysis' as const },
+    { marker: /<\|scratchpad\|>/gi, channel: 'analysis' as const },
+    // Commentary/Tool variants
+    { marker: /<\|commentary\|>/gi, channel: 'commentary' as const },
+    { marker: /<\|tool_call\|>/gi, channel: 'commentary' as const },
+    { marker: /<\|call\|>/gi, channel: 'commentary' as const },
+    { marker: /<\|function\|>/gi, channel: 'commentary' as const },
+    // Final/Response variants (most important for JSON extraction)
+    { marker: /<\|final\|>/gi, channel: 'final' as const },
+    { marker: /<\|message\|>/gi, channel: 'final' as const },
+    { marker: /<\|response\|>/gi, channel: 'final' as const },
+    { marker: /<\|output\|>/gi, channel: 'final' as const },
+    { marker: /<\|answer\|>/gi, channel: 'final' as const },
+    { marker: /<\|assistant\|>/gi, channel: 'final' as const },
+  ];
+
+  // Build regex for all known channel markers
+  const allMarkersPattern = /<\|(?:analysis|reasoning|thinking|think|inner_thoughts|scratchpad|commentary|tool_call|call|function|final|message|response|output|answer|assistant)\|>/gi;
+
+  // Try to extract content between channel markers
+  for (const { marker, channel } of channelMarkers) {
+    const matches = cleaned.match(marker);
+    if (matches) {
+      // Find content after this marker until next marker or end
+      const markerIndex = cleaned.search(marker);
+      if (markerIndex >= 0) {
+        const afterMarker = cleaned.slice(markerIndex).replace(marker, '');
+        // Find next channel marker
+        const nextMarkerMatch = afterMarker.match(allMarkersPattern);
+        const endIndex = nextMarkerMatch?.index ?? afterMarker.length;
+        const content = afterMarker.slice(0, endIndex).trim();
+        if (content) {
+          channels[channel] = content;
+        }
+      }
+    }
+  }
+
+  // If no channels found, check for any <|...|> tokens and strip them
+  if (!channels.final && !channels.analysis) {
+    // Check if there are ANY harmony-style tokens
+    const hasTokens = /<\|[^|]+\|>/g.test(raw);
+    if (hasTokens) {
+      // Strip all tokens and treat entire content as final
+      channels.final = cleaned.replace(/<\|[^|]+\|>/g, ' ').replace(/\s+/g, ' ').trim();
+    } else {
+      // No tokens at all - raw content is the response
+      channels.final = cleaned.trim();
+    }
+  }
+
+  return channels;
+}
+
+/**
+ * Extract JSON specifically from harmony FINAL channel
+ * Exported for debugging and direct use
+ */
+export function extractJsonFromHarmony(raw: string): string | null {
+  const channels = parseHarmonyFormat(raw);
+
+  // Prefer FINAL channel for JSON
+  let source = channels.final || channels.analysis || '';
+
+  // If still no source, fall back to stripping tokens from raw
+  if (!source) {
+    source = raw.replace(/<\|[^|]+\|>/g, ' ').trim();
+  }
+
+  // Strategy 1: Find balanced JSON object
+  const jsonObjects = findAllJsonObjects(source);
+  if (jsonObjects.length > 0) {
+    // Prefer objects that look like our expected format
+    const directorJson = jsonObjects.find(obj =>
+      obj.includes('"thoughts_summary"') ||
+      obj.includes('"plan"') ||
+      obj.includes('"sections"')
+    );
+    if (directorJson) {
+      return directorJson;
+    }
+    // Otherwise return the largest object
+    return jsonObjects.reduce((a, b) => a.length > b.length ? a : b);
+  }
+
+  // Strategy 2: Simple regex match for any JSON object
+  const jsonMatch = source.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+
+  // Strategy 3: Try to find JSON starting patterns and extract from there
+  const jsonStarts = [
+    source.indexOf('{"thoughts_summary"'),
+    source.indexOf('{"plan"'),
+    source.indexOf('{"sections"'),
+    source.indexOf('{"analysis"'),
+  ].filter(i => i >= 0);
+
+  if (jsonStarts.length > 0) {
+    const startIndex = Math.min(...jsonStarts);
+    const fromStart = source.slice(startIndex);
+    const endMatch = fromStart.match(/\}(?:\s*\})*\s*$/);
+    if (endMatch) {
+      return fromStart;
+    }
+  }
+
+  return null;
+}
 
 export interface ModelParserConfig {
   /** Model ID pattern (regex or exact match) */
@@ -27,6 +171,8 @@ export interface ModelParserConfig {
   jsonExtractor?: RegExp;
   /** Whether to be lenient with structure (accept nested or flat) */
   lenientStructure?: boolean;
+  /** Whether model uses Harmony format (GPT-OSS) */
+  useHarmonyParser?: boolean;
   /** Additional notes for debugging */
   notes?: string;
 }
@@ -110,21 +256,31 @@ function findAllJsonObjects(text: string): string[] {
 export const MODEL_PARSERS: ModelParserConfig[] = [
   {
     pattern: /gpt-oss|gptoss/i,
-    name: "GPT-OSS",
+    name: "GPT-OSS (Harmony)",
     stripMarkdown: true,
     stripPreamble: true,
     lenientStructure: true,
+    useHarmonyParser: true,
     preprocess: (raw) => {
+      // GPT-OSS uses Harmony format with channels: ANALYSIS, COMMENTARY, FINAL
+      // First try to extract JSON from the FINAL channel
+      const harmonyJson = extractJsonFromHarmony(raw);
+      if (harmonyJson) {
+        let cleaned = harmonyJson;
+        // Fix common JSON issues
+        cleaned = cleaned.replace(/(?<![\\])'([^']*)'(?=\s*[,}\]:)])/g, '"$1"');
+        cleaned = cleaned.replace(/(?<!")(\b\w+\b)(?=\s*:)/g, '"$1"');
+        return cleaned;
+      }
+
+      // Fallback: Strip all harmony tokens and try to find JSON
       let cleaned = raw;
 
-      // Strip special tokens: <|channel|>, <|message|>, <|end|>, etc.
+      // Strip harmony special tokens
       cleaned = cleaned.replace(/<\|[^|]+\|>/g, " ");
-
-      // Strip any remaining < followed by | patterns that might be malformed
       cleaned = cleaned.replace(/<\|[^>]*>/g, " ");
 
-      // GPT-OSS sometimes outputs small JSON fragments first, then the real response
-      // Look for the main response object containing "thoughts_summary" or "plan" or "sections"
+      // Look for main response object
       const mainResponsePatterns = [
         /\{\s*"thoughts_summary"/,
         /\{\s*"plan"\s*:/,
@@ -140,16 +296,15 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
         }
       }
 
-      // Specific fix for "analysis" prefix common in GPT-OSS
-      // It often outputs "analysis ..." before the JSON
+      // Handle "analysis" prefix
       if (/^analysis\s+/i.test(cleaned)) {
-         const jsonStart = cleaned.indexOf("{");
-         if (jsonStart >= 0) {
-           cleaned = cleaned.slice(jsonStart);
-         }
+        const jsonStart = cleaned.indexOf("{");
+        if (jsonStart >= 0) {
+          cleaned = cleaned.slice(jsonStart);
+        }
       }
 
-      // If still no valid start, find the first '{' that looks like a JSON object start
+      // Find first JSON object
       if (!cleaned.trim().startsWith("{")) {
         const jsonStart = cleaned.indexOf("{");
         if (jsonStart >= 0) {
@@ -157,11 +312,10 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
         }
       }
 
-      // If no main response pattern found, fall back to finding the largest JSON object
+      // Fallback to largest JSON object
       if (!mainResponsePatterns.some(p => p.test(cleaned))) {
         const allObjects = findAllJsonObjects(cleaned);
         if (allObjects.length > 0) {
-          // Pick the largest object (most likely the full response)
           const largest = allObjects.reduce((a, b) =>
             a.length > b.length ? a : b
           );
@@ -169,28 +323,33 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
         }
       }
 
-      // GPT-OSS sometimes uses single quotes - convert to double
-      // But only outside of already quoted strings
+      // Fix JSON syntax issues
       cleaned = cleaned.replace(/(?<![\\])'([^']*)'(?=\s*[,}\]:)])/g, '"$1"');
-
-      // Fix unquoted property names like {mood:"angry"} -> {"mood":"angry"}
-      // Matches word characters followed by colon, not inside quotes
       cleaned = cleaned.replace(/(?<!")(\b\w+\b)(?=\s*:)/g, '"$1"');
 
       return cleaned;
     },
-    notes: "GPT-OSS models may output fragments first, use special tokens, and inconsistent quoting"
+    notes: "GPT-OSS uses Harmony format with ANALYSIS/COMMENTARY/FINAL channels"
   },
   {
     pattern: /jinx/i,
-    name: "Jinx GPT-OSS",
+    name: "Jinx GPT-OSS (Harmony)",
     stripMarkdown: true,
     stripPreamble: true,
     lenientStructure: true,
+    useHarmonyParser: true,
     preprocess: (raw) => {
-      let cleaned = raw;
+      // Jinx uses same Harmony format as GPT-OSS
+      const harmonyJson = extractJsonFromHarmony(raw);
+      if (harmonyJson) {
+        let cleaned = harmonyJson;
+        cleaned = cleaned.replace(/(?<![\\])'([^']*)'(?=\s*[,}\]:)])/g, '"$1"');
+        cleaned = cleaned.replace(/(?<!")(\b\w+\b)(?=\s*:)/g, '"$1"');
+        return cleaned;
+      }
 
-      // Strip special tokens (same as GPT-OSS)
+      // Fallback: Strip harmony tokens
+      let cleaned = raw;
       cleaned = cleaned.replace(/<\|[^|]+\|>/g, " ");
       cleaned = cleaned.replace(/<\|[^>]*>/g, " ");
 
@@ -223,7 +382,7 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
 
       return cleaned;
     },
-    notes: "Jinx fine-tuned variant of GPT-OSS with same token handling"
+    notes: "Jinx fine-tuned variant of GPT-OSS with Harmony format"
   },
   {
     pattern: /qwen/i,

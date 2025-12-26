@@ -4,6 +4,15 @@ export const directorModelFallback = "hf/mlx-community__gpt-oss-20b-MXFP4-Q8";
 export const directorMaxTokens = 700;
 
 export const lightPresets: Record<string, LightPresetConfig> = {
+  spotlight: {
+    label: "Spotlight",
+    ambient: 0.1,
+    direct: 2,
+    spot: 28,
+    ambientColor: "#0a0a0a",
+    directColor: "#1a1a1a",
+    spotColor: "#ffffff"
+  },
   neon: {
     label: "Neon Drift",
     ambient: 0.7,

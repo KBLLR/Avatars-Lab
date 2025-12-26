@@ -156,6 +156,9 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
       mtimes: markers.mtimes
     };
 
+    // Apply spotlight preset at performance start
+    applyLightPreset("spotlight");
+
     const playbackStart = state.head.audioCtx.currentTime;
     const lyricActive = Boolean(state.wordTimings?.words.length);
     updateState({
@@ -167,7 +170,7 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
     setHud(
       activePlan.title || "Performance",
       state.cameraSettings.view,
-      lightPresets[state.lightPreset].label,
+      "Spotlight",
       "Performing"
     );
     updateStatus("Performance started...");
@@ -182,14 +185,18 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
     const state = getState();
     if (!state.head) return;
     state.head.stop();
+
+    // Apply spotlight preset when stopped
+    applyLightPreset("spotlight");
+
     updateState({ performing: false, lyricActive: false });
     setHud(
-      els.hudScene.textContent || "Idle",
+      "Idle",
       state.cameraSettings.view,
-      lightPresets[state.lightPreset].label,
-      "Stopped"
+      "Spotlight",
+      "Ready"
     );
-    updateStatus("Performance stopped.");
+    updateStatus("Performance stopped. Ready for next act.");
   };
 
   return { performSong, stopPerformance };

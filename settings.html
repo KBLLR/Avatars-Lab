@@ -3,64 +3,190 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Avatar Labs Settings</title>
+    <title>Settings - Avatar Labs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg: #0b0f16;
-        --panel: #111826;
-        --accent: #7cd9b1;
-        --text: #f7f3ee;
-        --muted: #9fb0c2;
-        --border: rgba(255, 255, 255, 0.1);
+        --bg: #fafafa;
+        --fg: #0a0a0a;
+        --muted: #71717a;
+        --border: #e4e4e7;
+        --surface: #ffffff;
+        --hover: #f4f4f5;
+        --code-bg: #f4f4f5;
+        --success: #22c55e;
+        --warning: #eab308;
+        --danger: #ef4444;
       }
 
-      * { box-sizing: border-box; }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #09090b;
+          --fg: #fafafa;
+          --muted: #a1a1aa;
+          --border: #27272a;
+          --surface: #18181b;
+          --hover: #27272a;
+          --code-bg: #27272a;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+      }
 
       body {
-        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.6;
         min-height: 100vh;
-        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
-        color: var(--text);
-        background: radial-gradient(circle at 15% 20%, #1b2738 0%, transparent 55%),
-          radial-gradient(circle at 80% 10%, #1f3a2e 0%, transparent 50%),
-          linear-gradient(150deg, #0b0f16, #111827);
       }
 
-      main {
-        max-width: 1100px;
+      .container {
+        max-width: 900px;
         margin: 0 auto;
-        padding: 64px 24px 80px;
-        display: grid;
-        gap: 24px;
+        padding: 0 24px;
       }
 
-      h1 { margin: 0; font-size: 32px; }
-      h2 { margin: 0; font-size: 20px; }
-
-      .card {
-        padding: 20px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: rgba(17, 24, 38, 0.9);
-        display: grid;
-        gap: 12px;
+      /* Navigation */
+      nav {
+        padding: 20px 0;
+        border-bottom: 1px solid var(--border);
       }
 
-      .grid {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      .nav-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
 
-      .chip {
-        padding: 8px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+      .nav-brand {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
         color: var(--muted);
-        font-size: 12px;
+        text-decoration: none;
       }
 
+      .nav-back {
+        font-size: 13px;
+        color: var(--muted);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: color 0.15s;
+      }
+
+      .nav-back:hover {
+        color: var(--fg);
+      }
+
+      /* Header */
+      header {
+        padding: 60px 0 40px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      h1 {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 16px;
+      }
+
+      .lead {
+        font-size: 16px;
+        color: var(--muted);
+        max-width: 600px;
+        line-height: 1.7;
+      }
+
+      /* Status Indicator */
+      .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+
+      .status-indicator.online {
+        background: var(--success);
+        box-shadow: 0 0 6px var(--success);
+      }
+
+      .status-indicator.offline {
+        background: var(--danger);
+      }
+
+      /* Config Table */
+      .config-table td:first-child {
+        font-weight: 500;
+        color: var(--fg);
+      }
+
+      .config-table td:last-child {
+        text-align: center;
+      }
+
+      /* Sections */
+      section {
+        padding: 48px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      section:last-of-type {
+        border-bottom: none;
+      }
+
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 12px;
+      }
+
+      p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+        margin-bottom: 16px;
+      }
+
+      /* Cards */
+      .card {
+        padding: 24px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .card + .card {
+        margin-top: 16px;
+      }
+
+      /* Tables */
       table {
         width: 100%;
         border-collapse: collapse;
@@ -69,68 +195,280 @@
 
       th, td {
         text-align: left;
-        padding: 10px 8px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
         vertical-align: top;
       }
 
-      th { color: var(--muted); font-weight: 600; }
-
-      code {
-        font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
-        font-size: 12px;
-        color: var(--accent);
+      th {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: var(--hover);
       }
 
-      ul { margin: 0; padding-left: 18px; color: var(--muted); }
+      td {
+        color: var(--muted);
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* Code */
+      code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        padding: 2px 6px;
+        background: var(--code-bg);
+        border-radius: 4px;
+        color: var(--fg);
+      }
+
+      /* Lists */
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      ul li {
+        position: relative;
+        padding-left: 16px;
+        font-size: 14px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        line-height: 1.6;
+      }
+
+      ul li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 10px;
+        width: 4px;
+        height: 4px;
+        background: var(--border);
+        border-radius: 50%;
+      }
+
+      /* Model Grid */
+      .model-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 8px;
+      }
+
+      .model-item {
+        padding: 12px 16px;
+        background: var(--hover);
+        border-radius: 6px;
+        font-size: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--muted);
+      }
+
+      /* Voice Grid */
+      .voice-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .voice-chip {
+        padding: 6px 12px;
+        background: var(--hover);
+        border-radius: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* Loading State */
+      .loading {
+        color: var(--muted);
+        font-size: 13px;
+        font-style: italic;
+      }
+
+      /* Footer */
+      footer {
+        padding: 32px 0;
+        text-align: center;
+      }
+
+      .footer-text {
+        font-size: 12px;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
-    <main>
-      <header class="card">
-        <h1>Settings + Models</h1>
-        <div class="grid">
-          <div class="chip" id="llmBase">LLM Base: -</div>
-          <div class="chip" id="audioBase">Audio Base: -</div>
-          <div class="chip" id="llmModel">LLM Model: -</div>
-          <div class="chip" id="ttsModel">TTS Model: -</div>
-          <div class="chip" id="sttModel">STT Model: -</div>
+    <div class="container">
+      <nav>
+        <div class="nav-inner">
+          <a href="/" class="nav-brand">Avatar Labs</a>
+          <a href="/" class="nav-back">&larr; Back</a>
         </div>
+      </nav>
+
+      <header>
+        <h1>Settings</h1>
+        <p class="lead">
+          MLX service endpoints and active model configuration.
+        </p>
       </header>
 
-      <section class="card">
-        <h2>Available Models (from registry)</h2>
-        <div id="models">Loading...</div>
+      <section>
+        <div class="section-label">Active Configuration</div>
+        <div class="card">
+          <table class="config-table">
+            <thead>
+              <tr>
+                <th style="width: 100px;">Service</th>
+                <th style="width: 200px;">Endpoint</th>
+                <th>Model</th>
+                <th style="width: 60px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>LLM</td>
+                <td><code id="llmBase">--</code></td>
+                <td><code id="llmModel">--</code></td>
+                <td><span class="status-indicator" id="llm-status"></span></td>
+              </tr>
+              <tr>
+                <td>TTS</td>
+                <td><code id="audioBase">--</code></td>
+                <td><code id="ttsModel">--</code></td>
+                <td><span class="status-indicator" id="tts-status"></span></td>
+              </tr>
+              <tr>
+                <td>STT</td>
+                <td><code>—</code></td>
+                <td><code id="sttModel">--</code></td>
+                <td><span class="status-indicator" id="stt-status"></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>HeadTTS Compatibility Notes</h2>
-        <ul>
-          <li>Uses `ws` (MIT License), `@huggingface/transformers.js` + ONNX Runtime (Apache 2.0).</li>
-          <li>Reference model: `onnx-community/Kokoro-82M-v1.0-ONNX-timestamped`.</li>
-          <li>Local voices directory: `model-zoo/mlx/models/voices` (listed below).</li>
-        </ul>
+      <section>
+        <div class="section-label">Available Models</div>
+        <div class="card">
+          <p>Models loaded from the registry:</p>
+          <div id="models" class="model-grid">
+            <span class="loading">Loading...</span>
+          </div>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>HeadTTS Options (Reference)</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Option</th>
-              <th>Description</th>
-              <th>Default</th>
-            </tr>
-          </thead>
-          <tbody id="headttsOptions"></tbody>
-        </table>
+      <section>
+        <div class="section-label">HeadTTS Configuration</div>
+        <div class="card">
+          <h2>Compatibility Notes</h2>
+          <ul>
+            <li>Uses <code>ws</code> (MIT License) and <code>@huggingface/transformers.js</code> + ONNX Runtime (Apache 2.0)</li>
+            <li>Reference model: <code>onnx-community/Kokoro-82M-v1.0-ONNX-timestamped</code></li>
+            <li>Local voices directory: <code>model-zoo/mlx/models/voices</code></li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2>Options Reference</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Description</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody id="headttsOptions">
+              <tr>
+                <td><code>voice</code></td>
+                <td>Voice ID to use for synthesis</td>
+                <td><code>af_heart</code></td>
+              </tr>
+              <tr>
+                <td><code>rate</code></td>
+                <td>Speech rate multiplier</td>
+                <td><code>1.0</code></td>
+              </tr>
+              <tr>
+                <td><code>pitch</code></td>
+                <td>Pitch adjustment</td>
+                <td><code>1.0</code></td>
+              </tr>
+              <tr>
+                <td><code>language</code></td>
+                <td>Language code</td>
+                <td><code>en</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>Available Voices (local)</h2>
-        <div id="voices">Loading...</div>
+      <section>
+        <div class="section-label">Available Voices</div>
+        <div class="card">
+          <p>Local voices from <code>model-zoo/mlx/models/voices</code>:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Language</th>
+                <th>Female</th>
+                <th>Male</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>American English</td>
+                <td><code>af_alloy</code>, <code>af_aoede</code>, <code>af_bella</code>, <code>af_heart</code>, <code>af_jessica</code>, <code>af_kore</code>, <code>af_nicole</code>, <code>af_nova</code>, <code>af_river</code>, <code>af_sarah</code>, <code>af_sky</code></td>
+                <td><code>am_adam</code>, <code>am_echo</code>, <code>am_eric</code>, <code>am_fenrir</code>, <code>am_liam</code>, <code>am_michael</code>, <code>am_onyx</code>, <code>am_puck</code>, <code>am_santa</code></td>
+              </tr>
+              <tr>
+                <td>British English</td>
+                <td><code>bf_alice</code>, <code>bf_emma</code>, <code>bf_isabella</code>, <code>bf_lily</code></td>
+                <td><code>bm_daniel</code>, <code>bm_fable</code>, <code>bm_george</code>, <code>bm_lewis</code></td>
+              </tr>
+              <tr>
+                <td>Spanish</td>
+                <td><code>ef_dora</code></td>
+                <td><code>em_alex</code>, <code>em_santa</code></td>
+              </tr>
+              <tr>
+                <td>French</td>
+                <td><code>ff_siwis</code></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Hindi</td>
+                <td><code>hf_alpha</code>, <code>hf_beta</code></td>
+                <td><code>hm_omega</code>, <code>hm_psi</code></td>
+              </tr>
+              <tr>
+                <td>Italian</td>
+                <td><code>if_sara</code></td>
+                <td><code>im_nicola</code></td>
+              </tr>
+              <tr>
+                <td>Portuguese</td>
+                <td><code>pf_dora</code></td>
+                <td><code>pm_alex</code>, <code>pm_santa</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
-    </main>
+
+      <footer>
+        <p class="footer-text">Part of the HTDI ecosystem</p>
+      </footer>
+    </div>
 
     <script type="module" src="/src/settings.ts"></script>
   </body>

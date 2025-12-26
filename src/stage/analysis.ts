@@ -54,6 +54,56 @@ const getStageDisplayName = (stage: DirectorStage): string => {
   return names[stage];
 };
 
+/**
+ * Generate meaningful intro narration for each director stage
+ */
+const getDirectorIntro = (stage: DirectorStage): string => {
+  const intros: Record<DirectorStage, string> = {
+    performance: "Analyzing the lyrics and planning emotional arcs for each section.",
+    stage: "Designing lighting and atmosphere to enhance the mood.",
+    camera: "Planning camera movements and framing for visual impact.",
+    postfx: "Adding visual effects and post-processing touches."
+  };
+  return intros[stage];
+};
+
+/**
+ * Generate fallback narration when director output is invalid
+ */
+const getDirectorFallbackNarration = (stage: DirectorStage): string => {
+  const fallbacks: Record<DirectorStage, string> = {
+    performance: "I'll create a balanced performance with varied emotions throughout.",
+    stage: "Setting up dynamic lighting that follows the energy of the music.",
+    camera: "Using a mix of wide and close-up shots to keep things interesting.",
+    postfx: "Adding subtle effects to enhance the visual experience."
+  };
+  return fallbacks[stage];
+};
+
+/**
+ * Format thoughts for voice narration - make them more conversational
+ */
+const formatThoughtsForVoice = (stage: DirectorStage, thoughts: string): string => {
+  // Clean up and make more speakable
+  let narration = thoughts
+    .replace(/\s+/g, ' ')  // Normalize whitespace
+    .replace(/\[.*?\]/g, '')  // Remove bracket annotations
+    .trim();
+
+  // Add director context if thoughts are too terse
+  if (narration.length < 20) {
+    const context: Record<DirectorStage, string> = {
+      performance: `For this piece, ${narration.toLowerCase()}`,
+      stage: `On the lighting side, ${narration.toLowerCase()}`,
+      camera: `For the shots, ${narration.toLowerCase()}`,
+      postfx: `As finishing touches, ${narration.toLowerCase()}`
+    };
+    narration = context[stage];
+  }
+
+  return narration;
+};
+
 export const createAnalysisController = (deps: AnalysisDeps): AnalysisController => {
   const {
     els,
@@ -252,6 +302,12 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
                 : "";
               updateStatus(els, `${stageName}${chunkInfo}: ${event.message || "analyzing..."}`);
 
+              // Narrate intro when director starts (first "running" message without thoughtsPreview)
+              if (!event.thoughtsPreview && event.message?.includes("analyzing")) {
+                const intro = getDirectorIntro(event.stage);
+                enqueueAnalysisVoice(intro);
+              }
+
               if (event.thoughtsPreview) {
                 const notesState = getState();
                 els.directorNotes.textContent = `${notesState.directorNotes}\n\n${stageName}: ${event.thoughtsPreview}`;
@@ -276,6 +332,11 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
               });
             } else if (event.status === "failed") {
               updateStageBadges(els, event.stage, "failed");
+
+              // Provide meaningful fallback narration on failure
+              const fallbackNarration = getDirectorFallbackNarration(event.stage);
+              enqueueAnalysisVoice(`${stageName} encountered an issue. ${fallbackNarration}`);
+
               updateState({
                 analysisSegments: appendAnalysisThought(
                   els,
@@ -294,7 +355,10 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
             updateState({
               analysisSegments: appendAnalysisThought(els, getState().analysisSegments, displayText)
             });
-            enqueueAnalysisVoice(`${stageName}. ${thoughts}`);
+
+            // Format thoughts for more natural voice narration
+            const voiceNarration = formatThoughtsForVoice(stage, thoughts);
+            enqueueAnalysisVoice(voiceNarration);
 
             const nextNotes = [getState().directorNotes, displayText]
               .filter(Boolean)
@@ -311,6 +375,12 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
               )
             });
             updateStatus(els, `Fallback: ${reason}`);
+
+            // Provide reassuring narration when using fallback
+            enqueueAnalysisVoice(
+              "I'll use a backup plan to ensure we have a great performance. " +
+              "The staging will follow the natural flow of the music."
+            );
           }
         }
       );
@@ -334,6 +404,14 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
         updateState({ plan, planSource: "llm", directorNotes: nextNotes });
         els.directorNotes.textContent = nextNotes;
         updateStatus(els, `Performance plan ready (${(result.totalDurationMs / 1000).toFixed(1)}s). Hit Perform.`);
+
+        // Announce completion with section summary
+        const sectionCount = plan.sections.length;
+        const durationSec = Math.round(result.totalDurationMs / 1000);
+        enqueueAnalysisVoice(
+          `Analysis complete. I've planned ${sectionCount} sections over ${durationSec} seconds. ` +
+          `Press Perform when you're ready to begin.`
+        );
       }
 
       renderPlan(plan.sections);

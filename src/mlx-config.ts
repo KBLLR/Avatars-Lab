@@ -5,6 +5,7 @@ type MlxOverrides = {
   ttsModel?: string;
   directorModel?: string;
   embedModel?: string;
+  mfluxModel?: string;
 };
 
 const STORAGE_KEY = "avatarLabs.mlxOverrides";
@@ -42,6 +43,7 @@ const getMlxConfig = () => {
   const ttsModel = overrides.ttsModel || import.meta.env.VITE_MLX_DEFAULT_TTS_MODEL;
   const directorModel = overrides.directorModel || llmModel;
   const embedModel = overrides.embedModel || import.meta.env.VITE_MLX_DEFAULT_EMBED_MODEL;
+  const mfluxModel = overrides.mfluxModel || import.meta.env.VITE_MLX_DEFAULT_MFLUX_MODEL || "flux-schnell";
 
   return {
     llmBaseUrl: import.meta.env.VITE_MLX_LLM_BASE_URL,
@@ -54,12 +56,18 @@ const getMlxConfig = () => {
       import.meta.env.VITE_DATA_LAKE_URL ||
       import.meta.env.VITE_MLX_DATA_LAKE_URL ||
       "http://127.0.0.1:8012",
+    // mflux uses the LLM service endpoint (same port 8080)
+    mfluxBaseUrl:
+      import.meta.env.VITE_MLX_MFLUX_BASE_URL ||
+      import.meta.env.VITE_MLX_LLM_BASE_URL ||
+      "http://127.0.0.1:8080",
     llmModel,
     vlmModel,
     sttModel,
     ttsModel,
     directorModel,
     embedModel,
+    mfluxModel,
     ttsVoice: import.meta.env.VITE_MLX_DEFAULT_TTS_VOICE || "default"
   };
 };

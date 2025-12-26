@@ -64,7 +64,9 @@ export const loadAvatarList = async (
   });
 
   if (avatars.length) {
-    avatarSelect.value = avatars[0];
+    // Select a random avatar on page load
+    const randomIndex = Math.floor(Math.random() * avatars.length);
+    avatarSelect.value = avatars[randomIndex];
   }
 
   const baseUrl = manifestUrl ? new URL(".", manifestUrl).toString() : null;

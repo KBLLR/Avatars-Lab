@@ -10,6 +10,7 @@ export interface StageElements {
   heroTitle: HTMLElement;
   heroSubtitle: HTMLElement;
   heroLyrics: HTMLElement;
+  stageHeroDesc: HTMLElement;
   transcript: HTMLTextAreaElement;
   transcribeBtn: HTMLButtonElement;
   analyzeBtn: HTMLButtonElement;
@@ -112,6 +113,7 @@ export const getElements = (): StageElements => {
     heroTitle: document.getElementById("heroTitle") as HTMLElement,
     heroSubtitle: document.getElementById("heroSubtitle") as HTMLElement,
     heroLyrics: document.getElementById("heroLyrics") as HTMLElement,
+    stageHeroDesc: document.getElementById("stageHeroDesc") as HTMLElement,
     transcript: document.getElementById("transcript") as HTMLTextAreaElement,
     transcribeBtn: document.getElementById("transcribeBtn") as HTMLButtonElement,
     analyzeBtn: document.getElementById("analyzeBtn") as HTMLButtonElement,
