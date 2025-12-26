@@ -305,7 +305,7 @@ export abstract class BaseDirector {
   protected buildSchemaInstruction(): string {
     return `OUTPUT FORMAT (strict JSON, no markdown):
 {
-  "thoughts_summary": "1-2 sentences, ≤50 words, speakable summary of your creative vision",
+  "thoughts_summary": "1-2 sentences, less than 50 words, speakable summary of your creative vision",
   "analysis": "brief analysis of the lyrical content",
   "selection_reason": "why you chose these actions",
   "plan": {

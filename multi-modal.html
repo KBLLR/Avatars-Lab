@@ -3,53 +3,105 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Avatar Labs Multimodal</title>
+    <title>MLX Conversation Lab | Avatar Labs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #05070d;
-        --panel: #0f1624;
-        --accent: #ffb347;
-        --accent-2: #ff5f7a;
-        --accent-3: #5bf2d6;
-        --text: #f8f4ee;
-        --muted: #9aa9c2;
-        --card: rgba(15, 25, 40, 0.9);
-        --line: rgba(255, 255, 255, 0.1);
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --surface: #18181b;
+        --hover: #27272a;
+        --accent: #f97316;
+        --accent-2: #ef4444;
+        --accent-3: #22c55e;
+        --radius: 12px;
+        --gutter: 16px;
+        --margin: 16px;
       }
 
       * {
         box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
 
       body {
-        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
         min-height: 100vh;
-        font-family: "Space Grotesk", "Sora", "IBM Plex Sans", sans-serif;
-        color: var(--text);
-        background: radial-gradient(
-            circle at 15% 20%,
-            #1a2434 0%,
-            transparent 55%
-          ),
-          radial-gradient(circle at 85% 10%, #281329 0%, transparent 60%),
-          linear-gradient(150deg, #05070d, #0b1322 70%, #0f0b18);
         overflow: hidden;
       }
 
+      /* 3-Column Grid Layout */
       #app {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 420px;
-        min-height: 100vh;
-        padding: 20px;
-        gap: 20px;
+        grid-template-columns: 1fr 1fr 320px;
+        gap: var(--gutter);
+        padding: var(--margin);
+        height: 100vh;
+        max-height: 100vh;
+      }
+
+      /* Column Base */
+      .column {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gutter);
+        min-height: 0;
+      }
+
+      /* ============================================
+         COLUMN 1: AVATAR CANVAS
+         ============================================ */
+      #canvas-column {
+        position: relative;
+      }
+
+      .canvas-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 12px;
+      }
+
+      .canvas-hero {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .eyebrow {
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--accent);
+      }
+
+      .canvas-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--fg);
+      }
+
+      .canvas-status {
+        font-size: 12px;
+        color: var(--muted);
       }
 
       #stage {
+        flex: 1;
         position: relative;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--surface);
         overflow: hidden;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(5, 8, 14, 0.6);
+        min-height: 0;
       }
 
       #avatar {
@@ -60,643 +112,569 @@
       #spotlights {
         position: absolute;
         inset: 0;
-        background: radial-gradient(
-            circle at 20% 10%,
-            rgba(255, 179, 71, 0.3),
-            transparent 45%
-          ),
-          radial-gradient(
-            circle at 80% 20%,
-            rgba(255, 95, 122, 0.25),
-            transparent 50%
-          ),
-          radial-gradient(
-            circle at 50% 80%,
-            rgba(91, 242, 214, 0.2),
-            transparent 55%
-          );
-        mix-blend-mode: screen;
         pointer-events: none;
+        mix-blend-mode: screen;
       }
 
-      #analysisOverlay {
+      /* Floating Canvas Actions */
+      .canvas-actions {
         position: absolute;
-        inset: 0;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(9, 9, 11, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        backdrop-filter: blur(12px);
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 5;
+      }
+
+      #stage:hover .canvas-actions {
+        opacity: 1;
+      }
+
+      .canvas-actions button {
+        padding: 6px 12px;
+        font-size: 11px;
+      }
+
+      /* Mini HUD */
+      .canvas-hud {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        display: flex;
+        gap: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--muted);
+        opacity: 0.6;
+        z-index: 3;
+      }
+
+      .canvas-hud span {
+        padding: 4px 8px;
+        background: rgba(9, 9, 11, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
+
+      #stage:hover .canvas-hud {
+        opacity: 1;
+      }
+
+      /* ============================================
+         COLUMN 2: CHAT INTERFACE
+         ============================================ */
+      #chat-column {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .chat-header h2 {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .chat-mode-toggle {
+        display: flex;
+        gap: 4px;
+        padding: 2px;
+        background: var(--surface);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+
+      .chat-mode-toggle button {
+        padding: 6px 12px;
+        font-size: 11px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .chat-mode-toggle button.active {
+        background: var(--fg);
+        color: var(--bg);
+      }
+
+      .chat-mode-toggle button:hover:not(.active) {
+        background: var(--hover);
+        color: var(--fg);
+      }
+
+      /* Chat Messages */
+      #chatLog {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 0;
+        min-height: 0;
+      }
+
+      .chat-message {
+        display: flex;
+        gap: 10px;
+        max-width: 85%;
+      }
+
+      .chat-message.user {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+      }
+
+      .chat-message.assistant {
+        align-self: flex-start;
+      }
+
+      .chat-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--surface);
+        border: 1px solid var(--border);
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(5, 8, 14, 0.55);
-        backdrop-filter: blur(14px) saturate(1.1);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-        z-index: 4;
-      }
-
-      #analysisOverlay.active {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      #analysisCard {
-        width: min(520px, 90%);
-        padding: 18px 20px;
-        border-radius: 16px;
-        background: rgba(10, 14, 22, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-      }
-
-      .analysis-title {
         font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.2em;
-        color: var(--muted);
-        margin-bottom: 10px;
+        flex-shrink: 0;
       }
 
-      #analysisStep {
+      .chat-message.user .chat-avatar {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--bg);
+      }
+
+      .chat-bubble {
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .chat-message.user .chat-bubble {
+        background: var(--fg);
+        color: var(--bg);
+        border-radius: 12px 12px 4px 12px;
+      }
+
+      .chat-message.assistant .chat-bubble {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px 12px 12px 4px;
+      }
+
+      /* Voice Level Indicator */
+      .voice-indicator {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-weight: 600;
-        margin-bottom: 10px;
-      }
-
-      .analysis-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--accent);
-        box-shadow: 0 0 12px rgba(255, 179, 71, 0.7);
-        animation: pulse 1.2s ease-in-out infinite;
-      }
-
-      .analysis-progress {
-        width: 100%;
-        height: 4px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
-        overflow: hidden;
-        margin-bottom: 12px;
-      }
-
-      .analysis-progress-bar {
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          var(--accent),
-          var(--accent-2),
-          var(--accent-3)
-        );
-        background-size: 200% 100%;
-        border-radius: 2px;
-        transition: width 0.3s ease;
-        animation: progress-shimmer 2s ease-in-out infinite;
-      }
-
-      @keyframes progress-shimmer {
-        0% {
-          background-position: 200% 0;
-        }
-        100% {
-          background-position: -200% 0;
-        }
-      }
-
-      .analysis-stages {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      .analysis-stage-badge {
-        flex: 1;
-        padding: 6px 10px;
+        padding: 8px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .voice-indicator label {
         font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: var(--muted);
-        text-align: center;
-        transition: all 0.3s ease;
       }
 
-      .analysis-stage-badge.active {
-        background: rgba(255, 179, 71, 0.15);
-        border-color: rgba(255, 179, 71, 0.4);
-        color: var(--accent);
+      .level-bar {
+        flex: 1;
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        overflow: hidden;
       }
 
-      .analysis-stage-badge.complete {
-        background: rgba(91, 242, 214, 0.12);
-        border-color: rgba(91, 242, 214, 0.3);
-        color: var(--accent-3);
+      .level-bar-fill {
+        height: 100%;
+        background: var(--accent);
+        width: 0%;
+        transition: width 0.05s;
       }
 
-      .analysis-stage-badge.failed {
-        background: rgba(255, 95, 122, 0.12);
-        border-color: rgba(255, 95, 122, 0.3);
-        color: var(--accent-2);
+      /* Chat Input */
+      .chat-input-container {
+        display: flex;
+        gap: 8px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
       }
 
-      #analysisThoughts {
+      .chat-input {
+        flex: 1;
+        padding: 12px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--fg);
         font-size: 13px;
-        line-height: 1.6;
-        color: var(--text);
-        white-space: pre-wrap;
-        max-height: 200px;
-        overflow-y: auto;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        padding-top: 10px;
-        scroll-behavior: smooth;
+        font-family: inherit;
+        resize: none;
       }
 
-      #analysisThoughts::-webkit-scrollbar {
+      .chat-input:focus {
+        outline: none;
+        border-color: var(--muted);
+      }
+
+      .chat-input::placeholder {
+        color: var(--muted);
+      }
+
+      #recordBtn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      #recordBtn.recording {
+        background: var(--accent-2);
+        animation: pulse-record 1s ease-in-out infinite;
+      }
+
+      @keyframes pulse-record {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      }
+
+      /* ============================================
+         COLUMN 3: CONTROLS PANEL
+         ============================================ */
+      #controls-column {
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      #controls-column::-webkit-scrollbar {
         width: 4px;
       }
 
-      #analysisThoughts::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
+      #controls-column::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #controls-column::-webkit-scrollbar-thumb {
+        background: var(--border);
         border-radius: 2px;
       }
 
-      #analysisThoughts::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 2px;
-      }
-
-      .streaming-cursor {
-        display: inline-block;
-        width: 2px;
-        height: 14px;
-        background: var(--accent);
-        animation: blink 0.8s step-end infinite;
-        margin-left: 2px;
-        vertical-align: middle;
-      }
-
-      @keyframes blink {
-        0%,
-        50% {
-          opacity: 1;
-        }
-        51%,
-        100% {
-          opacity: 0;
-        }
-      }
-
-      #analysisHint {
-        margin-top: 10px;
-        font-size: 11px;
-        color: var(--muted);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .analysis-timer {
-        font-variant-numeric: tabular-nums;
-        color: var(--accent);
-      }
-
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-          opacity: 0.8;
-        }
-        50% {
-          transform: scale(1.4);
-          opacity: 1;
-        }
-        100% {
-          transform: scale(1);
-          opacity: 0.8;
-        }
-      }
-
-      #stageHud {
-        position: absolute;
-        top: 18px;
-        left: 18px;
-        padding: 14px 16px;
-        border-radius: 14px;
-        background: rgba(7, 11, 20, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(8px);
-        min-width: 220px;
-      }
-
-      #hero {
-        position: absolute;
-        top: 24px;
-        right: 24px;
-        padding: 16px 18px;
-        border-radius: 16px;
-        background: rgba(5, 8, 14, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(10px);
-        text-align: right;
-        max-width: 320px;
-      }
-
-      #heroTitle {
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      #heroSubtitle {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.2em;
-      }
-
-      #heroLyrics {
-        margin-top: 10px;
-        font-size: 14px;
-        line-height: 1.5;
-        color: #f8f4ee;
-      }
-
-      #heroLyrics .current {
-        color: var(--accent);
-        font-weight: 600;
-      }
-
-      .hud-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
-        color: var(--muted);
-        margin-bottom: 6px;
-      }
-
-      .hud-row strong {
-        color: var(--text);
-        font-weight: 600;
-      }
-
-      #panel {
-        padding: 22px;
-        background: linear-gradient(
-          180deg,
-          rgba(15, 22, 36, 0.98),
-          rgba(10, 14, 24, 0.98)
-        );
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        display: grid;
-        gap: 14px;
-        overflow-y: auto;
-        height: calc(100vh - 40px);
-        align-content: start;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: 22px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      h1 span {
-        font-size: 12px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.2em;
-      }
-
-      .status {
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.08);
-        font-size: 13px;
-        color: var(--muted);
-      }
-
+      /* Card Component */
       .card {
-        padding: 14px;
-        border-radius: 14px;
-        background: var(--card);
-        border: 1px solid var(--line);
-        display: grid;
-        gap: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .card-header:hover {
+        background: var(--hover);
       }
 
       .card-title {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
-      }
-
-      label {
         font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--muted);
       }
 
-      select,
-      input[type="text"],
-      input[type="number"],
-      input[type="color"],
-      textarea {
-        width: 100%;
-        padding: 9px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: rgba(15, 25, 40, 0.9);
-        color: var(--text);
-        font-size: 13px;
+      .card-toggle {
+        font-size: 10px;
+        color: var(--muted);
+        transition: transform 0.2s;
       }
 
-      textarea {
-        min-height: 130px;
-        resize: vertical;
+      .card.collapsed .card-toggle {
+        transform: rotate(-90deg);
+      }
+
+      .card-body {
+        display: grid;
+        grid-template-rows: 1fr;
+        transition: grid-template-rows 0.2s;
+      }
+
+      .card.collapsed .card-body {
+        grid-template-rows: 0fr;
+      }
+
+      .card-body-inner {
+        overflow: hidden;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .card.collapsed .card-body-inner {
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
+      /* Form Elements */
+      label {
+        display: block;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      select, input[type="text"], textarea {
+        width: 100%;
+        padding: 8px 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--fg);
+        font-size: 12px;
+        font-family: inherit;
+      }
+
+      select:focus, input:focus, textarea:focus {
+        outline: none;
+        border-color: var(--muted);
       }
 
       input[type="range"] {
         width: 100%;
-      }
-
-      .row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      .triple {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .slider-row {
-        display: grid;
-        grid-template-columns: 1fr 48px;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .slider-row.icon {
-        grid-template-columns: 34px 1fr 48px;
-      }
-
-      .slider-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 34px;
-        height: 24px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: var(--muted);
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      button {
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 999px;
-        padding: 9px 14px;
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--text);
-        font-weight: 600;
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        appearance: none;
         cursor: pointer;
-        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        background: var(--fg);
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      input[type="color"] {
+        width: 100%;
+        height: 32px;
+        padding: 2px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      /* Buttons */
+      button {
+        padding: 8px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--fg);
+        font-size: 12px;
+        font-weight: 500;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--hover);
+        border-color: var(--muted);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       button.primary {
-        background: linear-gradient(120deg, #ffb347, #ff5f7a);
-        color: #1a0f18;
-        border: none;
+        background: var(--fg);
+        color: var(--bg);
+        border-color: var(--fg);
       }
 
-      button.ghost {
-        background: transparent;
+      button.primary:hover:not(:disabled) {
+        opacity: 0.9;
       }
 
-      button.cancel-mode {
-        background: linear-gradient(120deg, #ff5f7a, #ff3355);
+      button.danger {
+        background: var(--accent-2);
         color: white;
-        border: none;
-        animation: cancel-pulse 0.8s ease-in-out infinite;
+        border-color: var(--accent-2);
       }
 
-      @keyframes cancel-pulse {
-        0%,
-        100% {
-          box-shadow: 0 0 0 0 rgba(255, 95, 122, 0.5);
-        }
-        50% {
-          box-shadow: 0 0 12px 4px rgba(255, 95, 122, 0.3);
-        }
+      /* Layout Helpers */
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
       }
 
-      button:hover {
-        transform: translateY(-1px);
+      .row-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
       }
 
-      button[disabled] {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
 
+      .slider-row label {
+        min-width: 60px;
+        margin-bottom: 0;
+      }
+
+      .slider-row input[type="range"] {
+        flex: 1;
+      }
+
+      .slider-row .value {
+        min-width: 36px;
+        text-align: right;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* Chips */
       .chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
 
       .chip {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      .runtime-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .runtime-item {
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: rgba(10, 14, 22, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        min-height: 58px;
-      }
-
-      .runtime-item span {
-        display: block;
+        padding: 4px 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
         font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-        margin-bottom: 6px;
-      }
-
-      .runtime-value {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text);
-        word-break: break-all;
-      }
-
-      .runtime-actions {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .runtime-status {
-        font-size: 12px;
+        font-family: 'JetBrains Mono', monospace;
         color: var(--muted);
       }
 
-      .toggle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: var(--muted);
-      }
-
-      .plan {
-        display: grid;
-        gap: 8px;
-        max-height: 260px;
-        overflow-y: auto;
-      }
-
-      .plan-toolbar {
+      /* Toggle Switch */
+      .toggle-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
       }
 
-      .plan-status {
-        font-size: 11px;
-        color: var(--muted);
+      .toggle-row label {
+        margin-bottom: 0;
       }
 
-      .plan-details {
-        font-size: 12px;
-        color: var(--muted);
-        background: rgba(6, 10, 20, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
-        padding: 10px;
-        min-height: 120px;
-        white-space: pre-wrap;
+      input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent);
       }
 
-      .plan-item {
-        padding: 8px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(6, 10, 20, 0.6);
-        font-size: 12px;
+      /* Status Indicator */
+      .status-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--muted);
+        margin-right: 6px;
       }
 
-      .plan-item strong {
-        color: var(--accent-3);
+      .status-dot.active {
+        background: var(--accent-3);
+        box-shadow: 0 0 6px var(--accent-3);
       }
 
-      .plan-section {
-        display: grid;
-        gap: 6px;
+      .status-dot.warning {
+        background: var(--accent);
       }
 
-      .plan-meta {
-        font-size: 11px;
-        color: var(--muted);
+      .status-dot.error {
+        background: var(--accent-2);
       }
 
-      .plan-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+      /* Responsive */
+      @media (max-width: 1200px) {
+        #app {
+          grid-template-columns: 1fr 320px;
+          grid-template-rows: 1fr 1fr;
+        }
+
+        #canvas-column {
+          grid-row: 1 / 3;
+        }
+
+        #chat-column {
+          grid-column: 2;
+          grid-row: 1;
+        }
+
+        #controls-column {
+          grid-column: 2;
+          grid-row: 2;
+        }
       }
 
-      .chip-select {
-        appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(12, 18, 32, 0.9);
-        color: var(--text);
-        border-radius: 999px;
-        padding: 4px 12px;
-        font-size: 11px;
-        letter-spacing: 0.02em;
-      }
-
-      .chip-select.mood {
-        border-color: rgba(91, 242, 214, 0.4);
-      }
-      .chip-select.gesture {
-        border-color: rgba(255, 179, 71, 0.5);
-      }
-      .chip-select.camera {
-        border-color: rgba(255, 95, 122, 0.5);
-      }
-      .chip-select.light {
-        border-color: rgba(120, 180, 255, 0.5);
-      }
-      .chip-select.role {
-        border-color: rgba(255, 255, 255, 0.2);
-      }
-      .chip-select.action {
-        border-color: rgba(173, 130, 255, 0.4);
-      }
-
-      .chip-inline {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        background: rgba(12, 18, 32, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        font-size: 11px;
-      }
-
-      .chip-inline input {
-        width: 110px;
-        border: none;
-        background: transparent;
-        color: var(--text);
-        font-size: 11px;
-      }
-
-      @media (max-width: 1100px) {
+      @media (max-width: 900px) {
         #app {
           grid-template-columns: 1fr;
-          padding: 12px;
-          gap: 12px;
-        }
-        #stage {
-          min-height: 50vh;
-        }
-        #panel {
+          grid-template-rows: 50vh auto auto;
           height: auto;
-          overflow-y: visible;
+          min-height: 100vh;
+          overflow: auto;
         }
+
+        #canvas-column,
+        #chat-column,
+        #controls-column {
+          grid-column: 1;
+        }
+
         body {
           overflow: auto;
         }
@@ -705,293 +683,273 @@
   </head>
   <body>
     <div id="app">
-      <div id="stage">
-        <div id="avatar"></div>
-        <div id="spotlights"></div>
-        <div id="analysisOverlay">
-          <div id="analysisCard">
-            <div class="analysis-title">Director Feed</div>
-            <div id="analysisStep">
-              <span class="analysis-dot"></span
-              ><span id="analysisStepText">Idle</span>
-            </div>
-            <div class="analysis-progress">
-              <div
-                class="analysis-progress-bar"
-                id="analysisProgressBar"
-                style="width: 0%"
-              ></div>
-            </div>
-            <div class="analysis-stages">
-              <div class="analysis-stage-badge" id="stageBadgePerformance">
-                Performance
-              </div>
-              <div class="analysis-stage-badge" id="stageBadgeStage">Stage</div>
-              <div class="analysis-stage-badge" id="stageBadgeCamera">
-                Camera
-              </div>
-              <div class="analysis-stage-badge" id="stageBadgePostFx">
-                PostFX
-              </div>
-            </div>
-            <div id="analysisThoughts">Awaiting performance analysis.</div>
-            <div id="analysisHint">Voiceover will play when available.</div>
+      <!-- COLUMN 1: Avatar Canvas -->
+      <div id="canvas-column" class="column">
+        <div class="canvas-header">
+          <div class="canvas-hero">
+            <span class="eyebrow">Avatar Labs</span>
+            <h1 class="canvas-title">MLX Conversation Lab</h1>
+            <p class="canvas-status" id="canvasStatus">Ready to connect</p>
           </div>
         </div>
-        <div id="hero">
-          <div id="heroTitle">Stage Ready</div>
-          <div id="heroSubtitle">Awaiting Audio</div>
-          <div id="heroLyrics">Upload a song to render timed lyrics.</div>
-        </div>
-        <div id="stageHud">
-          <div class="hud-row">
-            <span>Scene</span><strong id="hudScene">Idle</strong>
+
+        <div id="stage">
+          <div id="avatar"></div>
+          <div id="spotlights"></div>
+
+          <div class="canvas-actions">
+            <button id="stagePlayBtn" disabled>Speak</button>
+            <button id="stageStopBtn">Stop</button>
           </div>
-          <div class="hud-row">
-            <span>Camera</span><strong id="hudCamera">Upper</strong>
-          </div>
-          <div class="hud-row">
-            <span>Lights</span><strong id="hudLights">Neon</strong>
-          </div>
-          <div class="hud-row">
-            <span>Mode</span><strong id="hudMode">Awaiting</strong>
+
+          <div class="canvas-hud">
+            <span id="hudMiniModel">Idle</span>
+            <span id="hudMiniStatus">Ready</span>
           </div>
         </div>
       </div>
 
-      <div id="panel">
-        <h1>Multimodal Chat <span>Avatar Labs</span></h1>
-        <div class="status" id="status">Upload a song to begin staging.</div>
+      <!-- COLUMN 2: Chat Interface -->
+      <div id="chat-column" class="column">
+        <div class="chat-header">
+          <h2>Conversation</h2>
+          <div class="chat-mode-toggle">
+            <button id="pushModeBtn" class="active">Push to Talk</button>
+            <button id="vadModeBtn">Auto VAD</button>
+          </div>
+        </div>
 
+        <div id="chatLog">
+          <div class="chat-message assistant">
+            <div class="chat-avatar">A</div>
+            <div class="chat-bubble">Hello! I'm ready to chat. Click "Start Session" to begin, then hold the mic button or enable Auto VAD to speak.</div>
+          </div>
+        </div>
+
+        <div class="voice-indicator">
+          <label>Level</label>
+          <div class="level-bar">
+            <div class="level-bar-fill" id="levelMeter"></div>
+          </div>
+        </div>
+
+        <div class="chat-input-container">
+          <textarea class="chat-input" id="chatInput" placeholder="Type a message or hold mic to speak..." rows="1"></textarea>
+          <button id="recordBtn" class="primary" disabled title="Hold to talk">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- COLUMN 3: Controls Panel -->
+      <div id="controls-column" class="column">
+        <!-- Session Control -->
         <div class="card">
-          <div class="card-title">Conversation Controls</div>
-          <div class="row">
-             <button id="startSessionBtn" class="primary">Start Session</button>
-             <button id="stopSessionBtn" disabled>Stop Session</button>
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Session</span>
+            <span class="card-toggle">&#9660;</span>
           </div>
-          <div class="row">
-             <button id="pushModeBtn" class="primary">Push to Talk</button>
-             <button id="vadModeBtn">Auto VAD</button>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="row">
+                <button id="startSessionBtn" class="primary">Start Session</button>
+                <button id="stopSessionBtn" disabled>End Session</button>
+              </div>
+              <div class="toggle-row">
+                <label><span class="status-dot" id="sessionDot"></span>Session Status</label>
+                <span id="sessionStatus" style="font-size: 11px; color: var(--muted);">Disconnected</span>
+              </div>
+            </div>
           </div>
-          <div class="section">
-             <button id="recordBtn" disabled>Hold to Talk</button>
+        </div>
+
+        <!-- Avatar Selection -->
+        <div class="card">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Avatar</span>
+            <span class="card-toggle">&#9660;</span>
           </div>
-           <div class="section">
-             <div class="slider-row">
-               <label>VAD Thresh</label>
-               <input id="vadThreshold" type="range" min="-100" max="0" step="1" value="-48" />
-             </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div>
+                <label>Select Avatar</label>
+                <select id="avatarSelect"></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Voice Settings -->
+        <div class="card">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Voice</span>
+            <span class="card-toggle">&#9660;</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
               <div class="slider-row">
-               <label>Silence Ms</label>
-               <input id="vadSilence" type="range" min="100" max="2000" step="100" value="600" />
-             </div>
-          </div>
-           <div class="section">
-              <label>Level</label>
-              <div style="background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; overflow:hidden;">
-                 <div id="levelMeter" style="width: 0%; height: 100%; background: var(--accent);"></div>
+                <label>VAD Threshold</label>
+                <input id="vadThreshold" type="range" min="-100" max="0" step="1" value="-48" />
+                <span class="value" id="vadThresholdVal">-48</span>
               </div>
-           </div>
-           <div class="section">
-              <label>Log</label>
-              <div id="chatLog" style="height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></div>
-           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Audio & Transcript</div>
-          <div class="section">
-            <label>Avatar</label>
-            <select id="avatarSelect"></select>
-          </div>
-          <div class="section">
-            <label>Song File</label>
-            <input
-              id="songInput"
-              type="file"
-              accept=".m4a,.mp3,.webm,.mp4,.mpga,.wav,.mpeg"
-            />
-          </div>
-          <div class="row">
-            <button id="transcribeBtn">Transcribe</button>
-            <button id="analyzeBtn">Analyze Performance</button>
-          </div>
-          <label>Transcript</label>
-          <textarea id="transcript" readonly></textarea>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Director Setup</div>
-          <div class="plan-section">
-             <label>Director Style</label>
-             <select id="directorStyle">
-                <option value="cinematic">Cinematic</option>
-                <option value="intimate">Intimate</option>
-                <option value="hype">Hype</option>
-                <option value="minimal">Minimal</option>
-                <option value="experimental">Experimental</option>
-             </select>
-             <div class="toggle">
-               <input id="directorEnablePerformance" type="checkbox" checked disabled />
-               <label>Perf</label>
-               <input id="directorEnableStage" type="checkbox" checked disabled />
-               <label>Stage</label>
-               <input id="directorEnableCamera" type="checkbox" checked />
-               <label>Cam</label>
-               <input id="directorEnablePostFX" type="checkbox" checked />
-               <label>FX</label>
-             </div>
-             <label for="visionEnable">
-                 <input type="checkbox" id="visionEnable" />
-                 Enable Vision (VLM)
-             </label>
-             <label for="directorReasoningEnable">
-                 <input type="checkbox" id="directorReasoningEnable" />
-                 Show Reasoning
-             </label>
-             <label>Manual Prompt</label>
-             <textarea id="directorPrompt" placeholder="Override director instructions..."></textarea>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Staged Plan</div>
-          <div class="plan-toolbar">
-              <span class="plan-status" id="planStatus">Pending analysis</span>
-              <div class="row" style="width: auto; gap: 6px;">
-                 <button id="playBtn" class="primary" disabled>Play Round</button>
-                 <button id="stopBtn">Stop</button>
+              <div class="slider-row">
+                <label>Silence (ms)</label>
+                <input id="vadSilence" type="range" min="100" max="2000" step="100" value="600" />
+                <span class="value" id="vadSilenceVal">600</span>
               </div>
-          </div>
-          <div class="row">
-             <button id="approveBtn" class="primary" disabled>Approve Plan</button>
-             <button id="clearPlanBtn" class="ghost">Clear</button>
-          </div>
-          <div class="plan-section">
-             <div id="planList" class="plan"></div>
-          </div>
-          <div class="plan-details" id="directorNotes">Director notes unavailable.</div>
-        </div>
-
-        <div class="card">
-           <div class="card-title">Runtime & Config</div>
-           <div class="runtime-grid">
-              <div class="runtime-item">
-                 <span>Current Model</span>
-                 <div class="runtime-value" id="currentModelDisplay">-</div>
+              <div>
+                <label>TTS Voice</label>
+                <select id="voiceSelect">
+                  <option value="default">Default</option>
+                </select>
               </div>
-              <div class="runtime-item">
-                 <span>Status</span>
-                 <div class="runtime-value" id="runtimeStatusText">Unknown</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Model Selection -->
+        <div class="card collapsed">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Models</span>
+            <span class="card-toggle">&#9660;</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div>
+                <label>LLM (Chat)</label>
+                <select id="llmModelSelect"></select>
               </div>
-           </div>
-           <div class="runtime-actions">
-              <button id="refreshRuntimeBtn" class="ghost">Ping</button>
-              <button id="unloadModelBtn" class="ghost">Unload</button>
-              <button id="loadModelBtn" class="primary">Load</button>
-           </div>
-           <div class="chips">
-              <span class="chip" id="sttChip">STT:-</span>
-              <span class="chip" id="chatChip">Chat:-</span>
-              <span class="chip" id="vlmChip">VLM:-</span>
-              <span class="chip" id="llmChip">LLM:-</span>
-              <span class="chip" id="embedChip">Embed:-</span>
-           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Model Selection</div>
-          
-          <div class="section">
-             <label>LLM (Chat/Director)</label>
-             <select id="llmModelSelect"></select>
-          </div>
-
-          <div class="section">
-             <label>VLM (Vision)</label>
-             <select id="vlmModelSelect"></select>
-          </div>
-
-          <div class="section">
-             <label>Helper LLM (Director Aux)</label>
-             <select id="directorModelSelect"></select>
-          </div>
-
-          <div class="section">
-             <label>STT (Whisper)</label>
-             <select id="sttModelSelect"></select>
-          </div>
-
-          <div class="section">
-             <label>TTS (Speech)</label>
-             <select id="ttsModelSelect"></select>
-          </div>
-
-           <div class="section">
-             <label>Embedding</label>
-             <select id="embedModelSelect"></select>
-          </div>
-
-           <div class="section">
-             <label>Runtime Load</label>
-             <select id="llmRuntimeModelSelect"></select>
+              <div>
+                <label>STT (Whisper)</label>
+                <select id="sttModelSelect"></select>
+              </div>
+              <div>
+                <label>TTS (Speech)</label>
+                <select id="ttsModelSelect"></select>
+              </div>
+              <div class="chips">
+                <span class="chip" id="llmChip">LLM: -</span>
+                <span class="chip" id="sttChip">STT: -</span>
+                <span class="chip" id="ttsChip">TTS: -</span>
+              </div>
+            </div>
           </div>
         </div>
 
-         <div class="card">
-            <div class="card-title">Stage Controls</div>
-            <div class="slider-row">
-               <label>Pulse</label>
-               <input id="lightPulse" type="range" min="0" max="2" step="0.1" value="0" />
-               <span id="lightPulseVal">0</span>
+        <!-- Stage Lighting -->
+        <div class="card collapsed">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Lighting</span>
+            <span class="card-toggle">&#9660;</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div>
+                <label>Preset</label>
+                <select id="lightPreset">
+                  <option value="spotlight">Spotlight</option>
+                  <option value="neon">Neon Drift</option>
+                  <option value="noir">Noir Edge</option>
+                  <option value="sunset">Sunset Pulse</option>
+                  <option value="frost">Frost Lens</option>
+                  <option value="crimson">Crimson Room</option>
+                </select>
+              </div>
+              <div class="slider-row">
+                <label>Ambient</label>
+                <input id="ambientIntensity" type="range" min="0" max="4" step="0.1" value="0.1" />
+                <span class="value" id="ambientIntensityVal">0.1</span>
+              </div>
+              <div class="slider-row">
+                <label>Direct</label>
+                <input id="directIntensity" type="range" min="0" max="30" step="0.5" value="2" />
+                <span class="value" id="directIntensityVal">2</span>
+              </div>
+              <div class="slider-row">
+                <label>Spot</label>
+                <input id="spotIntensity" type="range" min="0" max="30" step="0.5" value="28" />
+                <span class="value" id="spotIntensityVal">28</span>
+              </div>
+              <div class="row-3">
+                <input id="ambientColor" type="color" value="#0a0a0a" />
+                <input id="directColor" type="color" value="#1a1a1a" />
+                <input id="spotColor" type="color" value="#ffffff" />
+              </div>
+              <div class="toggle-row">
+                <label>Pulse with Audio</label>
+                <input id="lightPulse" type="checkbox" checked />
+              </div>
             </div>
-            <div class="slider-row icon">
-               <div class="slider-icon">AMB</div>
-               <input id="lightAmbient" type="range" min="0" max="3" step="0.1" value="0.5" />
-               <span id="lightAmbientVal">0.5</span>
-            </div>
-            <div class="slider-row icon">
-               <div class="slider-icon">DIR</div>
-               <input id="lightDirect" type="range" min="0" max="5" step="0.1" value="2.0" />
-               <span id="lightDirectVal">2.0</span>
-            </div>
-            <div class="slider-row icon">
-               <div class="slider-icon">SPT</div>
-               <input id="lightSpot" type="range" min="0" max="10" step="0.1" value="5.0" />
-               <span id="lightSpotVal">5.0</span>
-            </div>
-            <div class="triple">
-               <input id="colorAmbient" type="color" value="#ffffff" />
-               <input id="colorDirect" type="color" value="#ffffff" />
-               <input id="colorSpot" type="color" value="#ffffff" />
-            </div>
-         </div>
+          </div>
+        </div>
 
-         <div class="card">
-             <div class="card-title">Camera</div>
-             <div class="slider-row">
-               <label>Distance</label>
-               <input id="camDistance" type="range" min="0.1" max="3.0" step="0.1" value="1.0" />
-               <span id="camDistanceVal">1.0</span>
+        <!-- Camera -->
+        <div class="card collapsed">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Camera</span>
+            <span class="card-toggle">&#9660;</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div>
+                <label>View</label>
+                <select id="cameraView">
+                  <option value="head">Head</option>
+                  <option value="upper">Upper Body</option>
+                  <option value="mid">Mid Shot</option>
+                  <option value="full">Full Body</option>
+                </select>
+              </div>
+              <div class="slider-row">
+                <label>Distance</label>
+                <input id="cameraDistance" type="range" min="0.2" max="2" step="0.1" value="0.5" />
+                <span class="value" id="cameraDistanceVal">0.5</span>
+              </div>
+              <div class="toggle-row">
+                <label>Auto Rotate</label>
+                <input id="autoRotate" type="checkbox" />
+              </div>
             </div>
-            <div class="slider-row">
-               <label>Height</label>
-               <input id="camHeight" type="range" min="-1.0" max="2.0" step="0.1" value="0.0" />
-               <span id="camHeightVal">0.0</span>
+          </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="card collapsed">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">System</span>
+            <span class="card-toggle">&#9660;</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="row">
+                <button id="refreshRuntimeBtn">Ping Services</button>
+                <button id="loadModelBtn" class="primary">Load Model</button>
+              </div>
+              <div id="runtimeStatus" style="font-size: 11px; color: var(--muted);">
+                Services not checked
+              </div>
             </div>
-            <div class="slider-row">
-               <label>FOV</label>
-               <input id="camFov" type="range" min="10" max="90" step="1" value="45" />
-               <span id="camFovVal">45</span>
-            </div>
-             <div class="slider-row">
-               <label>Drift</label>
-               <input id="camDrift" type="range" min="0" max="1" step="0.01" value="0" />
-               <span id="camDriftVal">0</span>
-            </div>
-         </div>
+          </div>
+        </div>
       </div>
     </div>
+
     <script type="module" src="/src/multi-modal.ts"></script>
+    <script>
+      // Slider value sync
+      document.querySelectorAll('.slider-row input[type="range"]').forEach(slider => {
+        const valueSpan = slider.parentElement.querySelector('.value');
+        if (valueSpan) {
+          slider.addEventListener('input', () => {
+            valueSpan.textContent = slider.value;
+          });
+        }
+      });
+    </script>
   </body>
 </html>
