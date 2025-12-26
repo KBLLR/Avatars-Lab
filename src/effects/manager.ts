@@ -135,7 +135,7 @@ export class EffectsManager {
   resetEffects() {
     this.setBloom(0);
     this.setVignette(0.95, 0);
-    this.setChromaticAberration(0);
+    this.setChromaticAberration({ amount: 0 });
     this.setGlitch(false);
   }
 
