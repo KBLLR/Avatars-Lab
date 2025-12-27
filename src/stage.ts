@@ -15,6 +15,17 @@ import type {
   WordTiming
 } from "./directors/types";
 
+// Engine imports for timeline
+import { createTimelineEditor, type TimelineEditor } from "./engine/ui";
+import { directorPlanToTimeline } from "./engine/director-adapter";
+import { type Timeline, createTimeline, createBlock } from "./engine/types";
+import {
+  saveTimeline,
+  loadCurrentTimeline,
+  exportTimelineAsFile,
+  importTimelineFromFile,
+} from "./engine/timeline-persistence";
+
 // Stage modules
 import {
   getElements,
@@ -85,6 +96,7 @@ import {
 let els: ReturnType<typeof getElements>;
 
 const config = getMlxConfig();
+const engineLabEnabled = document.body?.dataset.engineLab === "true";
 
 // Types now imported from ./stage/types: StageState
 
@@ -764,6 +776,7 @@ const init = async () => {
   performanceController = createPerformanceController({
     els,
     effectsManager,
+    useEngine: engineLabEnabled,
     getState: () => state,
     updateState,
     ensureAudioContext: audioController.ensureAudioContext,
@@ -893,6 +906,182 @@ const init = async () => {
     updateStatus: (message) => updateStatus(els, message),
     setOverride
   });
+
+  // Initialize Timeline Editor (Engine Lab only)
+  if (engineLabEnabled) {
+    initTimelineEditor();
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Timeline Editor Integration
+// ─────────────────────────────────────────────────────────────
+
+let timelineEditor: TimelineEditor | null = null;
+let currentTimeline: Timeline | null = null;
+
+const initTimelineEditor = () => {
+  const container = document.getElementById("timelineContainer");
+  if (!container) {
+    console.warn("Timeline container not found");
+    return;
+  }
+
+  timelineEditor = createTimelineEditor(container, {
+    trackHeight: 44,
+    headerWidth: 100,
+    showRuler: true,
+    showMarkers: true,
+    enableSelection: true,
+    enableDragging: true,
+  });
+
+  // Listen for playhead seek events
+  timelineEditor.on("playhead:seek", (event) => {
+    if (event.time_ms !== undefined) {
+      console.log("[Timeline] Seek to:", event.time_ms);
+      // Could integrate with audio playback here
+    }
+  });
+
+  // Save/Export/Import handlers
+  timelineEditor.on("save", (event) => {
+    if (event.timeline) {
+      saveTimeline(event.timeline);
+      updateStatus(els, "Timeline saved");
+    }
+  });
+
+  timelineEditor.on("export", (event) => {
+    if (event.timeline) {
+      exportTimelineAsFile(event.timeline);
+      updateStatus(els, "Timeline exported");
+    }
+  });
+
+  timelineEditor.on("import", async (event) => {
+    if (event.file) {
+      const imported = await importTimelineFromFile(event.file);
+      if (imported && timelineEditor) {
+        currentTimeline = imported;
+        timelineEditor.setTimeline(imported);
+        updateStatus(els, `Imported: ${imported.name}`);
+      } else {
+        updateStatus(els, "Failed to import timeline");
+      }
+    }
+  });
+
+  // Wire up overlay buttons
+  const saveBtn = document.getElementById("timelineSaveBtn");
+  const exportBtn = document.getElementById("timelineExportBtn");
+  const importBtn = document.getElementById("timelineImportBtn");
+
+  saveBtn?.addEventListener("click", () => {
+    if (currentTimeline) {
+      saveTimeline(currentTimeline);
+      updateStatus(els, "Timeline saved");
+    }
+  });
+
+  exportBtn?.addEventListener("click", () => {
+    if (currentTimeline) {
+      exportTimelineAsFile(currentTimeline);
+      updateStatus(els, "Timeline exported");
+    }
+  });
+
+  importBtn?.addEventListener("click", () => {
+    // Create hidden file input for import
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (file) {
+        const imported = await importTimelineFromFile(file);
+        if (imported && timelineEditor) {
+          currentTimeline = imported;
+          timelineEditor.setTimeline(imported);
+          updateStatus(els, `Imported: ${imported.name}`);
+        } else {
+          updateStatus(els, "Failed to import timeline");
+        }
+      }
+    };
+    input.click();
+  });
+
+  // Subscribe to plan changes to update timeline
+  stateManager.subscribe((nextState, changed) => {
+    if (changed.plan !== undefined && nextState.plan) {
+      updateTimelineFromPlan(nextState.plan);
+    }
+  });
+
+  // Try to load last saved timeline, otherwise create demo
+  const savedTimeline = loadCurrentTimeline();
+  if (savedTimeline) {
+    currentTimeline = savedTimeline;
+    timelineEditor.setTimeline(savedTimeline);
+    console.log("[Timeline] Loaded saved timeline:", savedTimeline.name);
+  } else if (!state.plan) {
+    createDemoTimeline();
+  }
+
+  console.log("[Engine Lab] Timeline Editor initialized");
+};
+
+const updateTimelineFromPlan = (plan: MergedPlan) => {
+  if (!timelineEditor) return;
+
+  // Calculate duration from audio or plan sections
+  const audioDuration = state.audioDurationMs || 30000;
+
+  const { timeline } = directorPlanToTimeline(plan, {
+    durationMs: audioDuration,
+    defaultCameraView: "upper",
+    defaultLightPreset: "neon",
+    defaultMood: "neutral",
+  });
+
+  currentTimeline = timeline;
+  timelineEditor.setTimeline(timeline);
+  console.log("[Timeline] Updated from plan:", timeline.blocks.length, "blocks");
+};
+
+const createDemoTimeline = () => {
+  if (!timelineEditor) return;
+
+  const timeline = createTimeline("Demo Performance", 30000);
+
+  // Add demo blocks for each layer
+  timeline.blocks.push(
+    createBlock("blendshape", "blendshape", 0, 8000, { mood: "happy" }, "Happy"),
+    createBlock("blendshape", "blendshape", 10000, 6000, { mood: "love" }, "Love"),
+    createBlock("blendshape", "blendshape", 20000, 8000, { mood: "neutral" }, "Neutral"),
+
+    createBlock("camera", "camera", 0, 10000, { view: "head", movement: "static" }, "Head"),
+    createBlock("camera", "camera", 10000, 10000, { view: "upper", movement: "static" }, "Upper"),
+    createBlock("camera", "camera", 20000, 10000, { view: "mid", movement: "orbit", orbit: 30 }, "Orbit"),
+
+    createBlock("lighting", "lighting", 0, 15000, { preset: "neon", transition: "fade" }, "Neon"),
+    createBlock("lighting", "lighting", 15000, 15000, { preset: "sunset", transition: "fade" }, "Sunset"),
+
+    createBlock("fx", "fx", 5000, 3000, { effect: "bloom", params: { strength: 1.5 } }, "Bloom"),
+    createBlock("fx", "fx", 18000, 4000, { effect: "vignette", params: { darkness: 0.5 } }, "Vignette")
+  );
+
+  // Add markers
+  timeline.markers.push(
+    { id: "m1", time_ms: 0, label: "Intro", color: "#4CAF50", snapPoint: true },
+    { id: "m2", time_ms: 10000, label: "Verse", color: "#2196F3", snapPoint: true },
+    { id: "m3", time_ms: 20000, label: "Chorus", color: "#FF9800", snapPoint: true }
+  );
+
+  currentTimeline = timeline;
+  timelineEditor.setTimeline(timeline);
+  console.log("[Timeline] Demo timeline created");
 };
 
 init().catch((error) => {

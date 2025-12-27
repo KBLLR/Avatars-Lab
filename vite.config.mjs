@@ -44,6 +44,7 @@ export default defineConfig({
         e2e: resolve(root, "e2e.html"),
         conversation: resolve(root, "mlx-conversation.html"),
         stage: resolve(root, "stage.html"),
+        "engine-lab": resolve(root, "engine-lab.html"),
         "multi-modal": resolve(root, "multi-modal.html"),
         "gestures-lab": resolve(root, "gestures-lab.html"),
         "dance-studio": resolve(root, "dance-studio.html"),

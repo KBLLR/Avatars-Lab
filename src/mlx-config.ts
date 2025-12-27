@@ -41,7 +41,7 @@ const getMlxConfig = () => {
   const vlmModel = overrides.vlmModel || import.meta.env.VITE_MLX_DEFAULT_VLM_MODEL || llmModel;
   const sttModel = overrides.sttModel || import.meta.env.VITE_MLX_DEFAULT_STT_MODEL;
   const ttsModel = overrides.ttsModel || import.meta.env.VITE_MLX_DEFAULT_TTS_MODEL;
-  const directorModel = overrides.directorModel || llmModel;
+  const directorModel = overrides.directorModel || import.meta.env.VITE_MLX_DEFAULT_DIRECTOR_MODEL || llmModel;
   const embedModel = overrides.embedModel || import.meta.env.VITE_MLX_DEFAULT_EMBED_MODEL;
   const mfluxModel = overrides.mfluxModel || import.meta.env.VITE_MLX_DEFAULT_MFLUX_MODEL || "flux-schnell";
 

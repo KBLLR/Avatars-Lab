@@ -4,6 +4,15 @@ import {
   type SchedulerContext
 } from "./action-scheduler";
 import type { TalkingHead } from "@met4citizen/talkinghead";
+import {
+  BlendshapeExecutor,
+  CameraExecutor,
+  DanceExecutor,
+  EngineStateMachine,
+  FXExecutor,
+  LightingExecutor,
+  directorPlanToTimeline
+} from "../engine";
 import type {
   CameraView,
   LightPreset,
@@ -20,6 +29,7 @@ import type { EffectsManager } from "../effects/manager";
 export interface PerformanceDeps {
   els: Pick<StageElements, "soloOnly" | "hudScene" | "hudCamera" | "hudLights" | "hudMode">;
   effectsManager?: EffectsManager;
+  useEngine?: boolean;
   getState: () => StageState;
   updateState: (partial: Partial<StageState>) => void;
   ensureAudioContext: (label: string) => Promise<boolean>;
@@ -72,10 +82,46 @@ const filterWordsForSolo = (timings: WordTiming, sections: PlanSection[]): WordT
   return { words: soloWords, wtimes: soloTimes, wdurations: soloDurations };
 };
 
+const addAutoGestures = (
+  plan: MergedPlan,
+  gestures: readonly string[],
+  randomItem: <T>(items: readonly T[]) => T
+): MergedPlan => {
+  if (!gestures.length) return plan;
+
+  const sections = plan.sections.map((section) => {
+    const durationMs = section.end_ms - section.start_ms;
+    const actions = section.actions ? [...section.actions] : [];
+    const actionCount = Math.min(
+      3,
+      Math.max(1, Math.floor(durationMs / 8000))
+    );
+
+    for (let i = 0; i < actionCount; i += 1) {
+      const time =
+        section.start_ms +
+        (i + 1) * (durationMs / (actionCount + 1));
+      actions.push({
+        time_ms: time,
+        action: "play_gesture",
+        args: { gesture: randomItem(gestures), duration: 2.5 }
+      });
+    }
+
+    return {
+      ...section,
+      actions: actions.length > 0 ? actions : undefined
+    };
+  });
+
+  return { ...plan, sections };
+};
+
 export const createPerformanceController = (deps: PerformanceDeps): PerformanceController => {
   const {
     els,
     effectsManager,
+    useEngine: useEngineOption,
     getState,
     updateState,
     ensureAudioContext,
@@ -99,9 +145,12 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
 
   /* Local functions replaced by imports from ./action-scheduler.ts */
 
+  let engine: EngineStateMachine | null = null;
+
   const performSong = async () => {
     const state = getState();
     const isDuoMode = state.duoMode && state.duoManager;
+    const useEngine = Boolean(useEngineOption) && !isDuoMode;
 
     // In Duo Mode, we use duoManager; otherwise require head
     if (!isDuoMode && !state.head) {
@@ -166,7 +215,65 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
         duoManager: isDuoMode ? state.duoManager! : undefined
     };
 
-    const markers = buildMarkersFromPlan(activePlan, durationMs, schedulerContext);
+    const playbackPlan = useEngine
+      ? addAutoGestures(activePlan, gestures, randomItem)
+      : activePlan;
+
+    let markers: { markers: Array<() => void>; mtimes: number[] };
+    let externalActions: PlanAction[] = [];
+
+    if (useEngine) {
+      const { timeline, externalActions: passthrough } = directorPlanToTimeline(
+        playbackPlan,
+        {
+          durationMs,
+          defaultCameraView: state.cameraSettings.view,
+          defaultLightPreset: state.lightPreset,
+          defaultMood: "neutral"
+        }
+      );
+      externalActions = passthrough;
+
+      if (engine) {
+        engine.stop();
+        engine.dispose();
+      }
+
+      engine = new EngineStateMachine({ timeline, head: activeHead, effectsManager });
+      engine.registerExecutor(new BlendshapeExecutor(activeHead));
+      engine.registerExecutor(new LightingExecutor(activeHead));
+      engine.registerExecutor(new CameraExecutor(activeHead));
+      engine.registerExecutor(new DanceExecutor(activeHead));
+      if (effectsManager) {
+        engine.registerExecutor(new FXExecutor(effectsManager));
+      }
+      await engine.initialize();
+      engine.play();
+
+      const markerCallbacks: Array<() => void> = [];
+      const markerTimes: number[] = [];
+
+      externalActions.forEach((action) =>
+        scheduleAction(action, markerCallbacks, markerTimes, schedulerContext)
+      );
+
+      const endTime = Math.max(durationMs - 500, durationMs * 0.99);
+      markerCallbacks.push(() => {
+        applyLightPreset("spotlight");
+        updateStatus("Performance complete. Ready for next act.");
+      });
+      markerTimes.push(endTime);
+
+      markers = { markers: markerCallbacks, mtimes: markerTimes };
+    } else {
+      markers = buildMarkersFromPlan(activePlan, durationMs, schedulerContext);
+      if (engine) {
+        engine.stop();
+        engine.dispose();
+        engine = null;
+      }
+    }
+
     const hasVisemes = visemeTimings.visemes.length > 0;
 
     const audio = {
@@ -232,6 +339,12 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
       state.duoManager.stopAll();
     } else if (state.head) {
       state.head.stop();
+    }
+
+    if (engine) {
+      engine.stop();
+      engine.dispose();
+      engine = null;
     }
 
     // Apply spotlight preset when stopped
