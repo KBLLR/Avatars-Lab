@@ -21,24 +21,24 @@ npm run dev
 
 The app expects Ready Player Me compatible GLB avatars in `public/avatars/`. The manifest lists required files:
 
-| Avatar | Source | Notes |
-|--------|--------|-------|
-| adam.glb | Ready Player Me | Male, casual |
-| anja.glb | Ready Player Me | Female |
-| bork.glb | Ready Player Me | Male |
-| chloe.glb | Ready Player Me | Female |
-| dan.glb | Ready Player Me | Male |
-| dave.glb | Ready Player Me | Male |
-| david.glb | Ready Player Me | Male |
-| donna.glb | Ready Player Me | Female |
-| eli.glb | Ready Player Me | Male |
-| julien.glb | Ready Player Me | Male |
-| lana.glb | Ready Player Me | Female |
-| lucy.glb | Ready Player Me | Female |
-| nyx.glb | Ready Player Me | Female |
-| rick.glb | Ready Player Me | Male |
-| sandri.glb | Ready Player Me | Female |
-| sara.glb | Ready Player Me | Female |
+| Avatar     | Source          | Notes        |
+| ---------- | --------------- | ------------ |
+| adam.glb   | MetaPerson SDK  | Male, casual |
+| anja.glb   | Ready Player Me | Female       |
+| bork.glb   | MetaPerson SDK  | Male         |
+| chloe.glb  | MetaPerson SDK  | Female       |
+| dan.glb    | Ready Player Me | Male         |
+| dave.glb   | MetaPerson SDK  | Male         |
+| david.glb  | Ready Player Me | Male         |
+| donna.glb  | MetaPerson SDK  | Female       |
+| eli.glb    | MetaPerson SDK  | Male         |
+| julien.glb | Ready Player Me | Male         |
+| lana.glb   | Ready Player Me | Female       |
+| lucy.glb   | Ready Player Me | Female       |
+| nyx.glb    | Ready Player Me | Female       |
+| rick.glb   | MetaPerson SDK  | Male         |
+| sandri.glb | MetaPerson SDK  | Female       |
+| sara.glb   | Ready Player Me | Female       |
 
 ### Creating Your Own Avatars
 
@@ -61,6 +61,7 @@ For dance/pose animations, use Mixamo:
 4. Place in `public/animations/`
 
 **Recommended animations:**
+
 - Hip Hop Dancing
 - House Dancing
 - Robot Dance
@@ -70,6 +71,7 @@ For dance/pose animations, use Mixamo:
 ### Audio Files
 
 Test audio files are needed for:
+
 - TTS output testing
 - Lip sync validation
 - Performance playback
