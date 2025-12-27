@@ -24,19 +24,57 @@
 
       body {
         margin: 0;
-        min-height: 100vh;
+        height: 100vh;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--fg);
         background: var(--bg);
+        overflow: hidden;
         -webkit-font-smoothing: antialiased;
       }
 
       #app {
         display: grid;
         grid-template-columns: 1fr 400px;
-        min-height: 100vh;
+        height: 100vh;
         padding: 20px;
         gap: 20px;
+      }
+
+      .preview-column {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        min-height: 0;
+      }
+
+      .lab-hero {
+        padding: 12px 4px 8px;
+        background: transparent;
+        flex-shrink: 0;
+      }
+
+      .lab-hero .eyebrow {
+        display: block;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      .lab-hero .hero-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--fg);
+        margin: 0;
+        line-height: 1.1;
+      }
+
+      .lab-hero .hero-desc {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 4px 0 0;
       }
 
       #preview {
@@ -45,6 +83,8 @@
         border: 1px solid var(--border);
         background: #000;
         overflow: hidden;
+        min-height: 0;
+        flex: 1;
       }
 
       #avatar {
@@ -119,32 +159,120 @@
       #sidebar {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
         overflow-y: auto;
-        max-height: 100vh;
-        padding-right: 8px;
+        min-height: 0;
+        padding-right: 4px;
       }
 
+      /* Scrollbar styling */
+      #sidebar::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #sidebar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #sidebar::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      #sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+      }
+
+      /* Card styles with collapsible support */
       .card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 8px;
-        overflow: hidden;
+        padding: 16px;
+        flex-shrink: 0;
       }
 
       .card-header {
-        padding: 12px 16px;
-        font-weight: 600;
-        font-size: 13px;
-        border-bottom: 1px solid var(--border);
-        cursor: pointer;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        margin: -16px -16px 0;
+        padding: 12px 16px;
+        border-radius: 8px 8px 0 0;
+        transition: background 0.15s;
+        user-select: none;
+      }
+
+      .card-header:hover {
+        background: var(--hover);
+      }
+
+      .card-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .card-toggle {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 10px;
+      }
+
+      .card.collapsed .card-toggle {
+        transform: rotate(-90deg);
       }
 
       .card-body {
-        padding: 16px;
+        display: grid;
+        gap: 12px;
+        transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.2s ease;
+        grid-template-rows: 1fr;
+        margin-top: 12px;
+      }
+
+      .card.collapsed .card-body {
+        grid-template-rows: 0fr;
+        opacity: 0;
+        pointer-events: none;
+        margin-top: 0;
+      }
+
+      .card-body-inner {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .card-body-scroll {
+        max-height: 200px;
+        overflow-y: auto;
+        margin: 0 -4px;
+        padding: 0 4px;
+      }
+
+      .card-body-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .card-body-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .card-body-scroll::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
       }
 
       label {
@@ -164,12 +292,10 @@
         border: 1px solid var(--border);
         border-radius: 6px;
         color: var(--fg);
-        margin-bottom: 12px;
       }
 
       input[type="range"] {
         width: 100%;
-        margin-bottom: 12px;
       }
 
       button {
@@ -207,7 +333,6 @@
       .row {
         display: flex;
         gap: 8px;
-        margin-bottom: 12px;
       }
 
       .row > * {
@@ -218,7 +343,6 @@
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 6px;
-        margin-bottom: 12px;
       }
 
       .style-btn {
@@ -238,7 +362,6 @@
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 6px;
-        margin-bottom: 12px;
       }
 
       .mood-btn {
@@ -276,11 +399,16 @@
 
       .library-item-info {
         flex: 1;
+        min-width: 0;
       }
 
       .library-item-name {
         font-weight: 500;
+        font-size: 13px;
         margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .library-item-meta {
@@ -291,6 +419,7 @@
       .library-item-actions {
         display: flex;
         gap: 4px;
+        flex-shrink: 0;
       }
 
       .library-item-actions button {
@@ -300,6 +429,7 @@
 
       .tab-bar {
         display: flex;
+        margin: -16px -16px 0;
         border-bottom: 1px solid var(--border);
       }
 
@@ -312,6 +442,12 @@
         cursor: pointer;
         border-bottom: 2px solid transparent;
         margin-bottom: -1px;
+        border-radius: 0;
+      }
+
+      .tab:hover {
+        color: var(--fg);
+        background: none;
       }
 
       .tab.active {
@@ -321,10 +457,13 @@
 
       .tab-content {
         display: none;
+        margin-top: 16px;
       }
 
       .tab-content.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
 
       #status {
@@ -344,11 +483,10 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 8px;
       }
 
       .slider-row label {
-        flex: 0 0 80px;
+        flex: 0 0 60px;
         margin: 0;
       }
 
@@ -372,7 +510,7 @@
       }
 
       .choreography-steps {
-        max-height: 200px;
+        max-height: 180px;
         overflow-y: auto;
       }
 
@@ -398,23 +536,46 @@
         justify-content: center;
         font-size: 11px;
         font-weight: 600;
+        flex-shrink: 0;
       }
 
       .step-item .step-name {
         flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .step-item .step-duration {
         color: var(--muted);
         font-size: 11px;
+        flex-shrink: 0;
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+      }
+
+      .checkbox-row input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
       }
     </style>
   </head>
   <body>
     <div id="app">
-      <div id="preview">
-        <div id="avatar"></div>
-        <div id="timeline">
+      <div class="preview-column">
+        <div class="lab-hero">
+          <span class="eyebrow">Avatar Labs</span>
+          <h2 class="hero-title">Dance Studio</h2>
+          <p class="hero-desc" id="heroDesc">Create choreographies with Mixamo-compatible animations.</p>
+        </div>
+        <div id="preview">
+          <div id="avatar"></div>
+          <div id="timeline">
           <div id="timelineTrack">
             <div id="playhead" style="left: 0%"></div>
           </div>
@@ -424,18 +585,28 @@
             <span id="timeDisplay">00:00 / 00:00</span>
           </div>
         </div>
+        </div>
       </div>
 
       <div id="sidebar">
-        <div class="card">
-          <div class="card-header">Preview Avatar</div>
+        <!-- Avatar Card -->
+        <div class="card" id="cardAvatar">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Preview Avatar</span>
+            <span class="card-toggle">▼</span>
+          </div>
           <div class="card-body">
-            <label>Avatar</label>
-            <select id="avatarSelect"></select>
+            <div class="card-body-inner">
+              <div>
+                <label>Avatar</label>
+                <select id="avatarSelect"></select>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="card">
+        <!-- Library Card with Tabs -->
+        <div class="card" id="cardLibrary">
           <div class="tab-bar">
             <button class="tab active" data-tab="animations">Animations</button>
             <button class="tab" data-tab="poses">Poses</button>
@@ -444,95 +615,112 @@
 
           <!-- Animations Tab -->
           <div class="tab-content active" id="animationsTab">
-            <div class="card-body">
+            <div>
               <label>Dance Style</label>
               <div class="style-grid" id="styleGrid"></div>
+            </div>
 
+            <div>
               <label>Mood</label>
               <div class="mood-grid" id="moodGrid"></div>
+            </div>
 
-              <div class="slider-row">
-                <label>BPM</label>
-                <input type="range" id="bpmSlider" min="60" max="180" value="120" />
-                <span class="val" id="bpmVal">120</span>
-              </div>
+            <div class="slider-row">
+              <label>BPM</label>
+              <input type="range" id="bpmSlider" min="60" max="180" value="120" />
+              <span class="val" id="bpmVal">120</span>
+            </div>
 
+            <div>
               <label>Intensity</label>
               <select id="intensitySelect">
                 <option value="low">Low</option>
                 <option value="medium" selected>Medium</option>
                 <option value="high">High</option>
               </select>
-
-              <div class="row">
-                <button id="generateBtn" class="primary">Generate Choreography</button>
-              </div>
-
-              <label>Animation Library</label>
-              <div id="animationList"></div>
-
-              <div class="row">
-                <button id="addAnimationBtn">Add Animation</button>
-                <button id="importFbxBtn">Import FBX</button>
-              </div>
-              <input type="file" id="fbxFile" accept=".fbx" style="display: none;" />
             </div>
+
+            <div class="row">
+              <button id="generateBtn" class="primary">Generate Choreography</button>
+            </div>
+
+            <div>
+              <label>Animation Library</label>
+              <div class="card-body-scroll" id="animationList"></div>
+            </div>
+
+            <div class="row">
+              <button id="addAnimationBtn">Add Animation</button>
+              <button id="importFbxBtn">Import FBX</button>
+            </div>
+            <input type="file" id="fbxFile" accept=".fbx" style="display: none;" />
           </div>
 
           <!-- Poses Tab -->
           <div class="tab-content" id="posesTab">
-            <div class="card-body">
+            <div>
               <label>Pose Library</label>
-              <div id="poseList"></div>
+              <div class="card-body-scroll" id="poseList"></div>
+            </div>
 
-              <div class="row">
-                <button id="addPoseBtn">Add Pose</button>
-              </div>
+            <div class="row">
+              <button id="addPoseBtn">Add Pose</button>
             </div>
           </div>
 
           <!-- Choreography Tab -->
           <div class="tab-content" id="choreographyTab">
-            <div class="card-body">
+            <div>
               <label>Current Choreography</label>
               <input type="text" id="choreoName" placeholder="Choreography name" />
+            </div>
 
+            <div>
               <label>Steps</label>
               <div class="choreography-steps" id="stepsList"></div>
-
-              <div class="row">
-                <button id="clearStepsBtn">Clear</button>
-                <button id="saveChoreoBtn" class="primary">Save Choreography</button>
-              </div>
-
-              <label>Saved Choreographies</label>
-              <div id="choreographyList"></div>
-
-              <div class="row">
-                <button id="exportChoreoBtn">Export JSON</button>
-                <button id="importChoreoBtn">Import</button>
-              </div>
-              <input type="file" id="importFile" accept=".json" style="display: none;" />
             </div>
+
+            <div class="row">
+              <button id="clearStepsBtn">Clear</button>
+              <button id="saveChoreoBtn" class="primary">Save Choreography</button>
+            </div>
+
+            <div>
+              <label>Saved Choreographies</label>
+              <div class="card-body-scroll" id="choreographyList"></div>
+            </div>
+
+            <div class="row">
+              <button id="exportChoreoBtn">Export JSON</button>
+              <button id="importChoreoBtn">Import</button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display: none;" />
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">Playback</div>
+        <!-- Playback Card -->
+        <div class="card" id="cardPlayback">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Playback</span>
+            <span class="card-toggle">▼</span>
+          </div>
           <div class="card-body">
-            <div class="slider-row">
-              <label>Speed</label>
-              <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1" />
-              <span class="val" id="speedVal">1.0x</span>
-            </div>
+            <div class="card-body-inner">
+              <div class="slider-row">
+                <label>Speed</label>
+                <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1" />
+                <span class="val" id="speedVal">1.0x</span>
+              </div>
 
-            <label for="loopToggle">
-              <input type="checkbox" id="loopToggle" /> Loop Playback
-            </label>
+              <div class="checkbox-row">
+                <input type="checkbox" id="loopToggle" />
+                <span>Loop Playback</span>
+              </div>
 
-            <div class="row" style="margin-top: 12px;">
-              <button id="playSelectedBtn" class="secondary">Play Selected</button>
-              <button id="queueBtn">Add to Queue</button>
+              <div class="row">
+                <button id="playSelectedBtn" class="secondary">Play Selected</button>
+                <button id="queueBtn">Add to Queue</button>
+              </div>
             </div>
           </div>
         </div>

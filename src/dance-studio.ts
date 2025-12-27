@@ -13,6 +13,11 @@ import {
 } from "./dance/library";
 import { getDanceDirector, type DanceDirector } from "./dance/director";
 import {
+  createDanceStateMachine,
+  type DanceStateMachine,
+  type DanceStateEvent
+} from "./dance/state-machine";
+import {
   DANCE_STYLES,
   DANCE_MOODS,
   type AnimationClip,
@@ -27,6 +32,7 @@ import {
 const els = {
   avatar: document.getElementById("avatar") as HTMLElement,
   avatarSelect: document.getElementById("avatarSelect") as HTMLSelectElement,
+  heroDesc: document.getElementById("heroDesc") as HTMLElement,
   // Style & Mood
   styleGrid: document.getElementById("styleGrid") as HTMLElement,
   moodGrid: document.getElementById("moodGrid") as HTMLElement,
@@ -74,6 +80,7 @@ const els = {
 let head: TalkingHead | null = null;
 let library: DanceLibraryManager | null = null;
 let director: DanceDirector | null = null;
+let stateMachine: DanceStateMachine | null = null;
 let avatarBaseUrl: string | null = null;
 
 let selectedStyle: DanceStyle = "freestyle";
@@ -344,18 +351,22 @@ const renderTimeline = () => {
 // ─────────────────────────────────────────────────────────────
 
 const playAnimation = async (anim: AnimationClip) => {
-  if (!head) return;
-  updateStatus(`Playing: ${anim.name}`);
+  if (!stateMachine) return;
 
   const speed = parseFloat(els.speedSlider.value);
+  const loop = els.loopToggle.checked && anim.loopable;
 
-  // Use TalkingHead's playAnimation method
-  head.playAnimation(
-    anim.url,
-    null, // progressCallback
-    anim.duration_ms / 1000,
-    null  // onComplete
-  );
+  updateStatus(`Playing: ${anim.name}`);
+  updateHeroDesc(`Playing: ${anim.name}`);
+
+  // Use state machine for proper lifecycle management
+  stateMachine.play(anim, { loop, speed });
+};
+
+const updateHeroDesc = (text: string) => {
+  if (els.heroDesc) {
+    els.heroDesc.textContent = text;
+  }
 };
 
 const playPose = async (pose: PoseClip) => {
@@ -370,7 +381,7 @@ const playPose = async (pose: PoseClip) => {
 };
 
 const playChoreography = () => {
-  if (!head || !currentChoreography) {
+  if (!stateMachine || !library || !currentChoreography) {
     updateStatus("No choreography loaded");
     return;
   }
@@ -382,42 +393,33 @@ const playChoreography = () => {
   isPlaying = true;
   playbackStart = performance.now();
   updateStatus(`Playing: ${currentChoreography.name}`);
+  updateHeroDesc(`Choreography: ${currentChoreography.name}`);
 
-  // Queue all animations
-  const animItems = director?.choreographyToAnimQueue(currentChoreography) || [];
-
-  // Use animQueue approach: reset and enqueue
-  // For now, play sequentially via timeouts (TalkingHead's animQueue can be used more directly)
-  let cumulativeTime = 0;
+  // Build animation map for state machine
+  const animMap = new Map<string, AnimationClip>();
   currentChoreography.steps.forEach((step) => {
     const anim = library?.getAnimation(step.clip_id);
-    if (!anim) return;
-
-    setTimeout(() => {
-      if (!isPlaying) return;
-      head?.playAnimation(
-        anim.url,
-        null,
-        (step.duration_ms || anim.duration_ms) / 1000 * (step.speed || 1)
-      );
-    }, cumulativeTime);
-
-    cumulativeTime += step.duration_ms || anim.duration_ms;
+    if (anim) animMap.set(step.clip_id, anim);
   });
+
+  // Use state machine for choreography playback
+  stateMachine.playChoreography(
+    currentChoreography,
+    animMap,
+    {
+      loop: els.loopToggle.checked,
+      onStepChange: (stepIndex) => {
+        const step = currentChoreography!.steps[stepIndex];
+        const anim = library?.getAnimation(step.clip_id);
+        if (anim) {
+          updateStatus(`Step ${stepIndex + 1}: ${anim.name}`);
+        }
+      }
+    }
+  );
 
   // Start playhead animation
   animatePlayhead();
-
-  // Auto-stop at end
-  setTimeout(() => {
-    if (isPlaying && !els.loopToggle.checked) {
-      stopPlayback();
-      updateStatus("Playback complete");
-    } else if (isPlaying && els.loopToggle.checked) {
-      // Loop
-      playChoreography();
-    }
-  }, currentChoreography.duration_ms);
 };
 
 const animatePlayhead = () => {
@@ -444,8 +446,9 @@ const stopPlayback = () => {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
-  head?.stop();
+  stateMachine?.stop();
   updateStatus("Stopped");
+  updateHeroDesc("Create choreographies with Mixamo-compatible animations.");
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -716,6 +719,38 @@ const init = async () => {
     mood: selectedMood,
     bpm: 120,
     intensity: "medium"
+  });
+
+  // Initialize state machine
+  stateMachine = createDanceStateMachine({
+    autoReturnToIdle: true,
+    idleReturnDelay: 500,
+    transitionDuration: 300
+  });
+
+  // Attach to head
+  if (head) {
+    stateMachine.attach(head);
+  }
+
+  // Set idle animation if available
+  const defaultIdle = library.getDefaultIdle();
+  if (defaultIdle) {
+    stateMachine.setIdleAnimation(defaultIdle);
+  }
+
+  // Listen for state changes
+  stateMachine.on((event: DanceStateEvent) => {
+    if (event.type === "stateChange") {
+      if (event.state === "idle") {
+        isPlaying = false;
+        updateHeroDesc("Create choreographies with Mixamo-compatible animations.");
+      }
+    }
+    if (event.type === "choreographyEnd") {
+      isPlaying = false;
+      updateStatus("Choreography complete");
+    }
   });
 
   // Build UI

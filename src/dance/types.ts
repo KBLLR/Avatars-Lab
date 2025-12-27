@@ -20,12 +20,12 @@ export interface AnimationClip {
   description?: string;
   url: string;                    // Path to FBX file
   source: AnimationSource;
-  type: AnimationType;
+  type?: AnimationType;           // Optional for idle/expression animations
   duration_ms: number;
   bpm?: number;                   // Beats per minute (for music sync)
   loopable: boolean;
   tags: string[];
-  mood?: Mood;
+  mood?: Mood | string;           // Can be Mood enum or string from JSON
   intensity?: "low" | "medium" | "high";
   created_at: string;
 }
@@ -138,6 +138,9 @@ export interface DanceLibrary {
   version: "1.0";
   updated_at: string;
   animations: AnimationClip[];
+  expressions?: AnimationClip[];
+  idle?: AnimationClip[];
+  locomotion?: AnimationClip[];
   poses: PoseClip[];
   choreographies: Choreography[];
 }

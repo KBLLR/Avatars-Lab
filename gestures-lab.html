@@ -23,19 +23,57 @@
 
       body {
         margin: 0;
-        min-height: 100vh;
+        height: 100vh;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--fg);
         background: var(--bg);
+        overflow: hidden;
         -webkit-font-smoothing: antialiased;
       }
 
       #app {
         display: grid;
         grid-template-columns: 1fr 380px;
-        min-height: 100vh;
+        height: 100vh;
         padding: 20px;
         gap: 20px;
+      }
+
+      .preview-column {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        min-height: 0;
+      }
+
+      .lab-hero {
+        padding: 12px 4px 8px;
+        background: transparent;
+        flex-shrink: 0;
+      }
+
+      .lab-hero .eyebrow {
+        display: block;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      .lab-hero .hero-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--fg);
+        margin: 0;
+        line-height: 1.1;
+      }
+
+      .lab-hero .hero-desc {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 4px 0 0;
       }
 
       #preview {
@@ -44,6 +82,8 @@
         border: 1px solid var(--border);
         background: #000;
         overflow: hidden;
+        min-height: 0;
+        flex: 1;
       }
 
       #avatar {
@@ -54,32 +94,120 @@
       #sidebar {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
         overflow-y: auto;
-        max-height: 100vh;
-        padding-right: 8px;
+        min-height: 0;
+        padding-right: 4px;
       }
 
+      /* Scrollbar styling */
+      #sidebar::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #sidebar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #sidebar::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      #sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+      }
+
+      /* Card styles with collapsible support */
       .card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 8px;
-        overflow: hidden;
+        padding: 16px;
+        flex-shrink: 0;
       }
 
       .card-header {
-        padding: 12px 16px;
-        font-weight: 600;
-        font-size: 13px;
-        border-bottom: 1px solid var(--border);
-        cursor: pointer;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        margin: -16px -16px 0;
+        padding: 12px 16px;
+        border-radius: 8px 8px 0 0;
+        transition: background 0.15s;
+        user-select: none;
+      }
+
+      .card-header:hover {
+        background: var(--hover);
+      }
+
+      .card-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .card-toggle {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 10px;
+      }
+
+      .card.collapsed .card-toggle {
+        transform: rotate(-90deg);
       }
 
       .card-body {
-        padding: 16px;
+        display: grid;
+        gap: 12px;
+        transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.2s ease;
+        grid-template-rows: 1fr;
+        margin-top: 12px;
+      }
+
+      .card.collapsed .card-body {
+        grid-template-rows: 0fr;
+        opacity: 0;
+        pointer-events: none;
+        margin-top: 0;
+      }
+
+      .card-body-inner {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .card-body-scroll {
+        max-height: 180px;
+        overflow-y: auto;
+        margin: 0 -4px;
+        padding: 0 4px;
+      }
+
+      .card-body-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .card-body-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .card-body-scroll::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
       }
 
       label {
@@ -99,12 +227,15 @@
         border: 1px solid var(--border);
         border-radius: 6px;
         color: var(--fg);
-        margin-bottom: 12px;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 60px;
       }
 
       input[type="range"] {
         width: 100%;
-        margin-bottom: 12px;
       }
 
       button {
@@ -136,7 +267,6 @@
       .row {
         display: flex;
         gap: 8px;
-        margin-bottom: 12px;
       }
 
       .row > * {
@@ -147,7 +277,6 @@
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 6px;
-        margin-bottom: 12px;
       }
 
       .gesture-btn {
@@ -167,7 +296,6 @@
         display: grid;
         grid-template-columns: repeat(8, 1fr);
         gap: 4px;
-        margin-bottom: 12px;
       }
 
       .emoji-btn {
@@ -186,7 +314,6 @@
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-        margin-bottom: 12px;
       }
 
       .tag {
@@ -241,13 +368,13 @@
         border-radius: 6px;
         font-size: 12px;
         color: var(--muted);
+        z-index: 100;
       }
 
       .slider-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 8px;
       }
 
       .slider-row label {
@@ -270,93 +397,136 @@
   </head>
   <body>
     <div id="app">
-      <div id="preview">
-        <div id="avatar"></div>
+      <div class="preview-column">
+        <div class="lab-hero">
+          <span class="eyebrow">Avatar Labs</span>
+          <h2 class="hero-title">Gestures Lab</h2>
+          <p class="hero-desc" id="heroDesc">Author gesture clips with poses, emojis, and morph targets.</p>
+        </div>
+        <div id="preview">
+          <div id="avatar"></div>
+        </div>
       </div>
 
       <div id="sidebar">
-        <div class="card">
-          <div class="card-header">Preview Avatar</div>
-          <div class="card-body">
-            <label>Avatar</label>
-            <select id="avatarSelect"></select>
+        <!-- Avatar Card -->
+        <div class="card" id="cardAvatar">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Preview Avatar</span>
+            <span class="card-toggle">▼</span>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">Clip Editor</div>
           <div class="card-body">
-            <label>Clip Name</label>
-            <input type="text" id="clipName" placeholder="e.g. Friendly Wave" />
-
-            <label>Description</label>
-            <textarea id="clipDescription" rows="2" placeholder="What does this gesture convey?"></textarea>
-
-            <label>Duration (ms)</label>
-            <input type="text" id="clipDuration" value="2000" />
-
-            <label>Gesture (built-in)</label>
-            <div class="gesture-grid" id="gestureGrid"></div>
-
-            <label>Emoji Expression</label>
-            <div class="emoji-grid" id="emojiGrid"></div>
-
-            <label>Mood</label>
-            <select id="moodSelect">
-              <option value="">None</option>
-              <option value="neutral">Neutral</option>
-              <option value="happy">Happy</option>
-              <option value="sad">Sad</option>
-              <option value="angry">Angry</option>
-              <option value="fear">Fear</option>
-              <option value="love">Love</option>
-            </select>
-
-            <label>Tags</label>
-            <div class="tag-list" id="tagList"></div>
-
-            <div class="row">
-              <button id="previewBtn" class="primary">Preview</button>
-              <button id="saveBtn">Save Clip</button>
+            <div class="card-body-inner">
+              <div>
+                <label>Avatar</label>
+                <select id="avatarSelect"></select>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">Morph Targets</div>
+        <!-- Clip Editor Card -->
+        <div class="card" id="cardEditor">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Clip Editor</span>
+            <span class="card-toggle">▼</span>
+          </div>
           <div class="card-body">
-            <div class="slider-row">
-              <label>browInnerUp</label>
-              <input type="range" id="morphBrowInnerUp" min="0" max="1" step="0.01" value="0" />
-              <span class="val" id="morphBrowInnerUpVal">0</span>
-            </div>
-            <div class="slider-row">
-              <label>eyeSquint</label>
-              <input type="range" id="morphEyeSquint" min="0" max="1" step="0.01" value="0" />
-              <span class="val" id="morphEyeSquintVal">0</span>
-            </div>
-            <div class="slider-row">
-              <label>mouthSmile</label>
-              <input type="range" id="morphMouthSmile" min="0" max="1" step="0.01" value="0" />
-              <span class="val" id="morphMouthSmileVal">0</span>
-            </div>
-            <div class="slider-row">
-              <label>jawOpen</label>
-              <input type="range" id="morphJawOpen" min="0" max="1" step="0.01" value="0" />
-              <span class="val" id="morphJawOpenVal">0</span>
+            <div class="card-body-inner">
+              <div>
+                <label>Clip Name</label>
+                <input type="text" id="clipName" placeholder="e.g. Friendly Wave" />
+              </div>
+
+              <div>
+                <label>Description</label>
+                <textarea id="clipDescription" rows="2" placeholder="What does this gesture convey?"></textarea>
+              </div>
+
+              <div>
+                <label>Duration (ms)</label>
+                <input type="text" id="clipDuration" value="2000" />
+              </div>
+
+              <div>
+                <label>Gesture (built-in)</label>
+                <div class="gesture-grid" id="gestureGrid"></div>
+              </div>
+
+              <div>
+                <label>Emoji Expression</label>
+                <div class="emoji-grid" id="emojiGrid"></div>
+              </div>
+
+              <div>
+                <label>Mood</label>
+                <select id="moodSelect">
+                  <option value="">None</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="happy">Happy</option>
+                  <option value="sad">Sad</option>
+                  <option value="angry">Angry</option>
+                  <option value="fear">Fear</option>
+                  <option value="love">Love</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Tags</label>
+                <div class="tag-list" id="tagList"></div>
+              </div>
+
+              <div class="row">
+                <button id="previewBtn" class="primary">Preview</button>
+                <button id="saveBtn">Save Clip</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">Library</div>
+        <!-- Animations Card -->
+        <div class="card collapsed" id="cardAnimations">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">RPM Animations</span>
+            <span class="card-toggle">▼</span>
+          </div>
           <div class="card-body">
-            <div id="libraryList"></div>
-            <div class="row">
-              <button id="exportBtn">Export JSON</button>
-              <button id="importBtn">Import</button>
+            <div class="card-body-inner">
+              <div class="card-body-scroll" id="animationGrid" style="max-height: 200px;"></div>
+              <button id="stopAnimBtn" style="margin-top: 8px;">Stop Animation</button>
             </div>
-            <input type="file" id="importFile" accept=".json" style="display: none;" />
+          </div>
+        </div>
+
+        <!-- Morph Targets Card -->
+        <div class="card collapsed" id="cardMorphs">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Morph Targets (ARKit)</span>
+            <span class="card-toggle">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="card-body-scroll" id="morphGrid" style="max-height: 300px;"></div>
+              <button id="resetMorphsBtn" style="margin-top: 8px;">Reset All</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Library Card -->
+        <div class="card" id="cardLibrary">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Library</span>
+            <span class="card-toggle">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div class="card-body-scroll" id="libraryList"></div>
+              <div class="row">
+                <button id="exportBtn">Export JSON</button>
+                <button id="importBtn">Import</button>
+              </div>
+              <input type="file" id="importFile" accept=".json" style="display: none;" />
+            </div>
           </div>
         </div>
       </div>

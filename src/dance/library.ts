@@ -113,6 +113,34 @@ export class DanceLibraryManager {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Idle Animations
+  // ─────────────────────────────────────────────────────────────
+
+  getIdleAnimations(): AnimationClip[] {
+    return [...(this.library.idle || [])];
+  }
+
+  getDefaultIdle(): AnimationClip | undefined {
+    return this.library.idle?.[0];
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Expression Animations
+  // ─────────────────────────────────────────────────────────────
+
+  getExpressions(): AnimationClip[] {
+    return [...(this.library.expressions || [])];
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Locomotion Animations
+  // ─────────────────────────────────────────────────────────────
+
+  getLocomotion(): AnimationClip[] {
+    return [...(this.library.locomotion || [])];
+  }
+
   addAnimation(clip: Omit<AnimationClip, "id" | "created_at">): AnimationClip {
     const newClip: AnimationClip = {
       ...clip,

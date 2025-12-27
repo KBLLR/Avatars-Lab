@@ -13,11 +13,17 @@ import {
   GESTURE_TAGS,
   type GestureClip
 } from "./gestures/types";
+import {
+  initDanceLibrary,
+  type DanceLibraryManager
+} from "./dance/library";
+import type { AnimationClip } from "./dance/types";
 
 // Elements
 const els = {
   avatar: document.getElementById("avatar") as HTMLElement,
   avatarSelect: document.getElementById("avatarSelect") as HTMLSelectElement,
+  heroDesc: document.getElementById("heroDesc") as HTMLElement,
   clipName: document.getElementById("clipName") as HTMLInputElement,
   clipDescription: document.getElementById("clipDescription") as HTMLTextAreaElement,
   clipDuration: document.getElementById("clipDuration") as HTMLInputElement,
@@ -32,20 +38,54 @@ const els = {
   importBtn: document.getElementById("importBtn") as HTMLButtonElement,
   importFile: document.getElementById("importFile") as HTMLInputElement,
   status: document.getElementById("status") as HTMLElement,
-  // Morph sliders
-  morphBrowInnerUp: document.getElementById("morphBrowInnerUp") as HTMLInputElement,
-  morphBrowInnerUpVal: document.getElementById("morphBrowInnerUpVal") as HTMLElement,
-  morphEyeSquint: document.getElementById("morphEyeSquint") as HTMLInputElement,
-  morphEyeSquintVal: document.getElementById("morphEyeSquintVal") as HTMLElement,
-  morphMouthSmile: document.getElementById("morphMouthSmile") as HTMLInputElement,
-  morphMouthSmileVal: document.getElementById("morphMouthSmileVal") as HTMLElement,
-  morphJawOpen: document.getElementById("morphJawOpen") as HTMLInputElement,
-  morphJawOpenVal: document.getElementById("morphJawOpenVal") as HTMLElement
+  morphGrid: document.getElementById("morphGrid") as HTMLElement,
+  resetMorphsBtn: document.getElementById("resetMorphsBtn") as HTMLButtonElement,
+  animationGrid: document.getElementById("animationGrid") as HTMLElement,
+  stopAnimBtn: document.getElementById("stopAnimBtn") as HTMLButtonElement
 };
+
+// Full ARKit blendshape list (52 shapes)
+const ARKIT_BLENDSHAPES = [
+  // Eyes (14)
+  "eyeBlinkLeft", "eyeBlinkRight",
+  "eyeLookDownLeft", "eyeLookDownRight",
+  "eyeLookInLeft", "eyeLookInRight",
+  "eyeLookOutLeft", "eyeLookOutRight",
+  "eyeLookUpLeft", "eyeLookUpRight",
+  "eyeSquintLeft", "eyeSquintRight",
+  "eyeWideLeft", "eyeWideRight",
+  // Jaw (4)
+  "jawForward", "jawLeft", "jawRight", "jawOpen",
+  // Mouth (22)
+  "mouthClose", "mouthFunnel", "mouthPucker",
+  "mouthLeft", "mouthRight",
+  "mouthSmileLeft", "mouthSmileRight",
+  "mouthFrownLeft", "mouthFrownRight",
+  "mouthDimpleLeft", "mouthDimpleRight",
+  "mouthStretchLeft", "mouthStretchRight",
+  "mouthRollLower", "mouthRollUpper",
+  "mouthShrugLower", "mouthShrugUpper",
+  "mouthPressLeft", "mouthPressRight",
+  "mouthLowerDownLeft", "mouthLowerDownRight",
+  "mouthUpperUpLeft", "mouthUpperUpRight",
+  // Brows (5)
+  "browDownLeft", "browDownRight",
+  "browInnerUp",
+  "browOuterUpLeft", "browOuterUpRight",
+  // Cheeks & Nose (5)
+  "cheekPuff", "cheekSquintLeft", "cheekSquintRight",
+  "noseSneerLeft", "noseSneerRight",
+  // Tongue (1)
+  "tongueOut"
+] as const;
+
+// Track morph slider values
+const morphValues: Record<string, number> = {};
 
 // State
 let head: TalkingHead | null = null;
 let library: GestureLibraryManager | null = null;
+let danceLibrary: DanceLibraryManager | null = null;
 let avatarBaseUrl: string | null = null;
 let selectedGesture: string | null = null;
 let selectedEmoji: string | null = null;
@@ -69,17 +109,60 @@ const createHead = async () => {
     ttsEndpoint: "N/A",
     // No lipsync needed for gesture preview - disable to prevent init loop
     lipsyncLang: "",
-    cameraView: "upper",
-    cameraDistance: 0.6,
+    // Close-up head view for expression authoring
+    cameraView: "head",
+    cameraDistance: 0.25,
     cameraX: 0,
-    cameraY: 0,
+    cameraY: 0.08,  // Slightly higher for better framing
     cameraRotateEnable: true,
+    cameraPanEnable: true,  // Enable panning for adjustments
     mixerGainSpeech: 3,
-    lightAmbientIntensity: 0.2,
-    lightDirectIntensity: 1,
-    lightSpotIntensity: 20
+    // Special lighting for facial expressions - softer, more flattering
+    lightAmbientIntensity: 0.5,
+    lightDirectIntensity: 0.6,
+    lightSpotIntensity: 12
   });
   return head;
+};
+
+// Mesh patterns to HIDE (body/outfit parts) - case insensitive
+const BODY_MESH_PATTERNS = [
+  "body", "outfit", "bottom", "top", "footwear", "shoes",
+  "wolf3d_body", "wolf3d_outfit", "avatarbody"
+];
+
+// Check if mesh should be visible (head-related)
+const isHeadMesh = (name: string): boolean => {
+  const lower = name.toLowerCase();
+
+  // Hide body/outfit meshes
+  for (const pattern of BODY_MESH_PATTERNS) {
+    if (lower.includes(pattern)) return false;
+  }
+
+  // Show head-related meshes
+  if (lower.includes("head")) return true;
+  if (lower.includes("eye")) return true;
+  if (lower.includes("cornea")) return true;
+  if (lower.includes("teeth")) return true;
+  if (lower.includes("tongue")) return true;
+  if (lower.includes("hair")) return true;
+  if (lower.includes("eyelash")) return true;
+  if (lower.includes("glasses")) return true;
+  if (lower.includes("hat")) return true;
+  if (lower.includes("earring")) return true;
+  if (lower.includes("necklace")) return true;
+  if (lower.includes("wolf3d_head")) return true;
+  if (lower.includes("wolf3d_teeth")) return true;
+  if (lower.includes("wolf3d_hair")) return true;
+  if (lower.includes("wolf3d_glasses")) return true;
+  if (lower.includes("wolf3d_avatar")) return true;  // Full avatar mesh
+
+  // Unknown mesh patterns (Mesh_1, Mesh_2, etc) - hide by default
+  if (lower.startsWith("mesh_")) return false;
+
+  // Default: hide unknown meshes
+  return false;
 };
 
 const loadAvatar = async (name: string) => {
@@ -90,7 +173,47 @@ const loadAvatar = async (name: string) => {
     body: "F",
     avatarMood: "neutral"
   });
+
+  // Hide body meshes, show only head for expression authoring
+  const headInternal = head as unknown as {
+    scene?: { traverse: (cb: (obj: unknown) => void) => void };
+    animMoods: Record<string, unknown>;
+    setMood: (mood: string) => void;
+  };
+
+  if (headInternal.scene && typeof headInternal.scene.traverse === "function") {
+    const meshNames: string[] = [];
+    headInternal.scene.traverse((obj: unknown) => {
+      const mesh = obj as { isMesh?: boolean; isSkinnedMesh?: boolean; name?: string; visible?: boolean };
+      if ((mesh.isMesh || mesh.isSkinnedMesh) && mesh.name) {
+        meshNames.push(mesh.name);
+      }
+    });
+    console.log("[GesturesLab] Available meshes:", meshNames);
+
+    // Now hide body meshes based on actual names found
+    headInternal.scene.traverse((obj: unknown) => {
+      const mesh = obj as { isMesh?: boolean; isSkinnedMesh?: boolean; name?: string; visible?: boolean };
+      if ((mesh.isMesh || mesh.isSkinnedMesh) && mesh.name) {
+        mesh.visible = isHeadMesh(mesh.name);
+      }
+    });
+  }
+
+  // Start render loop (required to see avatar)
   head.start();
+
+  // Create a completely static mood - no breathing, blinking, or any animations
+  headInternal.animMoods["static"] = {
+    baseline: {},
+    speech: { deltaRate: 0, deltaPitch: 0, deltaVolume: 0 },
+    anims: []  // No animations at all
+  };
+  headInternal.setMood("static");
+
+  // Set persistent eye contact - look at camera
+  head.makeEyeContact(Infinity);
+
   updateStatus(`Avatar loaded: ${name}`);
 };
 
@@ -234,6 +357,10 @@ const previewClip = async () => {
 
   setTimeout(() => {
     updateStatus("Preview complete");
+    // Reset eye contact after gesture
+    if (head) {
+      head.makeEyeContact(Infinity);
+    }
   }, clip.duration_ms);
 };
 
@@ -286,22 +413,128 @@ const importLibrary = async (file: File) => {
   }
 };
 
-const bindMorphSliders = () => {
-  const morphSliders = [
-    { input: els.morphBrowInnerUp, val: els.morphBrowInnerUpVal, target: "browInnerUp" },
-    { input: els.morphEyeSquint, val: els.morphEyeSquintVal, target: "eyeSquintLeft" },
-    { input: els.morphMouthSmile, val: els.morphMouthSmileVal, target: "mouthSmileLeft" },
-    { input: els.morphJawOpen, val: els.morphJawOpenVal, target: "jawOpen" }
+const buildAnimationGrid = () => {
+  if (!danceLibrary) return;
+  els.animationGrid.innerHTML = "";
+
+  // Get all animation types
+  const allAnims: AnimationClip[] = [
+    ...danceLibrary.getAllAnimations(),
+    ...danceLibrary.getExpressions(),
+    ...danceLibrary.getIdleAnimations(),
+    ...danceLibrary.getLocomotion()
   ];
 
-  morphSliders.forEach(({ input, val, target }) => {
+  if (allAnims.length === 0) {
+    els.animationGrid.innerHTML = '<div style="color: var(--muted); font-size: 12px;">No animations in library.</div>';
+    return;
+  }
+
+  allAnims.forEach((anim) => {
+    const btn = document.createElement("button");
+    btn.className = "gesture-btn";
+    btn.style.fontSize = "10px";
+    btn.style.padding = "8px 4px";
+    btn.textContent = anim.name;
+    btn.title = anim.description || anim.url;
+
+    btn.addEventListener("click", () => {
+      if (!head) return;
+      updateStatus(`Playing: ${anim.name}`);
+
+      // Need to start animation loop for playback
+      head.start();
+
+      head.playAnimation(
+        anim.url,
+        null,  // onprogress
+        anim.duration_ms / 1000,
+        0,     // ndx
+        0.01   // scale
+      );
+
+      // Return to static after animation
+      setTimeout(() => {
+        if (head) {
+          const headAny = head as unknown as { setMood: (mood: string) => void };
+          headAny.setMood("static");
+          head.makeEyeContact(Infinity);
+        }
+        updateStatus("Ready");
+      }, anim.duration_ms);
+    });
+
+    els.animationGrid.appendChild(btn);
+  });
+
+  // Stop animation button
+  els.stopAnimBtn.addEventListener("click", () => {
+    if (head) {
+      head.stopAnimation();
+      const headAny = head as unknown as { setMood: (mood: string) => void };
+      headAny.setMood("static");
+      head.makeEyeContact(Infinity);
+      updateStatus("Animation stopped");
+    }
+  });
+};
+
+const buildMorphGrid = () => {
+  els.morphGrid.innerHTML = "";
+
+  ARKIT_BLENDSHAPES.forEach((shape) => {
+    morphValues[shape] = 0;
+
+    const row = document.createElement("div");
+    row.className = "slider-row";
+
+    const label = document.createElement("label");
+    label.textContent = shape;
+    label.style.fontSize = "10px";
+    label.style.flex = "0 0 120px";
+
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = "0";
+    input.max = "1";
+    input.step = "0.01";
+    input.value = "0";
+    input.id = `morph_${shape}`;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = "0";
+
     input.addEventListener("input", () => {
       const value = parseFloat(input.value);
+      morphValues[shape] = value;
       val.textContent = value.toFixed(2);
       if (head) {
-        head.setValue(target, value);
+        head.setValue(shape, value);
       }
     });
+
+    row.appendChild(label);
+    row.appendChild(input);
+    row.appendChild(val);
+    els.morphGrid.appendChild(row);
+  });
+
+  // Reset button
+  els.resetMorphsBtn.addEventListener("click", () => {
+    ARKIT_BLENDSHAPES.forEach((shape) => {
+      morphValues[shape] = 0;
+      const input = document.getElementById(`morph_${shape}`) as HTMLInputElement;
+      if (input) {
+        input.value = "0";
+        const val = input.nextElementSibling as HTMLElement;
+        if (val) val.textContent = "0";
+      }
+      if (head) {
+        head.setValue(shape, 0);
+      }
+    });
+    updateStatus("Morphs reset");
   });
 };
 
@@ -329,11 +562,13 @@ const init = async () => {
   buildGestureGrid();
   buildEmojiGrid();
   buildTagList();
-  bindMorphSliders();
+  buildMorphGrid();
 
-  // Load library
+  // Load libraries
   library = await initGestureLibrary();
+  danceLibrary = await initDanceLibrary();
   renderLibraryList();
+  buildAnimationGrid();
 
   // Buttons
   els.previewBtn.addEventListener("click", previewClip);

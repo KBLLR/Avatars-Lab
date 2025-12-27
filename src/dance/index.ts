@@ -5,3 +5,4 @@
 export * from "./types";
 export * from "./library";
 export * from "./director";
+export * from "./state-machine";
