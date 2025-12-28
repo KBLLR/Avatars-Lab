@@ -7,7 +7,7 @@ AVATARS_DIR="${SCRIPT_DIR}/../../public/avatars"
 BLENDER_SCRIPT="${SCRIPT_DIR}/sdk_avatars.py"
 
 # SDK avatars that need adaptation
-SDK_AVATARS=("sandri")
+SDK_AVATARS=("sandri" "nyx" "diego")
 
 # Try to find Blender executable
 BLENDER=""

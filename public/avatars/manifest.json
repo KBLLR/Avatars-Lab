@@ -85,6 +85,18 @@
       "default_mood": "neutral"
     },
     {
+      "id": "diego",
+      "file": "diego.glb",
+      "display_name": "Diego",
+      "body": "M",
+      "voice_id": "em_alex",
+      "intro": "Soy Diego—system architect with a poet’s soul—and I’m at the Avatar Performance Auditions to prove that structure and emotion are built from the same code.",
+      "background": "Diego sees the world as a series of elegant systems. He’s the bridge between raw technical capability and human expression. He handles complex explanations, structural walkthroughs, and deep-dive technical narration with a warmth that makes the abstract feel personal. He’s auditioning for AvatarOS as the voice of underlying architecture—reliable, visionary, and deeply grounded.",
+      "project": "AvatarOS",
+      "tags": ["Spanish", "architect", "technical", "warm", "visionary"],
+      "default_mood": "neutral"
+    },
+    {
       "id": "donna",
       "file": "donna.glb",
       "display_name": "Donna",
