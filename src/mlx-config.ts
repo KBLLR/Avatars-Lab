@@ -45,8 +45,11 @@ const getMlxConfig = () => {
   const embedModel = overrides.embedModel || import.meta.env.VITE_MLX_DEFAULT_EMBED_MODEL;
   const mfluxModel = overrides.mfluxModel || import.meta.env.VITE_MLX_DEFAULT_MFLUX_MODEL || "flux-schnell";
 
+  const llmBaseUrl = import.meta.env.VITE_MLX_LLM_BASE_URL;
+  console.log("[mlx-config] VITE_MLX_LLM_BASE_URL:", llmBaseUrl);
+
   return {
-    llmBaseUrl: import.meta.env.VITE_MLX_LLM_BASE_URL,
+    llmBaseUrl,
     audioBaseUrl: import.meta.env.VITE_MLX_AUDIO_BASE_URL,
     vlmBaseUrl:
       import.meta.env.VITE_MLX_VLM_BASE_URL ||

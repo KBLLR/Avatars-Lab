@@ -19,7 +19,7 @@ import type {
 // Engine imports for timeline
 import { createTimelineEditor, type TimelineEditor } from "./engine/ui";
 import { directorPlanToTimeline } from "./engine/director-adapter";
-import { type Timeline, createTimeline, createBlock } from "./engine/types";
+import { type Timeline, type VisemeBlockData, createTimeline, createBlock } from "./engine/types";
 import {
   saveTimeline,
   loadCurrentTimeline,
@@ -92,7 +92,10 @@ import {
   createSelect,
   createInlineInput,
   clearPlan,
-  updateLyricsOverlay
+  updateLyricsOverlay,
+  createSubtitleRenderer,
+  type SubtitleRenderer,
+  type SubtitlePreset
 } from "./ui/index";
 
 // Elements are lazily loaded via getElements() from stage module
@@ -1001,8 +1004,8 @@ const buildVisemeBlock = async (durationMs: number) => {
   const visemeTimings = buildVisemeTimings(state.head, timings);
   const hasVisemes = visemeTimings.visemes.length > 0;
 
-  const data = {
-    source: "audio",
+  const data: VisemeBlockData = {
+    source: "audio" as const,
     text: state.transcriptText,
     wordTimings: timings,
     visemeMapping: hasVisemes ? visemeTimings : undefined,
@@ -1140,6 +1143,323 @@ const initTimelineEditor = () => {
   }
 
   console.log("[Engine Lab] Timeline Editor initialized");
+
+  // Initialize floating action bar controls
+  initFloatingBar();
+};
+
+// ─────────────────────────────────────────────────────────────
+// Floating Action Bar & Timing Sync
+// ─────────────────────────────────────────────────────────────
+
+interface PerformanceTiming {
+  startTime: number | null;
+  pauseTime: number | null;
+  elapsedAtPause: number;
+  totalDuration: number;
+  isPaused: boolean;
+  rafId: number | null;
+}
+
+const performanceTiming: PerformanceTiming = {
+  startTime: null,
+  pauseTime: null,
+  elapsedAtPause: 0,
+  totalDuration: 0,
+  isPaused: false,
+  rafId: null,
+};
+
+const formatTimingDisplay = (ms: number): string => {
+  const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+};
+
+const updateTimingDisplay = (current: number, total: number) => {
+  const timingEl = document.getElementById("stageTiming");
+  if (!timingEl) return;
+
+  const currentEl = timingEl.querySelector(".timing-current");
+  const totalEl = timingEl.querySelector(".timing-total");
+  const remainingEl = timingEl.querySelector(".timing-remaining");
+
+  if (currentEl) currentEl.textContent = formatTimingDisplay(current);
+  if (totalEl) totalEl.textContent = formatTimingDisplay(total);
+  if (remainingEl) {
+    const remaining = Math.max(0, total - current);
+    remainingEl.textContent = `(-${formatTimingDisplay(remaining)})`;
+  }
+};
+
+const updateTimingLoop = () => {
+  if (!performanceTiming.startTime) {
+    performanceTiming.rafId = null;
+    return;
+  }
+
+  const now = performance.now();
+  let elapsed: number;
+
+  if (performanceTiming.isPaused && performanceTiming.pauseTime) {
+    elapsed = performanceTiming.elapsedAtPause;
+  } else {
+    elapsed = now - performanceTiming.startTime + performanceTiming.elapsedAtPause;
+  }
+
+  // Update timing display
+  updateTimingDisplay(elapsed, performanceTiming.totalDuration);
+
+  // Update timeline playhead
+  if (timelineEditor && !performanceTiming.isPaused) {
+    timelineEditor.setPlayhead(elapsed);
+  }
+
+  // Stop when performance ends
+  if (elapsed >= performanceTiming.totalDuration && !performanceTiming.isPaused) {
+    stopTimingLoop();
+    onPerformanceEnd();
+    return;
+  }
+
+  performanceTiming.rafId = requestAnimationFrame(updateTimingLoop);
+};
+
+const startTimingLoop = (durationMs: number) => {
+  performanceTiming.startTime = performance.now();
+  performanceTiming.pauseTime = null;
+  performanceTiming.elapsedAtPause = 0;
+  performanceTiming.totalDuration = durationMs;
+  performanceTiming.isPaused = false;
+  performanceTiming.rafId = requestAnimationFrame(updateTimingLoop);
+
+  updateFloatingBarState("playing");
+};
+
+const pauseTimingLoop = () => {
+  if (!performanceTiming.startTime || performanceTiming.isPaused) return;
+
+  performanceTiming.pauseTime = performance.now();
+  performanceTiming.elapsedAtPause =
+    performanceTiming.pauseTime - performanceTiming.startTime + performanceTiming.elapsedAtPause;
+  performanceTiming.isPaused = true;
+
+  updateFloatingBarState("paused");
+};
+
+const resumeTimingLoop = () => {
+  if (!performanceTiming.isPaused) return;
+
+  performanceTiming.startTime = performance.now();
+  performanceTiming.pauseTime = null;
+  performanceTiming.isPaused = false;
+  performanceTiming.rafId = requestAnimationFrame(updateTimingLoop);
+
+  updateFloatingBarState("playing");
+};
+
+const stopTimingLoop = () => {
+  if (performanceTiming.rafId) {
+    cancelAnimationFrame(performanceTiming.rafId);
+  }
+  performanceTiming.startTime = null;
+  performanceTiming.pauseTime = null;
+  performanceTiming.elapsedAtPause = 0;
+  performanceTiming.isPaused = false;
+  performanceTiming.rafId = null;
+
+  // Reset playhead to start
+  if (timelineEditor) {
+    timelineEditor.setPlayhead(0);
+  }
+
+  updateTimingDisplay(0, performanceTiming.totalDuration);
+  updateFloatingBarState("stopped");
+};
+
+const updateFloatingBarState = (playState: "playing" | "paused" | "stopped") => {
+  const playBtn = document.getElementById("stagePlayBtn");
+  const pauseBtn = document.getElementById("stagePauseBtn");
+  const timingEl = document.getElementById("stageTiming");
+
+  if (playBtn) {
+    playBtn.classList.remove("playing", "paused");
+    if (playState === "playing") {
+      playBtn.classList.add("playing");
+      playBtn.innerHTML = "▶ Playing";
+    } else {
+      playBtn.innerHTML = "▶ Perform";
+    }
+  }
+
+  if (pauseBtn) {
+    pauseBtn.classList.remove("paused");
+    (pauseBtn as HTMLButtonElement).disabled = playState === "stopped";
+    if (playState === "paused") {
+      pauseBtn.classList.add("paused");
+      pauseBtn.innerHTML = "▶";
+      pauseBtn.title = "Resume performance";
+    } else {
+      pauseBtn.innerHTML = "⏸";
+      pauseBtn.title = "Pause performance";
+    }
+  }
+
+  if (timingEl) {
+    timingEl.classList.remove("playing", "paused");
+    if (playState === "playing") {
+      timingEl.classList.add("playing");
+    } else if (playState === "paused") {
+      timingEl.classList.add("paused");
+    }
+  }
+
+  // Update timeline editor state via public methods
+  if (timelineEditor) {
+    if (playState === "playing") {
+      // Timeline is playing - internal state is tracked by the timing loop
+    } else if (playState === "stopped") {
+      timelineEditor.stop();
+    }
+  }
+};
+
+const onPerformanceEnd = () => {
+  updateFloatingBarState("stopped");
+  subtitleRenderer?.stop();
+  console.log("[Performance] Ended");
+};
+
+// ─────────────────────────────────────────────────────────────
+// Subtitle Renderer
+// ─────────────────────────────────────────────────────────────
+
+let subtitleRenderer: SubtitleRenderer | null = null;
+let subtitlesEnabled = true;
+
+const initSubtitles = () => {
+  const stage = document.getElementById("stage");
+  if (!stage) return;
+
+  // Create renderer with default preset, using head's audio context for timing
+  subtitleRenderer = createSubtitleRenderer(
+    stage,
+    { style: {}, preset: "default", enabled: true },
+    () => state.head?.audioCtx?.currentTime ?? 0
+  );
+
+  console.log("[Subtitles] Initialized");
+};
+
+const startSubtitles = () => {
+  if (!subtitleRenderer || !subtitlesEnabled) return;
+
+  const wordTimings = state.wordTimings;
+  const audioDuration = state.audioBuffer?.duration ?? 0;
+
+  if (wordTimings && wordTimings.words.length > 0) {
+    subtitleRenderer.start(wordTimings, audioDuration);
+    console.log("[Subtitles] Started with", wordTimings.words.length, "words");
+  }
+};
+
+const stopSubtitles = () => {
+  subtitleRenderer?.stop();
+};
+
+const initFloatingBar = () => {
+  const playBtn = document.getElementById("stagePlayBtn");
+  const pauseBtn = document.getElementById("stagePauseBtn");
+  const stopBtn = document.getElementById("stageStopBtn");
+  const timelineBtn = document.getElementById("stageTimelineBtn");
+  const subtitlesBtn = document.getElementById("stageSubtitlesBtn");
+  const subtitlePresetSelect = document.getElementById("subtitlePresetSelect") as HTMLSelectElement | null;
+
+  // Play button - start or resume performance
+  playBtn?.addEventListener("click", () => {
+    if (performanceTiming.isPaused) {
+      resumeTimingLoop();
+      subtitleRenderer?.resume();
+    } else if (!state.performing) {
+      // Get duration from audio or plan
+      const durationMs = state.audioBuffer
+        ? Math.round(state.audioBuffer.duration * 1000)
+        : currentTimeline?.duration_ms ?? 30000;
+
+      startTimingLoop(durationMs);
+      void performSong();
+      // Subtitles start after performSong sets wordTimings
+      setTimeout(() => startSubtitles(), 100);
+    }
+  });
+
+  // Pause button - pause without resetting
+  pauseBtn?.addEventListener("click", () => {
+    if (performanceTiming.isPaused) {
+      resumeTimingLoop();
+      subtitleRenderer?.resume();
+    } else if (state.performing || performanceTiming.startTime) {
+      pauseTimingLoop();
+      subtitleRenderer?.pause();
+      stopPerformance();
+    }
+  });
+
+  // Stop button - reset to start
+  stopBtn?.addEventListener("click", () => {
+    stopTimingLoop();
+    stopPerformance();
+    stopSubtitles();
+  });
+
+  // Timeline toggle is handled by inline script in engine-lab.html
+
+  // Subtitle toggle
+  subtitlesBtn?.addEventListener("click", () => {
+    subtitlesEnabled = !subtitlesEnabled;
+    subtitlesBtn.classList.toggle("active", subtitlesEnabled);
+
+    if (subtitlesEnabled && state.performing) {
+      startSubtitles();
+    } else {
+      stopSubtitles();
+    }
+  });
+
+  // Subtitle preset selector
+  subtitlePresetSelect?.addEventListener("change", () => {
+    const preset = subtitlePresetSelect.value as SubtitlePreset;
+    subtitleRenderer?.setPreset(preset);
+  });
+
+  // Initialize subtitles
+  initSubtitles();
+
+  // Initialize timing display with total duration
+  const durationMs = state.audioBuffer
+    ? Math.round(state.audioBuffer.duration * 1000)
+    : currentTimeline?.duration_ms ?? 30000;
+  performanceTiming.totalDuration = durationMs;
+  updateTimingDisplay(0, durationMs);
+
+  // Subscribe to plan changes to update total duration
+  stateManager.subscribe((nextState, changed) => {
+    if (changed.audioBuffer !== undefined && nextState.audioBuffer) {
+      const newDuration = Math.round(nextState.audioBuffer.duration * 1000);
+      performanceTiming.totalDuration = newDuration;
+      updateTimingDisplay(0, newDuration);
+    }
+
+    // Enable/disable play button based on plan approval
+    if (changed.planApproved !== undefined || changed.plan !== undefined) {
+      if (playBtn) {
+        (playBtn as HTMLButtonElement).disabled = !nextState.planApproved;
+      }
+    }
+  });
+
+  console.log("[Floating Bar] Initialized with timing sync");
 };
 
 const updateTimelineFromPlan = async (plan: MergedPlan) => {

@@ -26,9 +26,15 @@ export const setRuntimeBusy = (els: RuntimePanelElements, busy: boolean): void =
 };
 
 export const fetchModelRuntimeStatus = async (llmBaseUrl: string): Promise<ModelRuntimeStatus | null> => {
-  if (!llmBaseUrl) return null;
+  console.log("[runtime-panel] fetchModelRuntimeStatus called with llmBaseUrl:", llmBaseUrl);
+  if (!llmBaseUrl) {
+    console.log("[runtime-panel] llmBaseUrl is empty or undefined, returning null");
+    return null;
+  }
   const statusUrl = `${llmBaseUrl}/internal/models/status`;
   const diagnosticsUrl = `${llmBaseUrl}/internal/diagnostics`;
+  console.log("[runtime-panel] Status URL:", statusUrl);
+  console.log("[runtime-panel] Diagnostics URL:", diagnosticsUrl);
 
   try {
     const controller = new AbortController();

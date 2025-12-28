@@ -22,6 +22,7 @@ import {
   type EmojiBlockData,
   type DanceBlockData,
   type FXBlockData,
+  type VisemeBlockData,
   type BlockEvent,
 } from "./types";
 
@@ -33,6 +34,18 @@ export interface DirectorToTimelineOptions {
   eventBlockMs?: number;
   cameraTransitionMs?: number;
   lightingTransitionMs?: number;
+  // Viseme/lipsync data
+  audioUrl?: string;
+  wordTimings?: {
+    words: string[];
+    wtimes: number[];
+    wdurations: number[];
+  };
+  visemeMapping?: {
+    visemes: string[];
+    vtimes: number[];
+    vdurations: number[];
+  };
 }
 
 export interface DirectorToTimelineResult {
@@ -567,6 +580,27 @@ export const directorPlanToTimeline = (
     for (const action of plan.actions) {
       mapActionToBlocks(action, options, options.durationMs, blocks, externalActions);
     }
+  }
+
+  // Create viseme block if word/viseme timings are provided
+  if (options.wordTimings && options.wordTimings.words.length > 0) {
+    const visemeData: VisemeBlockData = {
+      source: options.audioUrl ? "audio" : "tts",
+      audioUrl: options.audioUrl,
+      wordTimings: options.wordTimings,
+      visemeMapping: options.visemeMapping,
+    };
+
+    const visemeBlock = createBlock(
+      "viseme",
+      "viseme",
+      0, // Start at beginning
+      options.durationMs, // Span entire duration
+      visemeData,
+      "lipsync"
+    );
+
+    blocks.push(visemeBlock);
   }
 
   timeline.blocks = blocks.sort((a, b) => a.start_ms - b.start_ms);

@@ -12,6 +12,7 @@ import {
   EngineStateMachine,
   FXExecutor,
   LightingExecutor,
+  VisemeExecutor,
   directorPlanToTimeline
 } from "../engine";
 import { getDanceDirector } from "../dance/director";
@@ -288,7 +289,10 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
           durationMs,
           defaultCameraView: state.cameraSettings.view,
           defaultLightPreset: state.lightPreset,
-          defaultMood: "neutral"
+          defaultMood: "neutral",
+          // Pass viseme/lipsync data for viseme block creation
+          wordTimings: timings,
+          visemeMapping: visemeTimings.visemes.length > 0 ? visemeTimings : undefined,
         }
       );
       externalActions = passthrough;
@@ -299,6 +303,7 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
       }
 
       engine = new EngineStateMachine({ timeline, head: activeHead, effectsManager });
+      engine.registerExecutor(new VisemeExecutor(activeHead));
       engine.registerExecutor(new BlendshapeExecutor(activeHead));
       engine.registerExecutor(new EmojiExecutor(activeHead));
       engine.registerExecutor(new LightingExecutor(activeHead));

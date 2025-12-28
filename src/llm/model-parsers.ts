@@ -539,13 +539,69 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
     name: "DeepSeek",
     stripMarkdown: true,
     stripPreamble: true,
+    lenientStructure: true,
     preprocess: (raw) => {
       let cleaned = raw;
-      // DeepSeek often outputs thought chains in <think> tags
+
+      // DeepSeek R1/R1-Distill outputs chain-of-thought BEFORE JSON
+      // Pattern: "Okay, so I need to..." or "Let me think..." followed by JSON
+      // We need to find and extract only the JSON part
+
+      // Remove <think> tags if present (older DeepSeek format)
       cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, "");
+
+      // R1-Distill models output plain-text reasoning before JSON
+      // Find the first { or [ and extract from there
+      const trimmed = cleaned.trim();
+      if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        // Look for JSON start patterns
+        const jsonPatterns = [
+          /\{\s*"thoughts_summary"/,
+          /\{\s*"plan"/,
+          /\{\s*"sections"/,
+          /\{\s*"analysis"/,
+        ];
+
+        let jsonStart = -1;
+        for (const pattern of jsonPatterns) {
+          const match = cleaned.match(pattern);
+          if (match && match.index !== undefined) {
+            jsonStart = match.index;
+            break;
+          }
+        }
+
+        // Fallback: find first {
+        if (jsonStart < 0) {
+          jsonStart = cleaned.indexOf("{");
+        }
+
+        if (jsonStart > 0) {
+          cleaned = cleaned.slice(jsonStart);
+        }
+      }
+
+      // Also strip any trailing reasoning after the JSON
+      // Find the balanced end of the JSON
+      const allObjects = findAllJsonObjects(cleaned);
+      if (allObjects.length > 0) {
+        // Prefer objects that look like our expected format
+        const directorJson = allObjects.find(obj =>
+          obj.includes('"thoughts_summary"') ||
+          obj.includes('"plan"') ||
+          obj.includes('"sections"')
+        );
+        if (directorJson) {
+          cleaned = directorJson;
+        } else {
+          // Return the largest object
+          cleaned = allObjects.reduce((a, b) => a.length > b.length ? a : b);
+        }
+      }
+
       return cleaned;
     },
-    notes: "DeepSeek models using Chain of Thought"
+    notes: "DeepSeek R1/R1-Distill models output chain-of-thought before JSON"
   }
 ];
 

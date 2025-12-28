@@ -126,7 +126,7 @@ export interface TimelineEvent {
 
 type TimelineEventHandler = (event: TimelineEvent) => void;
 
-type PropertyFieldType = "text" | "number" | "select" | "checkbox";
+type PropertyFieldType = "text" | "number" | "select" | "checkbox" | "color" | "range";
 
 interface PropertyField {
   label: string;
@@ -138,6 +138,11 @@ interface PropertyField {
   max?: number;
   placeholder?: string;
   disabled?: boolean;
+  helpText?: string;
+  group?: string;
+  required?: boolean;
+  unit?: string;
+  defaultValue?: string | number | boolean;
 }
 
 const FACE_EMOJI_OPTIONS = [
@@ -887,6 +892,112 @@ export class TimelineEditor {
       .property-input:focus {
         outline: none;
         border-color: #4fc3f7;
+      }
+
+      .property-input:invalid {
+        border-color: #ef4444;
+      }
+
+      .property-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .property-input[type="checkbox"] {
+        width: auto;
+        margin-right: 8px;
+      }
+
+      .property-row.checkbox-row {
+        display: flex;
+        align-items: center;
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+      }
+
+      .property-row.checkbox-row label {
+        margin-bottom: 0;
+        margin-left: 8px;
+      }
+
+      .property-help {
+        font-size: 9px;
+        color: #666;
+        margin-top: 2px;
+        line-height: 1.3;
+      }
+
+      .property-group {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .property-group-title {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.4);
+        margin-bottom: 8px;
+      }
+
+      .property-unit {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 10px;
+        color: #666;
+        pointer-events: none;
+      }
+
+      .property-row.has-unit {
+        position: relative;
+      }
+
+      .property-row.has-unit .property-input {
+        padding-right: 32px;
+      }
+
+      .property-input[type="range"] {
+        padding: 0;
+        height: 6px;
+        background: #333;
+        border: none;
+        cursor: pointer;
+      }
+
+      .property-input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        background: #4fc3f7;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .range-value {
+        font-size: 10px;
+        color: #4fc3f7;
+        margin-left: 8px;
+        min-width: 36px;
+        text-align: right;
+      }
+
+      .property-row.range-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .property-row.range-row .property-input {
+        flex: 1;
+      }
+
+      .property-required::after {
+        content: "*";
+        color: #ef4444;
+        margin-left: 2px;
       }
 
       /* Block dragging state */
@@ -2172,79 +2283,169 @@ export class TimelineEditor {
 
     const fields = this.getLayerFields(block);
     if (fields.length === 0) {
-      container.innerHTML = `<div class="property-row"><label>None</label><span class="property-input">—</span></div>`;
+      container.innerHTML = `<div class="property-row"><label>No properties</label></div>`;
       return;
     }
 
-    container.innerHTML = fields
-      .map((field) => {
-        const value = this.getNestedValue(block, field.prop);
-        const isChecked = field.type === "checkbox" && Boolean(value);
-        const valueAttr =
-          field.type === "number" && typeof value === "number"
-            ? String(value)
-            : field.type === "text" && typeof value === "string"
-              ? value
-              : field.type === "select"
-                ? String(value ?? "")
-                : "";
+    // Group fields by their group property
+    const groups = new Map<string, PropertyField[]>();
+    const ungrouped: PropertyField[] = [];
 
-        if (field.type === "select") {
-          const options = (field.options || [])
-            .map((option) => {
-              const selected = option.value === valueAttr ? " selected" : "";
-              return `<option value="${option.value}"${selected}>${option.label}</option>`;
-            })
-            .join("");
-          const disabledAttr = field.disabled ? " disabled" : "";
+    for (const field of fields) {
+      if (field.group) {
+        const existing = groups.get(field.group) || [];
+        existing.push(field);
+        groups.set(field.group, existing);
+      } else {
+        ungrouped.push(field);
+      }
+    }
 
-          return `
-            <div class="property-row">
-              <label>${field.label}</label>
-              <select class="property-input" data-prop="${field.prop}"${disabledAttr}>
-                <option value=""></option>
-                ${options}
-              </select>
-            </div>
-          `;
-        }
+    const renderField = (field: PropertyField): string => {
+      const value = this.getNestedValue(block, field.prop);
+      const effectiveValue = value ?? field.defaultValue;
+      const labelClass = field.required ? "property-required" : "";
 
-        if (field.type === "checkbox") {
-          const checked = value ? " checked" : "";
-          return `
-            <div class="property-row">
-              <label>${field.label}</label>
-              <input type="checkbox" class="property-input" data-prop="${field.prop}"${checked} />
-            </div>
-          `;
-        }
+      // Select field
+      if (field.type === "select") {
+        const options = (field.options || [])
+          .map((option) => {
+            const selected = option.value === String(effectiveValue ?? "") ? " selected" : "";
+            return `<option value="${option.value}"${selected}>${option.label}</option>`;
+          })
+          .join("");
+        const disabledAttr = field.disabled ? " disabled" : "";
 
+        return `
+          <div class="property-row">
+            <label class="${labelClass}">${field.label}</label>
+            <select class="property-input" data-prop="${field.prop}"${disabledAttr}>
+              ${!field.required ? '<option value="">—</option>' : ""}
+              ${options}
+            </select>
+            ${field.helpText ? `<div class="property-help">${field.helpText}</div>` : ""}
+          </div>
+        `;
+      }
+
+      // Checkbox field
+      if (field.type === "checkbox") {
+        const checked = effectiveValue ? " checked" : "";
+        return `
+          <div class="property-row checkbox-row">
+            <input type="checkbox" class="property-input" data-prop="${field.prop}"${checked} />
+            <label class="${labelClass}">${field.label}</label>
+            ${field.helpText ? `<div class="property-help">${field.helpText}</div>` : ""}
+          </div>
+        `;
+      }
+
+      // Range field (slider)
+      if (field.type === "range") {
+        const numValue = typeof effectiveValue === "number" ? effectiveValue : (field.defaultValue ?? field.min ?? 0);
         const stepAttr = field.step !== undefined ? ` step="${field.step}"` : "";
         const minAttr = field.min !== undefined ? ` min="${field.min}"` : "";
         const maxAttr = field.max !== undefined ? ` max="${field.max}"` : "";
-        const placeholderAttr = field.placeholder ? ` placeholder="${field.placeholder}"` : "";
+        const unitText = field.unit || "";
 
-        const disabledAttr = field.disabled ? " disabled" : "";
-        const checkedAttr = isChecked ? " checked" : "";
         return `
-          <div class="property-row">
-            <label>${field.label}</label>
+          <div class="property-row range-row">
+            <label class="${labelClass}">${field.label}</label>
             <input
-              type="${field.type}"
+              type="range"
               class="property-input"
               data-prop="${field.prop}"
-              value="${field.type === "checkbox" ? "" : valueAttr}"
+              value="${numValue}"
               ${stepAttr}
               ${minAttr}
               ${maxAttr}
-              ${placeholderAttr}
-              ${disabledAttr}
-              ${checkedAttr}
             />
+            <span class="range-value">${numValue}${unitText}</span>
+          </div>
+          ${field.helpText ? `<div class="property-help">${field.helpText}</div>` : ""}
+        `;
+      }
+
+      // Color field
+      if (field.type === "color") {
+        const colorValue = typeof effectiveValue === "string" ? effectiveValue : (field.defaultValue ?? "#ffffff");
+        return `
+          <div class="property-row">
+            <label class="${labelClass}">${field.label}</label>
+            <input
+              type="color"
+              class="property-input"
+              data-prop="${field.prop}"
+              value="${colorValue}"
+            />
+            ${field.helpText ? `<div class="property-help">${field.helpText}</div>` : ""}
           </div>
         `;
-      })
-      .join("");
+      }
+
+      // Number and text fields
+      const valueAttr = typeof effectiveValue === "number" || typeof effectiveValue === "string"
+        ? String(effectiveValue)
+        : "";
+      const stepAttr = field.step !== undefined ? ` step="${field.step}"` : "";
+      const minAttr = field.min !== undefined ? ` min="${field.min}"` : "";
+      const maxAttr = field.max !== undefined ? ` max="${field.max}"` : "";
+      const placeholderAttr = field.placeholder ? ` placeholder="${field.placeholder}"` : "";
+      const disabledAttr = field.disabled ? " disabled" : "";
+      const requiredAttr = field.required ? " required" : "";
+      const hasUnit = field.unit ? "has-unit" : "";
+
+      return `
+        <div class="property-row ${hasUnit}">
+          <label class="${labelClass}">${field.label}</label>
+          <input
+            type="${field.type}"
+            class="property-input"
+            data-prop="${field.prop}"
+            value="${valueAttr}"
+            ${stepAttr}
+            ${minAttr}
+            ${maxAttr}
+            ${placeholderAttr}
+            ${disabledAttr}
+            ${requiredAttr}
+          />
+          ${field.unit ? `<span class="property-unit">${field.unit}</span>` : ""}
+          ${field.helpText ? `<div class="property-help">${field.helpText}</div>` : ""}
+        </div>
+      `;
+    };
+
+    // Build HTML with groups
+    let html = "";
+
+    // Render ungrouped fields first
+    for (const field of ungrouped) {
+      html += renderField(field);
+    }
+
+    // Render grouped fields
+    for (const [groupName, groupFields] of groups) {
+      html += `<div class="property-group">
+        <div class="property-group-title">${groupName}</div>
+        ${groupFields.map(renderField).join("")}
+      </div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Attach range input listeners for live value updates
+    container.querySelectorAll('input[type="range"]').forEach((input) => {
+      input.addEventListener("input", (e) => {
+        const target = e.target as HTMLInputElement;
+        const valueSpan = target.parentElement?.querySelector(".range-value");
+        if (valueSpan) {
+          const field = fields.find((f) => f.prop === target.dataset.prop);
+          const unitText = field?.unit || "";
+          valueSpan.textContent = `${target.value}${unitText}`;
+        }
+      });
+    });
   }
 
   private getLayerFields(block: TimelineBlock): PropertyField[] {
@@ -2256,14 +2457,21 @@ export class TimelineEditor {
             prop: "data.mood",
             type: "select",
             options: MOODS.map((m) => ({ value: m, label: m })),
+            helpText: "Facial expression mood preset",
+            required: true,
+            group: "Expression",
           },
           {
-            label: "Emoji",
-            prop: "data.emoji",
-            type: "select",
-            options: FACE_EMOJI_OPTIONS.map((emoji) => ({ value: emoji, label: emoji })),
+            label: "Intensity",
+            prop: "data.intensity",
+            type: "range",
+            step: 0.1,
+            min: 0,
+            max: 1,
+            defaultValue: 1,
+            helpText: "How strongly the mood is expressed (0-1)",
+            group: "Expression",
           },
-          { label: "Intensity", prop: "data.intensity", type: "number", step: 0.1, min: 0, max: 1 },
         ];
 
       case "emoji":
@@ -2273,6 +2481,8 @@ export class TimelineEditor {
             prop: "data.emoji",
             type: "select",
             options: FACE_EMOJI_OPTIONS.map((emoji) => ({ value: emoji, label: emoji })),
+            required: true,
+            helpText: "Face emoji to display as expression",
           },
         ];
 
@@ -2284,22 +2494,79 @@ export class TimelineEditor {
             type: "select",
             options: [...LIGHT_PRESETS, "spotlight"].map((p) => ({
               value: p,
-              label: p,
+              label: p.charAt(0).toUpperCase() + p.slice(1),
             })),
+            required: true,
+            helpText: "Base lighting preset",
+            group: "Preset",
           },
           {
             label: "Transition",
             prop: "data.transition",
             type: "select",
-            options: LIGHT_TRANSITIONS.map((t) => ({ value: t, label: t })),
+            options: LIGHT_TRANSITIONS.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })),
+            helpText: "How to transition to this lighting",
+            defaultValue: "fade",
+            group: "Preset",
           },
-          { label: "Audio Pulse", prop: "data.audioPulse", type: "checkbox" },
-          { label: "Ambient", prop: "data.intensities.ambient", type: "number", step: 0.1, min: 0, max: 30 },
-          { label: "Direct", prop: "data.intensities.direct", type: "number", step: 0.1, min: 0, max: 30 },
-          { label: "Spot", prop: "data.intensities.spot", type: "number", step: 0.1, min: 0, max: 30 },
-          { label: "Ambient Color", prop: "data.colors.ambient", type: "text" },
-          { label: "Direct Color", prop: "data.colors.direct", type: "text" },
-          { label: "Spot Color", prop: "data.colors.spot", type: "text" },
+          {
+            label: "Audio Pulse",
+            prop: "data.audioPulse",
+            type: "checkbox",
+            helpText: "Pulse lights with audio beat",
+            group: "Preset",
+          },
+          {
+            label: "Ambient Intensity",
+            prop: "data.intensities.ambient",
+            type: "range",
+            step: 0.5,
+            min: 0,
+            max: 30,
+            defaultValue: 5,
+            group: "Intensities",
+          },
+          {
+            label: "Direct Intensity",
+            prop: "data.intensities.direct",
+            type: "range",
+            step: 0.5,
+            min: 0,
+            max: 30,
+            defaultValue: 8,
+            group: "Intensities",
+          },
+          {
+            label: "Spot Intensity",
+            prop: "data.intensities.spot",
+            type: "range",
+            step: 0.5,
+            min: 0,
+            max: 30,
+            defaultValue: 12,
+            group: "Intensities",
+          },
+          {
+            label: "Ambient Color",
+            prop: "data.colors.ambient",
+            type: "color",
+            defaultValue: "#ffffff",
+            group: "Colors",
+          },
+          {
+            label: "Direct Color",
+            prop: "data.colors.direct",
+            type: "color",
+            defaultValue: "#ffffff",
+            group: "Colors",
+          },
+          {
+            label: "Spot Color",
+            prop: "data.colors.spot",
+            type: "color",
+            defaultValue: "#ffffff",
+            group: "Colors",
+          },
         ];
 
       case "camera":
@@ -2307,47 +2574,178 @@ export class TimelineEditor {
           const data = getBlockData(block, "camera") as CameraBlockData | null;
           const movement = data?.movement || "static";
           const fields: PropertyField[] = [
-          {
-            label: "View",
-            prop: "data.view",
-            type: "select",
-            options: CAMERA_VIEWS.map((v) => ({ value: v, label: v })),
-          },
-          {
-            label: "Movement",
-            prop: "data.movement",
-            type: "select",
-            options: CAMERA_MOVEMENTS.map((m) => ({ value: m, label: m })),
-          },
+            {
+              label: "View",
+              prop: "data.view",
+              type: "select",
+              options: CAMERA_VIEWS.map((v) => ({
+                value: v,
+                label: v.charAt(0).toUpperCase() + v.slice(1),
+              })),
+              helpText: "Camera framing position",
+              group: "Position",
+            },
+            {
+              label: "Movement",
+              prop: "data.movement",
+              type: "select",
+              options: CAMERA_MOVEMENTS.map((m) => ({
+                value: m,
+                label: m.charAt(0).toUpperCase() + m.slice(1),
+              })),
+              required: true,
+              helpText: "Type of camera motion",
+              group: "Position",
+            },
           ];
 
+          // Movement-specific fields
           switch (movement) {
             case "dolly":
-              fields.push({ label: "Distance", prop: "data.distance", type: "number", step: 0.05, min: -1.5, max: 1.5 });
+              fields.push({
+                label: "Distance",
+                prop: "data.distance",
+                type: "range",
+                step: 0.05,
+                min: -1.5,
+                max: 1.5,
+                defaultValue: 0,
+                helpText: "Negative = zoom in, Positive = zoom out",
+                unit: "m",
+                group: "Movement",
+              });
               break;
             case "pan":
-              fields.push({ label: "Rotate Y", prop: "data.rotateY", type: "number", step: 1, min: -45, max: 45 });
+              fields.push({
+                label: "Pan Angle",
+                prop: "data.rotateY",
+                type: "range",
+                step: 1,
+                min: -45,
+                max: 45,
+                defaultValue: 0,
+                helpText: "Horizontal rotation (-45° to +45°)",
+                unit: "°",
+                group: "Movement",
+              });
               break;
             case "tilt":
-              fields.push({ label: "Rotate X", prop: "data.rotateX", type: "number", step: 1, min: -45, max: 45 });
+              fields.push({
+                label: "Tilt Angle",
+                prop: "data.rotateX",
+                type: "range",
+                step: 1,
+                min: -45,
+                max: 45,
+                defaultValue: 0,
+                helpText: "Vertical rotation (-45° to +45°)",
+                unit: "°",
+                group: "Movement",
+              });
               break;
             case "orbit":
-              fields.push({ label: "Orbit Angle", prop: "data.orbit", type: "number", step: 1, min: 0, max: 180 });
+              fields.push({
+                label: "Orbit Arc",
+                prop: "data.orbit",
+                type: "range",
+                step: 5,
+                min: 0,
+                max: 180,
+                defaultValue: 45,
+                helpText: "Arc of orbit around subject (0-180°)",
+                unit: "°",
+                group: "Movement",
+              });
               break;
             case "punch":
-              fields.push({ label: "Punch", prop: "data.punch", type: "number", step: 0.1, min: 0, max: 3 });
+              fields.push({
+                label: "Punch Power",
+                prop: "data.punch",
+                type: "range",
+                step: 0.1,
+                min: 0,
+                max: 3,
+                defaultValue: 1,
+                helpText: "Impact zoom intensity",
+                group: "Movement",
+              });
               break;
             case "sweep":
-              fields.push({ label: "Sweep Start", prop: "data.startAngle", type: "number", step: 1, min: -180, max: 180 });
-              fields.push({ label: "Sweep End", prop: "data.endAngle", type: "number", step: 1, min: -180, max: 180 });
+              fields.push(
+                {
+                  label: "Start Angle",
+                  prop: "data.startAngle",
+                  type: "number",
+                  step: 5,
+                  min: -180,
+                  max: 180,
+                  defaultValue: -45,
+                  helpText: "Sweep start position",
+                  unit: "°",
+                  group: "Movement",
+                },
+                {
+                  label: "End Angle",
+                  prop: "data.endAngle",
+                  type: "number",
+                  step: 5,
+                  min: -180,
+                  max: 180,
+                  defaultValue: 45,
+                  helpText: "Sweep end position",
+                  unit: "°",
+                  group: "Movement",
+                }
+              );
               break;
             case "shake":
-              fields.push({ label: "Shake Intensity", prop: "data.shake.intensity", type: "number", step: 0.1, min: 0, max: 2 });
-              fields.push({ label: "Shake Frequency", prop: "data.shake.frequency", type: "number", step: 0.1, min: 0, max: 6 });
+              fields.push(
+                {
+                  label: "Intensity",
+                  prop: "data.shake.intensity",
+                  type: "range",
+                  step: 0.1,
+                  min: 0,
+                  max: 2,
+                  defaultValue: 0.5,
+                  helpText: "Shake strength",
+                  group: "Movement",
+                },
+                {
+                  label: "Frequency",
+                  prop: "data.shake.frequency",
+                  type: "range",
+                  step: 0.5,
+                  min: 0.5,
+                  max: 6,
+                  defaultValue: 2,
+                  helpText: "Shakes per second",
+                  unit: "Hz",
+                  group: "Movement",
+                }
+              );
               break;
             case "static":
             default:
               break;
+          }
+
+          // Easing for all movement types
+          if (movement !== "static") {
+            fields.push({
+              label: "Easing",
+              prop: "data.easing",
+              type: "select",
+              options: [
+                { value: "linear", label: "Linear" },
+                { value: "easeIn", label: "Ease In (slow start)" },
+                { value: "easeOut", label: "Ease Out (slow end)" },
+                { value: "easeInOut", label: "Ease In/Out (smooth)" },
+              ],
+              defaultValue: "easeInOut",
+              helpText: "Motion easing curve",
+              group: "Timing",
+            });
           }
 
           return fields;
@@ -2362,8 +2760,8 @@ export class TimelineEditor {
             options: (() => {
               const current = this.getNestedValue(block, "data.clipId");
               const currentId = typeof current === "string" ? current : "";
-              const baseOptions = this.danceOptionsReady
-                ? [...this.danceOptions]
+              const baseOptions: Array<{ value: string; label: string }> = this.danceOptionsReady
+                ? this.danceOptions.map((o) => ({ value: o.value, label: o.label }))
                 : [{ value: "", label: "Loading..." }];
               if (currentId && !this.danceOptionsById.has(currentId)) {
                 baseOptions.unshift({ value: currentId, label: `Custom: ${currentId}` });
@@ -2371,27 +2769,193 @@ export class TimelineEditor {
               return baseOptions;
             })(),
             disabled: !this.danceOptionsReady,
+            required: true,
+            helpText: "Select from dance library",
+            group: "Animation",
           },
-          { label: "Clip URL", prop: "data.clipUrl", type: "text", disabled: true },
-          { label: "Loop", prop: "data.loop", type: "checkbox" },
-          { label: "Mirror", prop: "data.mirror", type: "checkbox" },
-          { label: "Speed", prop: "data.speed", type: "number", step: 0.05, min: 0.25, max: 2.5 },
-          { label: "Blend Weight", prop: "data.blendWeight", type: "number", step: 0.05, min: 0, max: 1 },
+          {
+            label: "Clip URL",
+            prop: "data.clipUrl",
+            type: "text",
+            disabled: true,
+            helpText: "Animation file URL (read-only)",
+            group: "Animation",
+          },
+          {
+            label: "Speed",
+            prop: "data.speed",
+            type: "range",
+            step: 0.1,
+            min: 0.25,
+            max: 2.5,
+            defaultValue: 1,
+            helpText: "Playback speed (1 = normal)",
+            group: "Playback",
+          },
+          {
+            label: "Blend Weight",
+            prop: "data.blendWeight",
+            type: "range",
+            step: 0.1,
+            min: 0,
+            max: 1,
+            defaultValue: 1,
+            helpText: "Mix strength with other animations",
+            group: "Playback",
+          },
+          {
+            label: "Loop",
+            prop: "data.loop",
+            type: "checkbox",
+            defaultValue: false,
+            helpText: "Repeat animation",
+            group: "Options",
+          },
+          {
+            label: "Mirror",
+            prop: "data.mirror",
+            type: "checkbox",
+            defaultValue: false,
+            helpText: "Flip animation horizontally",
+            group: "Options",
+          },
         ];
 
       case "fx":
         return (() => {
           const data = getBlockData(block, "fx") as FXBlockData | null;
           const effect = data?.effect && FX_EFFECTS.includes(data.effect) ? data.effect : "none";
-          return [
+
+          const baseFields: PropertyField[] = [
             {
               label: "Effect",
               prop: "data.effect",
               type: "select",
-              options: FX_EFFECTS.map((e) => ({ value: e, label: e })),
+              options: FX_EFFECTS.map((e) => ({
+                value: e,
+                label: e === "none" ? "None (Clean)" : e.charAt(0).toUpperCase() + e.slice(1),
+              })),
+              required: true,
+              helpText: "Post-processing effect type",
             },
-            ...FX_FIELD_MAP[effect],
           ];
+
+          // Effect-specific fields with better organization
+          const effectFields: PropertyField[] = [];
+          switch (effect) {
+            case "bloom":
+              effectFields.push(
+                {
+                  label: "Strength",
+                  prop: "data.params.strength",
+                  type: "range",
+                  step: 0.1,
+                  min: 0,
+                  max: 3,
+                  defaultValue: 1.5,
+                  helpText: "Glow intensity",
+                  group: "Bloom",
+                },
+                {
+                  label: "Radius",
+                  prop: "data.params.radius",
+                  type: "range",
+                  step: 0.05,
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.4,
+                  helpText: "Glow spread size",
+                  group: "Bloom",
+                },
+                {
+                  label: "Threshold",
+                  prop: "data.params.threshold",
+                  type: "range",
+                  step: 0.05,
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.85,
+                  helpText: "Brightness cutoff for glow",
+                  group: "Bloom",
+                }
+              );
+              break;
+            case "vignette":
+              effectFields.push(
+                {
+                  label: "Offset",
+                  prop: "data.params.offset",
+                  type: "range",
+                  step: 0.05,
+                  min: 0.6,
+                  max: 1.2,
+                  defaultValue: 0.95,
+                  helpText: "Edge fade position",
+                  group: "Vignette",
+                },
+                {
+                  label: "Darkness",
+                  prop: "data.params.darkness",
+                  type: "range",
+                  step: 0.05,
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.3,
+                  helpText: "Edge darkness intensity",
+                  group: "Vignette",
+                }
+              );
+              break;
+            case "chromatic":
+              effectFields.push({
+                label: "Amount",
+                prop: "data.params.amount",
+                type: "range",
+                step: 0.0005,
+                min: 0,
+                max: 0.01,
+                defaultValue: 0.003,
+                helpText: "Color separation amount",
+                group: "Chromatic",
+              });
+              break;
+            case "glitch":
+              effectFields.push(
+                {
+                  label: "Active",
+                  prop: "data.params.active",
+                  type: "checkbox",
+                  defaultValue: true,
+                  helpText: "Enable glitch effect",
+                  group: "Glitch",
+                },
+                {
+                  label: "Wild Mode",
+                  prop: "data.params.wild",
+                  type: "checkbox",
+                  defaultValue: false,
+                  helpText: "More intense glitching",
+                  group: "Glitch",
+                }
+              );
+              break;
+            case "pixelation":
+              effectFields.push({
+                label: "Pixel Size",
+                prop: "data.params.size",
+                type: "range",
+                step: 1,
+                min: 1,
+                max: 32,
+                defaultValue: 8,
+                helpText: "Size of each pixel block",
+                unit: "px",
+                group: "Pixelation",
+              });
+              break;
+          }
+
+          return [...baseFields, ...effectFields];
         })();
 
       case "viseme":
@@ -2400,10 +2964,30 @@ export class TimelineEditor {
             label: "Source",
             prop: "data.source",
             type: "select",
-            options: ["audio", "tts", "manual"].map((s) => ({ value: s, label: s })),
+            options: [
+              { value: "audio", label: "Audio Analysis" },
+              { value: "tts", label: "TTS Timing" },
+              { value: "manual", label: "Manual" },
+            ],
+            helpText: "How lip sync data is generated",
+            group: "Source",
           },
-          { label: "Audio URL", prop: "data.audioUrl", type: "text" },
-          { label: "Text", prop: "data.text", type: "text" },
+          {
+            label: "Audio URL",
+            prop: "data.audioUrl",
+            type: "text",
+            placeholder: "https://...",
+            helpText: "URL of audio file (if using audio source)",
+            group: "Source",
+          },
+          {
+            label: "Text",
+            prop: "data.text",
+            type: "text",
+            placeholder: "Speech text...",
+            helpText: "Text being spoken (for reference)",
+            group: "Source",
+          },
         ];
 
       default:
@@ -2413,7 +2997,7 @@ export class TimelineEditor {
 
   private getNestedValue(block: TimelineBlock, prop: string): unknown {
     if (!prop.startsWith("data.")) {
-      return (block as Record<string, unknown>)[prop];
+      return (block as unknown as Record<string, unknown>)[prop];
     }
 
     const path = prop.slice(5).split(".");
