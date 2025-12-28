@@ -61,9 +61,12 @@ import {
   loadAvatar as loadAvatarModule,
   loadAvatarList as loadAvatarListModule,
   populateAvatarSelects,
+  findAvatarEntry,
+  getAvatarLabel,
   DuoHeadManager,
   resolveAvatarUrl
 } from "./avatar/index";
+import type { AvatarManifestEntry } from "./avatar/index";
 import {
   updateStageLighting as updateStageLightingModule,
   applyLightPreset as applyLightPresetModule,
@@ -100,6 +103,7 @@ import {
 
 // Elements are lazily loaded via getElements() from stage module
 let els: ReturnType<typeof getElements>;
+let avatarManifest: AvatarManifestEntry[] = [];
 
 const config = getMlxConfig();
 const engineLabEnabled = document.body?.dataset.engineLab === "true";
@@ -254,6 +258,10 @@ const initDuoMode = async () => {
 
   const avatarAName = els.avatarASelect.value;
   const avatarBName = els.avatarBSelect.value;
+  const avatarAEntry = findAvatarEntry(avatarManifest, avatarAName);
+  const avatarBEntry = findAvatarEntry(avatarManifest, avatarBName);
+  const avatarALabel = avatarAEntry ? getAvatarLabel(avatarAEntry) : avatarAName;
+  const avatarBLabel = avatarBEntry ? getAvatarLabel(avatarBEntry) : avatarBName;
 
   if (!avatarAName || !avatarBName) {
     updateStatus(els, "Select both avatars for Duo Mode.");
@@ -274,8 +282,8 @@ const initDuoMode = async () => {
     lightingBase: state.stageLightingBase,
     avatarAUrl: resolveAvatarUrl(avatarAName, state.avatarBaseUrl),
     avatarBUrl: resolveAvatarUrl(avatarBName, state.avatarBaseUrl),
-    avatarABody: "F",
-    avatarBBody: "M",
+    avatarABody: avatarAEntry?.body || "F",
+    avatarBBody: avatarBEntry?.body || "M",
     spacing: 0.8
   });
 
@@ -291,7 +299,7 @@ const initDuoMode = async () => {
     avatarBUrl: avatarBName
   });
 
-  updateStatus(els, `Duo Mode active: ${avatarAName} + ${avatarBName}`);
+  updateStatus(els, `Duo Mode active: ${avatarALabel} + ${avatarBLabel}`);
 };
 
 const disposeDuoMode = () => {
@@ -395,6 +403,7 @@ const loadRuntimeModel = () => loadRuntimeModelModule(els, config.llmBaseUrl);
 
 const loadAvatarList = async () => {
   const { avatars, baseUrl } = await loadAvatarListModule(els.avatarSelect);
+  avatarManifest = avatars;
   if (baseUrl) {
     updateState({ avatarBaseUrl: baseUrl });
   }
@@ -402,9 +411,9 @@ const loadAvatarList = async () => {
   populateAvatarSelects(avatars, els.avatarASelect, els.avatarBSelect);
   // Set initial values in state
   if (avatars.length >= 2) {
-    updateState({ avatarAUrl: avatars[0], avatarBUrl: avatars[1] });
+    updateState({ avatarAUrl: avatars[0].file, avatarBUrl: avatars[1].file });
   } else if (avatars.length === 1) {
-    updateState({ avatarAUrl: avatars[0], avatarBUrl: avatars[0] });
+    updateState({ avatarAUrl: avatars[0].file, avatarBUrl: avatars[0].file });
   }
 };
 
@@ -412,14 +421,31 @@ const loadAvatar = async () => {
   if (!state.head) return;
   const name = els.avatarSelect.value;
   if (!name) return;
+  const avatarEntry = findAvatarEntry(avatarManifest, name);
   await loadAvatarModule(
     state.head,
     name,
     state.avatarBaseUrl,
     (message) => updateStatus(els, message),
     (avatarName, songName, status) => updateHero(els, avatarName, songName, status),
-    state.audioFile ? state.audioFile.name : undefined
+    state.audioFile ? state.audioFile.name : undefined,
+    avatarEntry
   );
+  if (avatarEntry?.voice_id) {
+    const voiceId = avatarEntry.voice_id;
+    const hasVoice = Array.from(els.voiceSelect.options).some(
+      (option) => option.value === voiceId
+    );
+    if (!hasVoice) {
+      const option = document.createElement("option");
+      option.value = voiceId;
+      option.textContent = voiceId;
+      els.voiceSelect.appendChild(option);
+    }
+    els.voiceSelect.value = voiceId;
+    config.ttsVoice = voiceId;
+    setOverride("ttsVoice", voiceId);
+  }
 };
 
 const transcribeAudio = async () => {
@@ -796,12 +822,19 @@ const init = async () => {
     updateHero: (avatarName, songName, sectionLabel) =>
       updateHero(els, avatarName, songName, sectionLabel),
     setHud: (scene, camera, lights, mode) => setHud(els, scene, camera, lights, mode),
-    startLyricsOverlay: () =>
+    startLyricsOverlay: () => {
+      if (engineLabEnabled) {
+        if (els?.heroLyrics) {
+          els.heroLyrics.textContent = "";
+        }
+        return;
+      }
       updateLyricsOverlay(
         () => state,
         els,
         (partial) => updateState(partial)
-      ),
+      );
+    },
     randomItem,
     gestures,
     lightPresets,

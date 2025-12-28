@@ -3,6 +3,13 @@ import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import { getMlxConfig } from "./mlx-config";
+import {
+  loadAvatarList as loadAvatarListModule,
+  resolveAvatarUrl,
+  findAvatarEntry,
+  getAvatarLabel,
+  type AvatarManifestEntry
+} from "./avatar/avatar-loader";
 
 type Mode = "push" | "vad";
 
@@ -26,6 +33,8 @@ const els = {
 };
 
 const config = getMlxConfig();
+let avatarBaseUrl: string | null = null;
+let avatarManifest: AvatarManifestEntry[] = [];
 
 const instructions = [
   "You are Julia, a clear and conversational assistant.",
@@ -772,22 +781,9 @@ const initHeadAudio = async () => {
 };
 
 const loadAvatarList = async () => {
-  const response = await fetch("/avatars/manifest.json");
-  if (!response.ok) {
-    throw new Error("Failed to load avatar manifest.");
-  }
-  const data = await response.json();
-  const avatars = Array.isArray(data.avatars) ? data.avatars : [];
-  els.avatarSelect.innerHTML = "";
-  avatars.forEach((name: string) => {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name.replace(/\.glb$/i, "");
-    els.avatarSelect.appendChild(option);
-  });
-  if (avatars.length) {
-    els.avatarSelect.value = avatars[0];
-  }
+  const { avatars, baseUrl } = await loadAvatarListModule(els.avatarSelect);
+  avatarManifest = avatars;
+  avatarBaseUrl = baseUrl;
 };
 
 const loadAvatar = async (reload = false) => {
@@ -804,12 +800,18 @@ const loadAvatar = async (reload = false) => {
   }
   const name = els.avatarSelect.value;
   if (!name) return;
-  updateStatus(`Loading avatar: ${name}`);
+  const avatarEntry = findAvatarEntry(avatarManifest, name);
+  const avatarLabel = avatarEntry ? getAvatarLabel(avatarEntry) : name;
+  updateStatus(`Loading avatar: ${avatarLabel}`);
   await state.head.showAvatar({
-    url: `/avatars/${name}`,
-    body: "F",
-    avatarMood: "neutral"
+    url: resolveAvatarUrl(avatarEntry?.file || name, avatarBaseUrl),
+    body: avatarEntry?.body || "F",
+    avatarMood: avatarEntry?.default_mood || "neutral"
   });
+  if (avatarEntry?.voice_id) {
+    els.voiceInput.value = avatarEntry.voice_id;
+    config.ttsVoice = avatarEntry.voice_id;
+  }
   updateStatus("Avatar ready.");
   if (state.sessionActive) {
     await initHeadAudio();

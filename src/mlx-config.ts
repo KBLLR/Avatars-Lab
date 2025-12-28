@@ -46,7 +46,6 @@ const getMlxConfig = () => {
   const mfluxModel = overrides.mfluxModel || import.meta.env.VITE_MLX_DEFAULT_MFLUX_MODEL || "flux-schnell";
 
   const llmBaseUrl = import.meta.env.VITE_MLX_LLM_BASE_URL;
-  console.log("[mlx-config] VITE_MLX_LLM_BASE_URL:", llmBaseUrl);
 
   return {
     llmBaseUrl,

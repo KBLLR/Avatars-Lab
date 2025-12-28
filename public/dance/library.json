@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": "2024-12-26T00:00:00.000Z",
+  "updated_at": "2025-12-28T04:30:55Z",
   "animations": [
     {
       "id": "anim_f_dances_001",
@@ -12,7 +12,11 @@
       "duration_ms": 8000,
       "bpm": 120,
       "loopable": true,
-      "tags": ["hip-hop", "energetic", "smooth"],
+      "tags": [
+        "hip-hop",
+        "energetic",
+        "smooth"
+      ],
       "mood": "happy",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -27,7 +31,11 @@
       "duration_ms": 6000,
       "bpm": 110,
       "loopable": true,
-      "tags": ["house", "energetic", "expressive"],
+      "tags": [
+        "house",
+        "energetic",
+        "expressive"
+      ],
       "mood": "happy",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -42,7 +50,11 @@
       "duration_ms": 7000,
       "bpm": 125,
       "loopable": true,
-      "tags": ["freestyle", "playful", "dynamic"],
+      "tags": [
+        "freestyle",
+        "playful",
+        "dynamic"
+      ],
       "mood": "happy",
       "intensity": "high",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -57,7 +69,11 @@
       "duration_ms": 7000,
       "bpm": 115,
       "loopable": true,
-      "tags": ["hip-hop", "chill", "rhythmic"],
+      "tags": [
+        "hip-hop",
+        "chill",
+        "rhythmic"
+      ],
       "mood": "neutral",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -72,7 +88,11 @@
       "duration_ms": 6500,
       "bpm": 100,
       "loopable": true,
-      "tags": ["house", "smooth", "groovy"],
+      "tags": [
+        "house",
+        "smooth",
+        "groovy"
+      ],
       "mood": "happy",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -87,7 +107,11 @@
       "duration_ms": 8000,
       "bpm": 100,
       "loopable": true,
-      "tags": ["hip-hop", "energetic", "powerful"],
+      "tags": [
+        "hip-hop",
+        "energetic",
+        "powerful"
+      ],
       "mood": "happy",
       "intensity": "high",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -102,7 +126,11 @@
       "duration_ms": 9000,
       "bpm": 95,
       "loopable": true,
-      "tags": ["breaking", "dramatic", "urban"],
+      "tags": [
+        "breaking",
+        "dramatic",
+        "urban"
+      ],
       "mood": "angry",
       "intensity": "high",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -117,7 +145,11 @@
       "duration_ms": 7500,
       "bpm": 110,
       "loopable": true,
-      "tags": ["hip-hop", "playful", "street"],
+      "tags": [
+        "hip-hop",
+        "playful",
+        "street"
+      ],
       "mood": "happy",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -132,7 +164,11 @@
       "duration_ms": 8500,
       "bpm": 120,
       "loopable": true,
-      "tags": ["house", "energetic", "bounce"],
+      "tags": [
+        "house",
+        "energetic",
+        "bounce"
+      ],
       "mood": "happy",
       "intensity": "high",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -147,7 +183,11 @@
       "duration_ms": 7000,
       "bpm": 105,
       "loopable": true,
-      "tags": ["popping", "quirky", "pop"],
+      "tags": [
+        "popping",
+        "quirky",
+        "pop"
+      ],
       "mood": "neutral",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -162,7 +202,11 @@
       "duration_ms": 8000,
       "bpm": 115,
       "loopable": true,
-      "tags": ["locking", "playful", "funky"],
+      "tags": [
+        "locking",
+        "playful",
+        "funky"
+      ],
       "mood": "happy",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -177,7 +221,11 @@
       "duration_ms": 8500,
       "bpm": 100,
       "loopable": true,
-      "tags": ["freestyle", "smooth", "groove"],
+      "tags": [
+        "freestyle",
+        "smooth",
+        "groove"
+      ],
       "mood": "neutral",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -192,7 +240,11 @@
       "duration_ms": 8000,
       "bpm": 90,
       "loopable": true,
-      "tags": ["robot", "smooth", "wave"],
+      "tags": [
+        "robot",
+        "smooth",
+        "wave"
+      ],
       "mood": "neutral",
       "intensity": "low",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -207,7 +259,11 @@
       "duration_ms": 9500,
       "bpm": 130,
       "loopable": true,
-      "tags": ["breaking", "energetic", "power"],
+      "tags": [
+        "breaking",
+        "energetic",
+        "power"
+      ],
       "mood": "angry",
       "intensity": "high",
       "created_at": "2024-12-26T00:00:00.000Z"
@@ -222,10 +278,394 @@
       "duration_ms": 9000,
       "bpm": 105,
       "loopable": true,
-      "tags": ["hip-hop", "chill", "flow"],
+      "tags": [
+        "hip-hop",
+        "chill",
+        "flow"
+      ],
       "mood": "happy",
       "intensity": "medium",
       "created_at": "2024-12-26T00:00:00.000Z"
+    },
+    {
+      "id": "mixamo_arms_hip_hop_dance",
+      "name": "Arms Hip Hop Dance",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Arms%20Hip%20Hop%20Dance.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "hip-hop"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_bboy_hip_hop_move",
+      "name": "Bboy Hip Hop Move",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Bboy%20Hip%20Hop%20Move.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "hip-hop",
+        "breaking"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_booty_hip_hop_dance",
+      "name": "Booty Hip Hop Dance",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Booty%20Hip%20Hop%20Dance.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "hip-hop"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_breakdance_ready",
+      "name": "Breakdance Ready",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Breakdance%20Ready.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "breaking"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_dancing_running_man",
+      "name": "Dancing Running Man",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Dancing%20Running%20Man.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "shuffling"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_dancing_twerk",
+      "name": "Dancing Twerk",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Dancing%20Twerk.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "twerk"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_female_dance_pose_1",
+      "name": "Female Dance Pose (1)",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Female%20Dance%20Pose%20%281%29.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": false,
+      "tags": [
+        "mixamo",
+        "performance",
+        "pose"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_female_dance_pose",
+      "name": "Female Dance Pose",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Female%20Dance%20Pose.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": false,
+      "tags": [
+        "mixamo",
+        "performance",
+        "pose"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_hip_hop_dancing_1",
+      "name": "Hip Hop Dancing (1)",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Hip%20Hop%20Dancing%20%281%29.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "hip-hop"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_hip_hop_dancing_2",
+      "name": "Hip Hop Dancing (2)",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Hip%20Hop%20Dancing%20%282%29.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "hip-hop"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_hip_hop_dancing",
+      "name": "Hip Hop Dancing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Hip%20Hop%20Dancing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "hip-hop"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_male_dance_pose",
+      "name": "Male Dance Pose",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Male%20Dance%20Pose.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": false,
+      "tags": [
+        "mixamo",
+        "performance",
+        "pose"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_moonwalk",
+      "name": "Moonwalk",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Moonwalk.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "wave"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_rumba_dancing",
+      "name": "Rumba Dancing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Rumba%20Dancing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "rumba"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_salsa_dancing_1",
+      "name": "Salsa Dancing (1)",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Salsa%20Dancing%20%281%29.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "salsa"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_salsa_dancing",
+      "name": "Salsa Dancing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Salsa%20Dancing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "salsa"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_samba_dancing",
+      "name": "Samba Dancing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Samba%20Dancing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "samba"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_silly_dancing",
+      "name": "Silly Dancing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Silly%20Dancing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_singing",
+      "name": "Singing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Singing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "singing"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
+    },
+    {
+      "id": "mixamo_swing_dancing",
+      "name": "Swing Dancing",
+      "description": "Mixamo performance dance",
+      "url": "/animations/mixamo/performance/Swing%20Dancing.fbx",
+      "source": "mixamo",
+      "type": "dance",
+      "duration_ms": 8000,
+      "bpm": 120,
+      "loopable": true,
+      "tags": [
+        "mixamo",
+        "performance",
+        "swing"
+      ],
+      "mood": "energetic",
+      "intensity": "medium",
+      "created_at": "2025-12-28T04:30:55Z"
     }
   ],
   "expressions": [
@@ -238,7 +678,11 @@
       "type": "expression",
       "duration_ms": 5000,
       "loopable": true,
-      "tags": ["talking", "expressive", "casual"],
+      "tags": [
+        "talking",
+        "expressive",
+        "casual"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -251,7 +695,11 @@
       "type": "expression",
       "duration_ms": 4500,
       "loopable": true,
-      "tags": ["talking", "emphatic", "animated"],
+      "tags": [
+        "talking",
+        "emphatic",
+        "animated"
+      ],
       "mood": "happy",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -264,7 +712,11 @@
       "type": "expression",
       "duration_ms": 5000,
       "loopable": true,
-      "tags": ["talking", "confident", "casual"],
+      "tags": [
+        "talking",
+        "confident",
+        "casual"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -277,7 +729,11 @@
       "type": "expression",
       "duration_ms": 3000,
       "loopable": true,
-      "tags": ["subtle", "neutral", "standing"],
+      "tags": [
+        "subtle",
+        "neutral",
+        "standing"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -290,7 +746,11 @@
       "type": "expression",
       "duration_ms": 3500,
       "loopable": true,
-      "tags": ["thoughtful", "subtle", "standing"],
+      "tags": [
+        "thoughtful",
+        "subtle",
+        "standing"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     }
@@ -305,7 +765,11 @@
       "type": "idle",
       "duration_ms": 10000,
       "loopable": true,
-      "tags": ["relaxed", "casual", "feminine"],
+      "tags": [
+        "relaxed",
+        "casual",
+        "feminine"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -318,7 +782,11 @@
       "type": "idle",
       "duration_ms": 10000,
       "loopable": true,
-      "tags": ["relaxed", "casual", "masculine"],
+      "tags": [
+        "relaxed",
+        "casual",
+        "masculine"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -331,7 +799,11 @@
       "type": "idle",
       "duration_ms": 12000,
       "loopable": true,
-      "tags": ["breathing", "subtle", "natural"],
+      "tags": [
+        "breathing",
+        "subtle",
+        "natural"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     }
@@ -344,7 +816,10 @@
       "url": "/animations/idle/F_Standing_Idle_Variations_001.fbx",
       "source": "rpm",
       "duration_ms": 3000,
-      "tags": ["subtle", "casual"],
+      "tags": [
+        "subtle",
+        "casual"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -355,7 +830,10 @@
       "url": "/animations/idle/M_Standing_Idle_Variations_001.fbx",
       "source": "rpm",
       "duration_ms": 3000,
-      "tags": ["confident", "casual"],
+      "tags": [
+        "confident",
+        "casual"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     }
@@ -370,7 +848,11 @@
       "type": "locomotion",
       "duration_ms": 2000,
       "loopable": true,
-      "tags": ["walk", "casual", "feminine"],
+      "tags": [
+        "walk",
+        "casual",
+        "feminine"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -383,7 +865,11 @@
       "type": "locomotion",
       "duration_ms": 2000,
       "loopable": true,
-      "tags": ["walk", "casual", "masculine"],
+      "tags": [
+        "walk",
+        "casual",
+        "masculine"
+      ],
       "mood": "neutral",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -396,7 +882,11 @@
       "type": "locomotion",
       "duration_ms": 1500,
       "loopable": true,
-      "tags": ["run", "energetic", "masculine"],
+      "tags": [
+        "run",
+        "energetic",
+        "masculine"
+      ],
       "mood": "happy",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -409,7 +899,11 @@
       "type": "locomotion",
       "duration_ms": 1800,
       "loopable": true,
-      "tags": ["jog", "casual", "feminine"],
+      "tags": [
+        "jog",
+        "casual",
+        "feminine"
+      ],
       "mood": "happy",
       "created_at": "2024-12-26T00:00:00.000Z"
     },
@@ -422,7 +916,11 @@
       "type": "locomotion",
       "duration_ms": 1200,
       "loopable": false,
-      "tags": ["jump", "playful", "action"],
+      "tags": [
+        "jump",
+        "playful",
+        "action"
+      ],
       "mood": "happy",
       "created_at": "2024-12-26T00:00:00.000Z"
     }

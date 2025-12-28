@@ -6,7 +6,13 @@
  */
 
 import { TalkingHead } from "@met4citizen/talkinghead";
-import { loadAvatarList, resolveAvatarUrl } from "./avatar/avatar-loader";
+import {
+  loadAvatarList,
+  resolveAvatarUrl,
+  findAvatarEntry,
+  getAvatarLabel,
+  type AvatarManifestEntry
+} from "./avatar/avatar-loader";
 import {
   initDanceLibrary,
   type DanceLibraryManager
@@ -82,6 +88,7 @@ let library: DanceLibraryManager | null = null;
 let director: DanceDirector | null = null;
 let stateMachine: DanceStateMachine | null = null;
 let avatarBaseUrl: string | null = null;
+let avatarManifest: AvatarManifestEntry[] = [];
 
 let selectedStyle: DanceStyle = "freestyle";
 let selectedMood: DanceMood = "energetic";
@@ -129,14 +136,16 @@ const createHead = async () => {
 
 const loadAvatar = async (name: string) => {
   if (!head) return;
-  updateStatus(`Loading ${name}...`);
+  const avatarEntry = findAvatarEntry(avatarManifest, name);
+  const avatarLabel = avatarEntry ? getAvatarLabel(avatarEntry) : name;
+  updateStatus(`Loading ${avatarLabel}...`);
   await head.showAvatar({
-    url: resolveAvatarUrl(name, avatarBaseUrl),
-    body: "F",
-    avatarMood: "neutral"
+    url: resolveAvatarUrl(avatarEntry?.file || name, avatarBaseUrl),
+    body: avatarEntry?.body || "F",
+    avatarMood: avatarEntry?.default_mood || "neutral"
   });
   head.start();
-  updateStatus(`Avatar loaded: ${name}`);
+  updateStatus(`Avatar loaded: ${avatarLabel}`);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -705,11 +714,12 @@ const init = async () => {
 
   // Load avatar list
   const { avatars, baseUrl } = await loadAvatarList(els.avatarSelect);
+  avatarManifest = avatars;
   avatarBaseUrl = baseUrl;
 
   // Load initial avatar
   if (avatars.length > 0) {
-    await loadAvatar(avatars[0]);
+    await loadAvatar(avatars[0].file);
   }
 
   // Initialize library and director

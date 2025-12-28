@@ -46,8 +46,10 @@ import {
   initHeadAudio as initHeadAudioModule,
   getDefaultHeadAudioConfig,
   loadAvatar as loadAvatarModule,
-  loadAvatarList as loadAvatarListModule
+  loadAvatarList as loadAvatarListModule,
+  findAvatarEntry
 } from "./avatar/index";
+import type { AvatarManifestEntry } from "./avatar/index";
 import {
   updateStageLighting as updateStageLightingModule,
   applyLightPreset as applyLightPresetModule,
@@ -93,6 +95,7 @@ stateManager.subscribe((nextState) => {
   state = nextState;
 });
 const updateState = (partial: Partial<StageState>) => stateManager.update(partial);
+let avatarManifest: AvatarManifestEntry[] = [];
 
 let stateUiBound = false;
 const bindStateUi = () => {
@@ -285,7 +288,8 @@ const unloadRuntimeModel = () => unloadRuntimeModelModule(els, config.llmBaseUrl
 const loadRuntimeModel = () => loadRuntimeModelModule(els, config.llmBaseUrl);
 
 const loadAvatarList = async () => {
-  const { baseUrl } = await loadAvatarListModule(els.avatarSelect);
+  const { avatars, baseUrl } = await loadAvatarListModule(els.avatarSelect);
+  avatarManifest = avatars;
   if (baseUrl) {
     updateState({ avatarBaseUrl: baseUrl });
   }
@@ -295,14 +299,31 @@ const loadAvatar = async () => {
   if (!state.head) return;
   const name = els.avatarSelect.value;
   if (!name) return;
+  const avatarEntry = findAvatarEntry(avatarManifest, name);
   await loadAvatarModule(
     state.head,
     name,
     state.avatarBaseUrl,
     (message) => updateStatus(els, message),
     (avatarName, songName, status) => updateHero(els, avatarName, songName, status),
-    state.audioFile ? state.audioFile.name : undefined
+    state.audioFile ? state.audioFile.name : undefined,
+    avatarEntry
   );
+  if (avatarEntry?.voice_id) {
+    const voiceId = avatarEntry.voice_id;
+    const hasVoice = Array.from(els.voiceSelect.options).some(
+      (option) => option.value === voiceId
+    );
+    if (!hasVoice) {
+      const option = document.createElement("option");
+      option.value = voiceId;
+      option.textContent = voiceId;
+      els.voiceSelect.appendChild(option);
+    }
+    els.voiceSelect.value = voiceId;
+    config.ttsVoice = voiceId;
+    setOverride("ttsVoice", voiceId);
+  }
   if (conversationManager && state.head) {
       conversationManager.setHead(state.head);
   }
