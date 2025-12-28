@@ -8,11 +8,14 @@ import {
   BlendshapeExecutor,
   CameraExecutor,
   DanceExecutor,
+  EmojiExecutor,
   EngineStateMachine,
   FXExecutor,
   LightingExecutor,
   directorPlanToTimeline
 } from "../engine";
+import { getDanceDirector } from "../dance/director";
+import { initDanceLibrary } from "../dance/library";
 import type {
   CameraView,
   LightPreset,
@@ -117,6 +120,57 @@ const addAutoGestures = (
   return { ...plan, sections };
 };
 
+let danceLibraryReady: Promise<void> | null = null;
+
+const ensureDanceLibrary = async (): Promise<void> => {
+  if (!danceLibraryReady) {
+    danceLibraryReady = initDanceLibrary().then(() => undefined);
+  }
+  await danceLibraryReady;
+};
+
+const hasDanceActions = (plan: MergedPlan): boolean => {
+  const hasDanceInActions = (actions?: PlanAction[]) =>
+    Boolean(actions?.some((action) =>
+      action.action === "play_animation" || action.action === "play_pose"
+    ));
+
+  if (hasDanceInActions(plan.actions)) return true;
+  return plan.sections.some((section) => hasDanceInActions(section.actions));
+};
+
+const addAutoDance = async (plan: MergedPlan): Promise<MergedPlan> => {
+  if (hasDanceActions(plan)) return plan;
+
+  await ensureDanceLibrary();
+  const director = getDanceDirector();
+  let injected = false;
+
+  const sections = plan.sections.map((section) => {
+    const sectionDuration = section.end_ms - section.start_ms;
+    let density: "sparse" | "normal" | "dense" = "normal";
+    if (sectionDuration < 7000) density = "sparse";
+    if (sectionDuration > 20000) density = "dense";
+
+    const danceActions = director.generateDanceActions(
+      section.start_ms,
+      section.end_ms,
+      density
+    );
+
+    if (danceActions.length === 0) return section;
+    injected = true;
+
+    const actions = [...(section.actions || []), ...danceActions].sort(
+      (a, b) => a.time_ms - b.time_ms
+    );
+
+    return { ...section, actions };
+  });
+
+  return injected ? { ...plan, sections } : plan;
+};
+
 export const createPerformanceController = (deps: PerformanceDeps): PerformanceController => {
   const {
     els,
@@ -215,9 +269,14 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
         duoManager: isDuoMode ? state.duoManager! : undefined
     };
 
-    const playbackPlan = useEngine
-      ? addAutoGestures(activePlan, gestures, randomItem)
-      : activePlan;
+    let playbackPlan = activePlan;
+    if (useEngine) {
+      playbackPlan = addAutoGestures(activePlan, gestures, randomItem);
+      playbackPlan = await addAutoDance(playbackPlan);
+      if (playbackPlan !== activePlan) {
+        updateState({ plan: playbackPlan, planSource });
+      }
+    }
 
     let markers: { markers: Array<() => void>; mtimes: number[] };
     let externalActions: PlanAction[] = [];
@@ -241,6 +300,7 @@ export const createPerformanceController = (deps: PerformanceDeps): PerformanceC
 
       engine = new EngineStateMachine({ timeline, head: activeHead, effectsManager });
       engine.registerExecutor(new BlendshapeExecutor(activeHead));
+      engine.registerExecutor(new EmojiExecutor(activeHead));
       engine.registerExecutor(new LightingExecutor(activeHead));
       engine.registerExecutor(new CameraExecutor(activeHead));
       engine.registerExecutor(new DanceExecutor(activeHead));

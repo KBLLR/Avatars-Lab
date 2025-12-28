@@ -299,13 +299,37 @@ function normalizeActions(
     .filter((a: unknown) => a && typeof a === "object")
     .map((action: unknown) => {
       const a = action as Record<string, unknown>;
+      const actionName = String(a.action || "");
+      const args = (a.args && typeof a.args === "object")
+        ? a.args as Record<string, unknown>
+        : {};
+
+      if ((actionName === "make_facial_expression" || actionName === "speak_emoji")) {
+        const emojiValue = typeof args.emoji === "string" ? args.emoji.trim() : "";
+        let normalized = emojiValue;
+
+        if (!FACE_EMOJIS.has(normalized)) {
+          const cleaned = emojiValue
+            .toLowerCase()
+            .replace(/[:_\\-\\s]/g, "")
+            .replace(/(face|emoji)$/g, "");
+          normalized = FACE_EMOJI_NAMES.get(cleaned) || EMOJI_FALLBACK;
+        }
+
+        if (!FACE_EMOJIS.has(normalized)) {
+          normalized = EMOJI_FALLBACK;
+        }
+
+        args.emoji = normalized;
+      }
+
       return {
         time_ms: clamp(Number(a.time_ms) || minTime, minTime, maxTime),
-        action: String(a.action || ""),
-        args: (a.args && typeof a.args === "object") ? a.args as Record<string, unknown> : {}
+        action: actionName,
+        args
       };
     })
-    .filter(a => a.action.length > 0);
+    .filter((a): a is NonNullable<typeof a> => Boolean(a && a.action.length > 0));
 
   return normalized.length > 0 ? normalized : undefined;
 }
@@ -365,6 +389,38 @@ function attemptJsonRepair(json: string): string | null {
 const VALID_MOODS = ["neutral", "happy", "love", "fear", "sad", "angry", "disgust", "sleep"];
 const VALID_CAMERAS = ["full", "mid", "upper", "head"];
 const VALID_LIGHTS = ["neon", "noir", "sunset", "frost", "crimson"];
+const FACE_EMOJIS = new Set([
+  "😐", "😶", "😏", "🙂", "🙃", "😊", "😇", "😀", "😃", "😄", "😁", "😆",
+  "😝", "😋", "😛", "😜", "🤪", "😂", "🤣", "😅", "😉", "😭", "🥺", "😞",
+  "😔", "😳", "☹️", "😚", "😘", "🥰", "😍", "🤩", "😡", "😠", "🤬", "😒",
+  "😱", "😬", "🙄", "🤔", "👀", "😴"
+]);
+const EMOJI_FALLBACK = "😐";
+const FACE_EMOJI_NAMES = new Map<string, string>([
+  ["neutral", "😐"],
+  ["happy", "😊"],
+  ["smile", "🙂"],
+  ["smiley", "😀"],
+  ["joy", "😂"],
+  ["laugh", "😂"],
+  ["sad", "😔"],
+  ["cry", "😭"],
+  ["crying", "😭"],
+  ["angry", "😠"],
+  ["mad", "😠"],
+  ["fear", "😱"],
+  ["scared", "😱"],
+  ["disgust", "😒"],
+  ["gross", "😒"],
+  ["love", "😍"],
+  ["sleep", "😴"],
+  ["sleepy", "😴"],
+  ["tired", "😴"],
+  ["confused", "🤔"],
+  ["thinking", "🤔"],
+  ["surprised", "😳"],
+  ["shock", "😳"]
+]);
 
 function isValidMood(value: unknown): value is PlanSection["mood"] {
   return typeof value === "string" && VALID_MOODS.includes(value);

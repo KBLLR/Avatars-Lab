@@ -11,6 +11,7 @@ import type {
   CameraView,
   Mood,
   LightPreset,
+  PlanAction,
   PlanSection,
   WordTiming
 } from "./directors/types";
@@ -25,6 +26,8 @@ import {
   exportTimelineAsFile,
   importTimelineFromFile,
 } from "./engine/timeline-persistence";
+import { initDanceLibrary } from "./dance/library";
+import { getDanceDirector } from "./dance/director";
 
 // Stage modules
 import {
@@ -919,6 +922,94 @@ const init = async () => {
 
 let timelineEditor: TimelineEditor | null = null;
 let currentTimeline: Timeline | null = null;
+let timelineUpdateId = 0;
+let danceLibraryReady: Promise<void> | null = null;
+
+const ensureDanceLibrary = async () => {
+  if (!danceLibraryReady) {
+    danceLibraryReady = initDanceLibrary().then(() => undefined);
+  }
+  await danceLibraryReady;
+};
+
+const getPlanDuration = (plan: MergedPlan, fallbackMs: number) => {
+  if (!plan.sections.length) return fallbackMs;
+  const planEnd = plan.sections.reduce((max, section) => Math.max(max, section.end_ms), 0);
+  return Math.max(planEnd || 0, fallbackMs);
+};
+
+const buildDanceBlocks = async (plan: MergedPlan, durationMs: number) => {
+  await ensureDanceLibrary();
+  const director = getDanceDirector();
+  const blocks: Timeline["blocks"] = [];
+
+  const toDanceBlock = (action: PlanAction) => {
+    const args = action.args || {};
+    const url = typeof args.url === "string" ? args.url : "";
+    if (!url) return null;
+
+    const start_ms = Math.max(0, Math.min(durationMs - 1, Math.round(action.time_ms)));
+    const remaining = Math.max(0, durationMs - start_ms);
+    if (remaining < 200) return null;
+
+    const rawDuration = Math.round(
+      typeof args.duration === "number"
+        ? args.duration * 1000
+        : typeof args.duration_ms === "number"
+        ? args.duration_ms
+        : 2500
+    );
+    const duration_ms = Math.min(remaining, Math.max(200, rawDuration));
+
+    const data = {
+      clipId: (args.name as string) || url,
+      clipUrl: url,
+      speed: typeof args.speed === "number" ? args.speed : undefined,
+      mirror: typeof args.mirror === "boolean" ? args.mirror : undefined,
+      loop: typeof args.loop === "boolean" ? args.loop : undefined,
+    };
+
+    return createBlock("dance", "dance", start_ms, duration_ms, data, `anim:${data.clipId}`);
+  };
+
+  for (const section of plan.sections) {
+    const sectionDuration = section.end_ms - section.start_ms;
+    let density: "sparse" | "normal" | "dense" = "normal";
+    if (sectionDuration < 7000) density = "sparse";
+    if (sectionDuration > 20000) density = "dense";
+
+    const actions = director.generateDanceActions(section.start_ms, section.end_ms, density);
+    for (const action of actions) {
+      const block = toDanceBlock(action);
+      if (block) blocks.push(block);
+    }
+  }
+
+  return blocks;
+};
+
+const buildVisemeBlock = async (durationMs: number) => {
+  if (!state.audioBuffer || !state.transcriptText) return null;
+  if (!state.head) return null;
+
+  const timings =
+    state.wordTimings ||
+    buildWordTimings(encodeWords(state.transcriptText), durationMs);
+  if (!timings.words.length) return null;
+
+  await ensureLipsync(state.head);
+  const visemeTimings = buildVisemeTimings(state.head, timings);
+  const hasVisemes = visemeTimings.visemes.length > 0;
+
+  const data = {
+    source: "audio",
+    text: state.transcriptText,
+    wordTimings: timings,
+    visemeMapping: hasVisemes ? visemeTimings : undefined,
+  };
+
+  return createBlock("viseme", "viseme", 0, durationMs, data, "Lipsync");
+};
 
 const initTimelineEditor = () => {
   const container = document.getElementById("timelineContainer");
@@ -928,6 +1019,7 @@ const initTimelineEditor = () => {
   }
 
   timelineEditor = createTimelineEditor(container, {
+    basePixelsPerMs: 0.03,
     trackHeight: 44,
     headerWidth: 100,
     showRuler: true,
@@ -941,6 +1033,24 @@ const initTimelineEditor = () => {
     if (event.time_ms !== undefined) {
       console.log("[Timeline] Seek to:", event.time_ms);
       // Could integrate with audio playback here
+    }
+  });
+
+  timelineEditor.on("play", () => {
+    if (!state.performing) {
+      void performSong();
+    }
+  });
+
+  timelineEditor.on("pause", () => {
+    if (state.performing) {
+      stopPerformance();
+    }
+  });
+
+  timelineEditor.on("stop", () => {
+    if (state.performing) {
+      stopPerformance();
     }
   });
 
@@ -1015,7 +1125,7 @@ const initTimelineEditor = () => {
   // Subscribe to plan changes to update timeline
   stateManager.subscribe((nextState, changed) => {
     if (changed.plan !== undefined && nextState.plan) {
-      updateTimelineFromPlan(nextState.plan);
+      void updateTimelineFromPlan(nextState.plan);
     }
   });
 
@@ -1032,18 +1142,43 @@ const initTimelineEditor = () => {
   console.log("[Engine Lab] Timeline Editor initialized");
 };
 
-const updateTimelineFromPlan = (plan: MergedPlan) => {
+const updateTimelineFromPlan = async (plan: MergedPlan) => {
   if (!timelineEditor) return;
 
-  // Calculate duration from audio or plan sections
-  const audioDuration = state.audioDurationMs || 30000;
+  const updateId = ++timelineUpdateId;
+  const audioDuration = state.audioBuffer
+    ? Math.round(state.audioBuffer.duration * 1000)
+    : 0;
+  const planDuration = getPlanDuration(plan, 30000);
+  const durationMs = Math.max(audioDuration, planDuration, 1000);
 
   const { timeline } = directorPlanToTimeline(plan, {
-    durationMs: audioDuration,
+    durationMs,
     defaultCameraView: "upper",
     defaultLightPreset: "neon",
     defaultMood: "neutral",
   });
+
+  const extraBlocks: Timeline["blocks"] = [];
+
+  if (!timeline.blocks.some((block) => block.layerType === "viseme")) {
+    const visemeBlock = await buildVisemeBlock(durationMs);
+    if (visemeBlock) extraBlocks.push(visemeBlock);
+  }
+
+  if (!timeline.blocks.some((block) => block.layerType === "dance")) {
+    const danceBlocks = await buildDanceBlocks(plan, durationMs);
+    extraBlocks.push(...danceBlocks);
+  }
+
+  if (updateId !== timelineUpdateId || !timelineEditor) return;
+
+  if (extraBlocks.length > 0) {
+    timeline.blocks = [...timeline.blocks, ...extraBlocks].sort(
+      (a, b) => a.start_ms - b.start_ms
+    );
+  }
+  timeline.duration_ms = durationMs;
 
   currentTimeline = timeline;
   timelineEditor.setTimeline(timeline);
@@ -1060,6 +1195,8 @@ const createDemoTimeline = () => {
     createBlock("blendshape", "blendshape", 0, 8000, { mood: "happy" }, "Happy"),
     createBlock("blendshape", "blendshape", 10000, 6000, { mood: "love" }, "Love"),
     createBlock("blendshape", "blendshape", 20000, 8000, { mood: "neutral" }, "Neutral"),
+
+    createBlock("emoji", "emoji", 4000, 1500, { emoji: "😊" }, "emoji:😊"),
 
     createBlock("camera", "camera", 0, 10000, { view: "head", movement: "static" }, "Head"),
     createBlock("camera", "camera", 10000, 10000, { view: "upper", movement: "static" }, "Upper"),

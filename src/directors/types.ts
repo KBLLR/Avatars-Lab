@@ -273,6 +273,7 @@ export interface PlanSection {
   mood?: Mood;
   camera?: CameraView;
   light?: LightPreset;
+  effects?: string;
   notes?: string;
   actions?: PlanAction[];
 }

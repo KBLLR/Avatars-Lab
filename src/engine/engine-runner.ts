@@ -133,6 +133,7 @@ export class EngineRunner {
     if (!this.config.timelineContainer) return;
 
     this.editor = createTimelineEditor(this.config.timelineContainer, {
+      basePixelsPerMs: 0.03,
       trackHeight: 44,
       headerWidth: 100,
       showRuler: true,

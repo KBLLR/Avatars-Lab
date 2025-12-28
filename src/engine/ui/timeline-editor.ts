@@ -11,8 +11,17 @@ import type {
   LayerConfig,
   LayerType,
   TimelineMarker,
+  CameraMovementType,
+  CameraView,
+  LightTransition,
+  FXEffectType,
+  VisemeMapping,
+  FXBlockData,
+  CameraBlockData,
 } from "../types";
-import { LAYER_TYPES } from "../types";
+import { LAYER_TYPES, getBlockData, createDefaultLayers } from "../types";
+import { MOODS, CAMERA_VIEWS, LIGHT_PRESETS } from "../../directors/types";
+import { initDanceLibrary, getDanceLibrary } from "../../dance/library";
 
 // ============================================
 // Types & Configuration
@@ -76,7 +85,7 @@ interface ClipboardData {
 }
 
 interface UndoAction {
-  type: "move" | "resize" | "delete" | "add" | "paste";
+  type: "move" | "resize" | "delete" | "add" | "paste" | "edit";
   blockId: string;
   before: Partial<TimelineBlock>;
   after: Partial<TimelineBlock>;
@@ -92,6 +101,9 @@ export type TimelineEventType =
   | "block:copy"
   | "block:paste"
   | "block:duplicate"
+  | "play"
+  | "pause"
+  | "stop"
   | "playhead:seek"
   | "zoom:change"
   | "undo"
@@ -114,6 +126,81 @@ export interface TimelineEvent {
 
 type TimelineEventHandler = (event: TimelineEvent) => void;
 
+type PropertyFieldType = "text" | "number" | "select" | "checkbox";
+
+interface PropertyField {
+  label: string;
+  prop: string;
+  type: PropertyFieldType;
+  options?: Array<{ value: string; label: string }>;
+  step?: number;
+  min?: number;
+  max?: number;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const FACE_EMOJI_OPTIONS = [
+  "😐", "😶", "😏", "🙂", "🙃", "😊", "😇", "😀", "😃", "😄", "😁", "😆",
+  "😝", "😋", "😛", "😜", "🤪", "😂", "🤣", "😅", "😉", "😭", "🥺", "😞",
+  "😔", "😳", "☹️", "😚", "😘", "🥰", "😍", "🤩", "😡", "😠", "🤬", "😒",
+  "😱", "😬", "🙄", "🤔", "👀", "😴"
+];
+
+const CAMERA_MOVEMENTS: CameraMovementType[] = [
+  "static",
+  "dolly",
+  "pan",
+  "tilt",
+  "orbit",
+  "shake",
+  "punch",
+  "sweep",
+];
+
+const FX_EFFECTS: FXEffectType[] = [
+  "bloom",
+  "vignette",
+  "chromatic",
+  "glitch",
+  "pixelation",
+  "none",
+];
+
+const LIGHT_TRANSITIONS: LightTransition[] = ["cut", "fade", "pulse"];
+
+const FX_FIELD_MAP: Record<FXEffectType, PropertyField[]> = {
+  bloom: [
+    { label: "Strength", prop: "data.params.strength", type: "number", step: 0.1, min: 0, max: 3 },
+    { label: "Radius", prop: "data.params.radius", type: "number", step: 0.05, min: 0, max: 1 },
+    { label: "Threshold", prop: "data.params.threshold", type: "number", step: 0.05, min: 0, max: 1 },
+  ],
+  vignette: [
+    { label: "Offset", prop: "data.params.offset", type: "number", step: 0.05, min: 0.6, max: 1.2 },
+    { label: "Darkness", prop: "data.params.darkness", type: "number", step: 0.05, min: 0, max: 1 },
+  ],
+  chromatic: [
+    { label: "Amount", prop: "data.params.amount", type: "number", step: 0.0005, min: 0, max: 0.01 },
+  ],
+  glitch: [
+    { label: "Active", prop: "data.params.active", type: "checkbox" },
+    { label: "Wild", prop: "data.params.wild", type: "checkbox" },
+  ],
+  pixelation: [
+    { label: "Pixel Size", prop: "data.params.size", type: "number", step: 1, min: 1, max: 32 },
+  ],
+  none: [],
+};
+
+const FX_DEFAULTS: Record<FXEffectType, Record<string, number | boolean>> = {
+  bloom: { strength: 1.5, radius: 0.4, threshold: 0.85 },
+  vignette: { offset: 0.95, darkness: 0.3 },
+  chromatic: { amount: 0.003 },
+  glitch: { active: true, wild: false },
+  pixelation: { size: 8 },
+  none: {},
+};
+
 // ============================================
 // Layer Colors (Swiss-inspired palette)
 // ============================================
@@ -122,10 +209,35 @@ const LAYER_COLORS: Record<LayerType, { bg: string; border: string; text: string
   viseme: { bg: "#2E7D32", border: "#1B5E20", text: "#E8F5E9" },
   dance: { bg: "#1565C0", border: "#0D47A1", text: "#E3F2FD" },
   blendshape: { bg: "#E65100", border: "#BF360C", text: "#FFF3E0" },
+  emoji: { bg: "#00897B", border: "#00695C", text: "#E0F2F1" },
   lighting: { bg: "#F9A825", border: "#F57F17", text: "#212121" },
   camera: { bg: "#6A1B9A", border: "#4A148C", text: "#F3E5F5" },
   fx: { bg: "#C2185B", border: "#880E4F", text: "#FCE4EC" },
 };
+
+const VISEME_COLORS: Record<string, string> = {
+  aa: "#FF7043",
+  e: "#FBC02D",
+  i: "#8BC34A",
+  o: "#26C6DA",
+  u: "#42A5F5",
+  pp: "#AB47BC",
+  ss: "#7E57C2",
+  th: "#5C6BC0",
+  dd: "#EC407A",
+  ff: "#FF8A65",
+  kk: "#90A4AE",
+  nn: "#4DB6AC",
+  rr: "#7986CB",
+  ch: "#BA68C8",
+  sil: "#546E7A",
+};
+
+const normalizeVisemeName = (value: string): string =>
+  value.replace(/^viseme_/i, "").toLowerCase();
+
+const getVisemeColor = (value: string): string =>
+  VISEME_COLORS[normalizeVisemeName(value)] || "#546E7A";
 
 // ============================================
 // Timeline Editor Component
@@ -136,6 +248,9 @@ export class TimelineEditor {
   private config: TimelineEditorConfig;
   private state: TimelineEditorState;
   private timeline: Timeline | null = null;
+  private danceOptions: Array<{ value: string; label: string; url: string }> = [];
+  private danceOptionsById: Map<string, { url: string; label: string }> = new Map();
+  private danceOptionsReady = false;
 
   // DOM Elements
   private root: HTMLElement | null = null;
@@ -188,6 +303,29 @@ export class TimelineEditor {
     this.createDOM();
     this.attachEventListeners();
     this.setupResizeObserver();
+    void this.loadDanceOptions();
+  }
+
+  private async loadDanceOptions(): Promise<void> {
+    try {
+      await initDanceLibrary();
+      const library = getDanceLibrary();
+      const clips = library.getAllAnimations();
+      this.danceOptions = clips
+        .map((clip) => ({
+          value: clip.id,
+          label: clip.name || clip.id,
+          url: clip.url,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      this.danceOptionsById = new Map(
+        this.danceOptions.map((clip) => [clip.value, { url: clip.url, label: clip.label }])
+      );
+      this.danceOptionsReady = true;
+      this.refreshPropertyPanel();
+    } catch (error) {
+      console.warn("[Timeline] Failed to load dance library:", error);
+    }
   }
 
   private createDOM(): void {
@@ -275,6 +413,9 @@ export class TimelineEditor {
               <option value="easeInOut">Ease In/Out</option>
             </select>
           </div>
+          <div class="property-divider"></div>
+          <div class="property-section-title">Layer Options</div>
+          <div class="property-layer-fields"></div>
         </div>
       </div>
     `;
@@ -655,12 +796,14 @@ export class TimelineEditor {
         top: 50px;
         right: 10px;
         width: 220px;
+        max-height: calc(100% - 70px);
         background: rgba(20, 20, 20, 0.95);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(68, 68, 68, 0.6);
         border-radius: 6px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.5);
         z-index: 100;
+        overflow: hidden;
       }
 
       .property-header {
@@ -695,6 +838,22 @@ export class TimelineEditor {
 
       .property-content {
         padding: 12px;
+        max-height: calc(100% - 40px);
+        overflow-y: auto;
+      }
+
+      .property-divider {
+        height: 1px;
+        margin: 8px 0;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .property-section-title {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 6px;
       }
 
       .property-row {
@@ -1052,9 +1211,13 @@ export class TimelineEditor {
       const block = this.getBlockById(blockId);
       if (!block) return;
 
-      let value: string | number = input.value;
-      if (input.type === "number") {
-        value = parseFloat(value) || 0;
+      let value: string | number | boolean | undefined = input.value;
+      if (input instanceof HTMLInputElement && input.type === "checkbox") {
+        value = input.checked;
+      } else if (input.type === "number") {
+        value = input.value === "" ? undefined : parseFloat(input.value);
+      } else if (input.value === "") {
+        value = undefined;
       }
 
       this.updateBlockProperty(blockId, prop, value);
@@ -1219,6 +1382,9 @@ export class TimelineEditor {
   // ─────────────────────────────────────────────────────────────
 
   setTimeline(timeline: Timeline): void {
+    const defaults = createDefaultLayers();
+    const byId = new Map(timeline.layers.map((layer) => [layer.id, layer]));
+    timeline.layers = defaults.map((layer) => byId.get(layer.id) || layer);
     this.timeline = timeline;
     this.render();
   }
@@ -1326,6 +1492,14 @@ export class TimelineEditor {
     el.style.borderColor = colors.border;
     el.style.color = colors.text;
 
+    if (block.layerType === "viseme") {
+      const gradient = this.buildVisemeGradient(block);
+      if (gradient) {
+        el.style.backgroundImage = gradient;
+        el.style.backgroundSize = "cover";
+      }
+    }
+
     const label = block.label || block.layerType;
     const durationSec = (block.duration_ms / 1000).toFixed(1);
 
@@ -1337,6 +1511,57 @@ export class TimelineEditor {
     `;
 
     return el;
+  }
+
+  private buildVisemeGradient(block: TimelineBlock): string | null {
+    const data = getBlockData(block, "viseme");
+    const mapping = data?.visemeMapping as VisemeMapping | undefined;
+    if (!mapping || mapping.visemes.length === 0) return null;
+
+    const durationMs = Math.max(1, block.duration_ms);
+    const bucketCount = Math.min(180, Math.max(32, Math.round(durationMs / 200)));
+    const buckets = new Array<string>(bucketCount).fill("sil");
+
+    for (let i = 0; i < mapping.visemes.length; i += 1) {
+      const viseme = mapping.visemes[i];
+      const vtime = mapping.vtimes[i];
+      const vduration = mapping.vdurations[i];
+      if (typeof vtime !== "number" || typeof vduration !== "number") continue;
+
+      const startRaw = (vtime - block.start_ms) / durationMs;
+      const endRaw = startRaw + vduration / durationMs;
+      if (endRaw <= 0 || startRaw >= 1) continue;
+
+      const start = Math.max(0, startRaw);
+      const end = Math.min(1, endRaw);
+      const startIdx = Math.max(0, Math.floor(start * bucketCount));
+      const endIdx = Math.min(bucketCount - 1, Math.max(startIdx, Math.floor(end * bucketCount)));
+
+      for (let j = startIdx; j <= endIdx; j += 1) {
+        buckets[j] = viseme;
+      }
+    }
+
+    const stops: string[] = [];
+    let current = buckets[0];
+    let segmentStart = 0;
+
+    const pushSegment = (color: string, startIdx: number, endIdx: number) => {
+      const startPct = (startIdx / bucketCount) * 100;
+      const endPct = (endIdx / bucketCount) * 100;
+      stops.push(`${color} ${startPct}%`, `${color} ${endPct}%`);
+    };
+
+    for (let i = 1; i < buckets.length; i += 1) {
+      if (buckets[i] !== current) {
+        pushSegment(getVisemeColor(current), segmentStart, i);
+        current = buckets[i];
+        segmentStart = i;
+      }
+    }
+    pushSegment(getVisemeColor(current), segmentStart, buckets.length);
+
+    return `linear-gradient(90deg, ${stops.join(", ")})`;
   }
 
   private renderMarkers(): void {
@@ -1428,13 +1653,17 @@ export class TimelineEditor {
   // ─────────────────────────────────────────────────────────────
 
   play(): void {
+    if (this.state.isPlaying) return;
     this.state.isPlaying = true;
     this.updatePlayButton();
+    this.emit({ type: "play", time_ms: this.state.playhead_ms });
   }
 
   pause(): void {
+    if (!this.state.isPlaying) return;
     this.state.isPlaying = false;
     this.updatePlayButton();
+    this.emit({ type: "pause", time_ms: this.state.playhead_ms });
   }
 
   togglePlay(): void {
@@ -1450,6 +1679,7 @@ export class TimelineEditor {
     this.state.playhead_ms = 0;
     this.updatePlayhead();
     this.updatePlayButton();
+    this.emit({ type: "stop", time_ms: this.state.playhead_ms });
   }
 
   seek(time_ms: number): void {
@@ -1694,6 +1924,12 @@ export class TimelineEditor {
         }
         break;
 
+      case "edit":
+        if (block) {
+          this.applyBlockPatch(block, action.before);
+        }
+        break;
+
       case "delete":
         // Restore deleted block
         if (action.before) {
@@ -1730,6 +1966,12 @@ export class TimelineEditor {
         if (block && action.after.start_ms !== undefined) {
           block.start_ms = action.after.start_ms;
           block.duration_ms = action.after.duration_ms!;
+        }
+        break;
+
+      case "edit":
+        if (block) {
+          this.applyBlockPatch(block, action.after);
         }
         break;
 
@@ -1794,7 +2036,21 @@ export class TimelineEditor {
     if (easeInSelect) easeInSelect.value = block.easeIn || "";
     if (easeOutSelect) easeOutSelect.value = block.easeOut || "";
 
+    this.renderLayerFields(panel, block);
+
     panel.style.display = "block";
+  }
+
+  private refreshPropertyPanel(): void {
+    const panel = this.root?.querySelector(".timeline-property-panel") as HTMLElement;
+    if (!panel || panel.style.display === "none") return;
+    if (this.state.selectedBlockIds.size !== 1) return;
+
+    const blockId = [...this.state.selectedBlockIds][0];
+    const block = this.getBlockById(blockId);
+    if (!block) return;
+
+    this.renderLayerFields(panel, block);
   }
 
   hidePropertyPanel(): void {
@@ -1804,13 +2060,73 @@ export class TimelineEditor {
     }
   }
 
-  updateBlockProperty(blockId: string, prop: string, value: string | number): void {
+  updateBlockProperty(
+    blockId: string,
+    prop: string,
+    value: string | number | boolean | undefined
+  ): void {
     const block = this.getBlockById(blockId);
     if (!block) return;
+
+    if (!prop.startsWith("data.") && value === undefined) {
+      return;
+    }
 
     // Record undo
     const before: Partial<TimelineBlock> = {};
     const after: Partial<TimelineBlock> = {};
+
+    if (prop.startsWith("data.")) {
+      before.data = this.cloneValue(block.data);
+      const nextData = this.cloneValue(block.data ?? {});
+      this.setNestedValue(nextData as Record<string, unknown>, prop.slice(5), value);
+
+      if (prop === "data.clipId" && typeof value === "string") {
+        const clip = this.danceOptionsById.get(value);
+        if (clip) {
+          (nextData as Record<string, unknown>).clipUrl = clip.url;
+          before.label = block.label;
+          block.label = `anim:${clip.label}`;
+          after.label = block.label;
+        }
+      }
+
+      if (prop === "data.effect" && typeof value === "string") {
+        const effect = FX_EFFECTS.includes(value as FXEffectType)
+          ? (value as FXEffectType)
+          : "none";
+        const defaults = FX_DEFAULTS[effect] || {};
+        const params = (nextData as Record<string, unknown>).params;
+        if (!params || typeof params !== "object") {
+          (nextData as Record<string, unknown>).params = { ...defaults };
+        } else {
+          (nextData as Record<string, unknown>).params = { ...defaults, ...(params as Record<string, unknown>) };
+        }
+        before.label = block.label;
+        block.label = effect === "none" ? "fx:clean" : `fx:${effect}`;
+        after.label = block.label;
+      }
+
+      if (prop === "data.emoji" && typeof value === "string" && value) {
+        before.label = block.label;
+        block.label = `emoji:${value}`;
+        after.label = block.label;
+      }
+
+      block.data = nextData;
+      after.data = this.cloneValue(nextData);
+
+      this.pushUndo({
+        type: "edit",
+        blockId,
+        before,
+        after,
+      });
+
+      this.render();
+      this.refreshPropertyPanel();
+      return;
+    }
 
     switch (prop) {
       case "label":
@@ -1841,13 +2157,312 @@ export class TimelineEditor {
     }
 
     this.pushUndo({
-      type: "resize",
+      type: "edit",
       blockId,
       before,
       after,
     });
 
     this.render();
+  }
+
+  private renderLayerFields(panel: HTMLElement, block: TimelineBlock): void {
+    const container = panel.querySelector(".property-layer-fields") as HTMLElement;
+    if (!container) return;
+
+    const fields = this.getLayerFields(block);
+    if (fields.length === 0) {
+      container.innerHTML = `<div class="property-row"><label>None</label><span class="property-input">—</span></div>`;
+      return;
+    }
+
+    container.innerHTML = fields
+      .map((field) => {
+        const value = this.getNestedValue(block, field.prop);
+        const isChecked = field.type === "checkbox" && Boolean(value);
+        const valueAttr =
+          field.type === "number" && typeof value === "number"
+            ? String(value)
+            : field.type === "text" && typeof value === "string"
+              ? value
+              : field.type === "select"
+                ? String(value ?? "")
+                : "";
+
+        if (field.type === "select") {
+          const options = (field.options || [])
+            .map((option) => {
+              const selected = option.value === valueAttr ? " selected" : "";
+              return `<option value="${option.value}"${selected}>${option.label}</option>`;
+            })
+            .join("");
+          const disabledAttr = field.disabled ? " disabled" : "";
+
+          return `
+            <div class="property-row">
+              <label>${field.label}</label>
+              <select class="property-input" data-prop="${field.prop}"${disabledAttr}>
+                <option value=""></option>
+                ${options}
+              </select>
+            </div>
+          `;
+        }
+
+        if (field.type === "checkbox") {
+          const checked = value ? " checked" : "";
+          return `
+            <div class="property-row">
+              <label>${field.label}</label>
+              <input type="checkbox" class="property-input" data-prop="${field.prop}"${checked} />
+            </div>
+          `;
+        }
+
+        const stepAttr = field.step !== undefined ? ` step="${field.step}"` : "";
+        const minAttr = field.min !== undefined ? ` min="${field.min}"` : "";
+        const maxAttr = field.max !== undefined ? ` max="${field.max}"` : "";
+        const placeholderAttr = field.placeholder ? ` placeholder="${field.placeholder}"` : "";
+
+        const disabledAttr = field.disabled ? " disabled" : "";
+        const checkedAttr = isChecked ? " checked" : "";
+        return `
+          <div class="property-row">
+            <label>${field.label}</label>
+            <input
+              type="${field.type}"
+              class="property-input"
+              data-prop="${field.prop}"
+              value="${field.type === "checkbox" ? "" : valueAttr}"
+              ${stepAttr}
+              ${minAttr}
+              ${maxAttr}
+              ${placeholderAttr}
+              ${disabledAttr}
+              ${checkedAttr}
+            />
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  private getLayerFields(block: TimelineBlock): PropertyField[] {
+    switch (block.layerType) {
+      case "blendshape":
+        return [
+          {
+            label: "Mood",
+            prop: "data.mood",
+            type: "select",
+            options: MOODS.map((m) => ({ value: m, label: m })),
+          },
+          {
+            label: "Emoji",
+            prop: "data.emoji",
+            type: "select",
+            options: FACE_EMOJI_OPTIONS.map((emoji) => ({ value: emoji, label: emoji })),
+          },
+          { label: "Intensity", prop: "data.intensity", type: "number", step: 0.1, min: 0, max: 1 },
+        ];
+
+      case "emoji":
+        return [
+          {
+            label: "Emoji",
+            prop: "data.emoji",
+            type: "select",
+            options: FACE_EMOJI_OPTIONS.map((emoji) => ({ value: emoji, label: emoji })),
+          },
+        ];
+
+      case "lighting":
+        return [
+          {
+            label: "Preset",
+            prop: "data.preset",
+            type: "select",
+            options: [...LIGHT_PRESETS, "spotlight"].map((p) => ({
+              value: p,
+              label: p,
+            })),
+          },
+          {
+            label: "Transition",
+            prop: "data.transition",
+            type: "select",
+            options: LIGHT_TRANSITIONS.map((t) => ({ value: t, label: t })),
+          },
+          { label: "Audio Pulse", prop: "data.audioPulse", type: "checkbox" },
+          { label: "Ambient", prop: "data.intensities.ambient", type: "number", step: 0.1, min: 0, max: 30 },
+          { label: "Direct", prop: "data.intensities.direct", type: "number", step: 0.1, min: 0, max: 30 },
+          { label: "Spot", prop: "data.intensities.spot", type: "number", step: 0.1, min: 0, max: 30 },
+          { label: "Ambient Color", prop: "data.colors.ambient", type: "text" },
+          { label: "Direct Color", prop: "data.colors.direct", type: "text" },
+          { label: "Spot Color", prop: "data.colors.spot", type: "text" },
+        ];
+
+      case "camera":
+        return (() => {
+          const data = getBlockData(block, "camera") as CameraBlockData | null;
+          const movement = data?.movement || "static";
+          const fields: PropertyField[] = [
+          {
+            label: "View",
+            prop: "data.view",
+            type: "select",
+            options: CAMERA_VIEWS.map((v) => ({ value: v, label: v })),
+          },
+          {
+            label: "Movement",
+            prop: "data.movement",
+            type: "select",
+            options: CAMERA_MOVEMENTS.map((m) => ({ value: m, label: m })),
+          },
+          ];
+
+          switch (movement) {
+            case "dolly":
+              fields.push({ label: "Distance", prop: "data.distance", type: "number", step: 0.05, min: -1.5, max: 1.5 });
+              break;
+            case "pan":
+              fields.push({ label: "Rotate Y", prop: "data.rotateY", type: "number", step: 1, min: -45, max: 45 });
+              break;
+            case "tilt":
+              fields.push({ label: "Rotate X", prop: "data.rotateX", type: "number", step: 1, min: -45, max: 45 });
+              break;
+            case "orbit":
+              fields.push({ label: "Orbit Angle", prop: "data.orbit", type: "number", step: 1, min: 0, max: 180 });
+              break;
+            case "punch":
+              fields.push({ label: "Punch", prop: "data.punch", type: "number", step: 0.1, min: 0, max: 3 });
+              break;
+            case "sweep":
+              fields.push({ label: "Sweep Start", prop: "data.startAngle", type: "number", step: 1, min: -180, max: 180 });
+              fields.push({ label: "Sweep End", prop: "data.endAngle", type: "number", step: 1, min: -180, max: 180 });
+              break;
+            case "shake":
+              fields.push({ label: "Shake Intensity", prop: "data.shake.intensity", type: "number", step: 0.1, min: 0, max: 2 });
+              fields.push({ label: "Shake Frequency", prop: "data.shake.frequency", type: "number", step: 0.1, min: 0, max: 6 });
+              break;
+            case "static":
+            default:
+              break;
+          }
+
+          return fields;
+        })();
+
+      case "dance":
+        return [
+          {
+            label: "Animation",
+            prop: "data.clipId",
+            type: "select",
+            options: (() => {
+              const current = this.getNestedValue(block, "data.clipId");
+              const currentId = typeof current === "string" ? current : "";
+              const baseOptions = this.danceOptionsReady
+                ? [...this.danceOptions]
+                : [{ value: "", label: "Loading..." }];
+              if (currentId && !this.danceOptionsById.has(currentId)) {
+                baseOptions.unshift({ value: currentId, label: `Custom: ${currentId}` });
+              }
+              return baseOptions;
+            })(),
+            disabled: !this.danceOptionsReady,
+          },
+          { label: "Clip URL", prop: "data.clipUrl", type: "text", disabled: true },
+          { label: "Loop", prop: "data.loop", type: "checkbox" },
+          { label: "Mirror", prop: "data.mirror", type: "checkbox" },
+          { label: "Speed", prop: "data.speed", type: "number", step: 0.05, min: 0.25, max: 2.5 },
+          { label: "Blend Weight", prop: "data.blendWeight", type: "number", step: 0.05, min: 0, max: 1 },
+        ];
+
+      case "fx":
+        return (() => {
+          const data = getBlockData(block, "fx") as FXBlockData | null;
+          const effect = data?.effect && FX_EFFECTS.includes(data.effect) ? data.effect : "none";
+          return [
+            {
+              label: "Effect",
+              prop: "data.effect",
+              type: "select",
+              options: FX_EFFECTS.map((e) => ({ value: e, label: e })),
+            },
+            ...FX_FIELD_MAP[effect],
+          ];
+        })();
+
+      case "viseme":
+        return [
+          {
+            label: "Source",
+            prop: "data.source",
+            type: "select",
+            options: ["audio", "tts", "manual"].map((s) => ({ value: s, label: s })),
+          },
+          { label: "Audio URL", prop: "data.audioUrl", type: "text" },
+          { label: "Text", prop: "data.text", type: "text" },
+        ];
+
+      default:
+        return [];
+    }
+  }
+
+  private getNestedValue(block: TimelineBlock, prop: string): unknown {
+    if (!prop.startsWith("data.")) {
+      return (block as Record<string, unknown>)[prop];
+    }
+
+    const path = prop.slice(5).split(".");
+    let current: unknown = block.data;
+
+    for (const key of path) {
+      if (!current || typeof current !== "object") return undefined;
+      current = (current as Record<string, unknown>)[key];
+    }
+    return current;
+  }
+
+  private setNestedValue(
+    target: Record<string, unknown>,
+    path: string,
+    value: string | number | boolean | undefined
+  ): void {
+    const keys = path.split(".");
+    let current: Record<string, unknown> = target;
+
+    for (let i = 0; i < keys.length - 1; i += 1) {
+      const key = keys[i];
+      const next = current[key];
+      if (!next || typeof next !== "object") {
+        current[key] = {};
+      }
+      current = current[key] as Record<string, unknown>;
+    }
+
+    const finalKey = keys[keys.length - 1];
+    if (value === undefined) {
+      delete current[finalKey];
+    } else {
+      current[finalKey] = value;
+    }
+  }
+
+  private cloneValue<T>(value: T): T {
+    if (!value || typeof value !== "object") return value;
+    return JSON.parse(JSON.stringify(value)) as T;
+  }
+
+  private applyBlockPatch(block: TimelineBlock, patch: Partial<TimelineBlock>): void {
+    if (patch.start_ms !== undefined) block.start_ms = patch.start_ms;
+    if (patch.duration_ms !== undefined) block.duration_ms = patch.duration_ms;
+    if (patch.label !== undefined) block.label = patch.label;
+    if (patch.easeIn !== undefined) block.easeIn = patch.easeIn;
+    if (patch.easeOut !== undefined) block.easeOut = patch.easeOut;
+    if (patch.data !== undefined) block.data = this.cloneValue(patch.data);
   }
 
   // ─────────────────────────────────────────────────────────────

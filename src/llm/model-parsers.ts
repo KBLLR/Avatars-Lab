@@ -25,6 +25,145 @@ export interface HarmonyChannels {
   final?: string;       // Response text (contains JSON)
 }
 
+const normalizeHarmonyTokens = (raw: string): string => {
+  let cleaned = raw;
+  cleaned = cleaned.replace(/<\|channel\|>\s*analysis/gi, "<|analysis|>");
+  cleaned = cleaned.replace(/<\|channel\|>\s*commentary/gi, "<|commentary|>");
+  cleaned = cleaned.replace(/<\|channel\|>\s*final/gi, "<|final|>");
+  cleaned = cleaned.replace(/<\|channel\|>\s*response/gi, "<|final|>");
+  cleaned = cleaned.replace(/<\|message\|>/gi, "<|final|>");
+  cleaned = cleaned.replace(/<\|start\|>\s*assistant/gi, "<|assistant|>");
+  return cleaned;
+};
+
+const HARMONY_SCAN_LIMIT = 1_000_000;
+
+const normalizeHarmonyChannel = (value: string): string | null => {
+  const cleaned = value.trim().toLowerCase();
+  if (!cleaned) return null;
+  if (cleaned === "analysis" || cleaned === "commentary") return cleaned;
+  if (cleaned === "final") return "final";
+  if (cleaned === "message") return "message";
+  if (cleaned === "response" || cleaned === "output" || cleaned === "answer") return "final";
+  if (cleaned === "assistant") return "final";
+  return null;
+};
+
+const findHarmonyFinalSegment = (raw: string): { start: number; end: number } | null => {
+  let currentChannel: string | null = null;
+  let contentStart: number | null = null;
+  let lastFinal: { start: number; end: number } | null = null;
+
+  const limit = Math.min(raw.length, HARMONY_SCAN_LIMIT);
+  let i = 0;
+
+  while (i < limit) {
+    const tokenStart = raw.indexOf("<|", i);
+    if (tokenStart < 0 || tokenStart >= limit) break;
+    const tokenEnd = raw.indexOf("|>", tokenStart + 2);
+    if (tokenEnd < 0 || tokenEnd >= limit) break;
+
+    if (contentStart !== null && currentChannel === "final") {
+      lastFinal = { start: contentStart, end: tokenStart };
+    }
+    contentStart = null;
+
+    const token = raw.slice(tokenStart + 2, tokenEnd).trim().toLowerCase();
+
+    if (token === "channel") {
+      let j = tokenEnd + 2;
+      while (j < limit && /\s/.test(raw[j])) j += 1;
+      const nameStart = j;
+      while (j < limit && /[a-z_]/i.test(raw[j])) j += 1;
+      const name = raw.slice(nameStart, j);
+      const channel = normalizeHarmonyChannel(name);
+      if (channel) {
+        currentChannel = channel === "message" ? currentChannel : channel;
+        if (channel && channel !== "message") {
+          contentStart = j;
+        }
+      }
+      i = j;
+      continue;
+    }
+
+    if (token === "message") {
+      if (currentChannel) {
+        contentStart = tokenEnd + 2;
+      }
+      i = tokenEnd + 2;
+      continue;
+    }
+
+    const channel = normalizeHarmonyChannel(token);
+    if (channel) {
+      currentChannel = channel === "message" ? currentChannel : channel;
+      if (channel && channel !== "message") {
+        contentStart = tokenEnd + 2;
+      }
+    }
+
+    i = tokenEnd + 2;
+  }
+
+  if (contentStart !== null && currentChannel === "final") {
+    lastFinal = { start: contentStart, end: limit };
+  }
+
+  return lastFinal;
+};
+
+const extractBalancedJson = (raw: string, start: number, end: number): string | null => {
+  let depth = 0;
+  let objStart = -1;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < end; i += 1) {
+    const char = raw[i];
+
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (char === "\\") {
+        escape = true;
+        continue;
+      }
+      if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      if (depth === 0) objStart = i;
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      if (depth === 0) continue;
+      depth -= 1;
+      if (depth === 0 && objStart >= 0) {
+        const candidate = raw.slice(objStart, i + 1);
+        if (!isSchemaExample(candidate)) {
+          return candidate;
+        }
+        objStart = -1;
+      }
+    }
+  }
+
+  return null;
+};
+
 /**
  * Parse GPT-OSS harmony format output
  * Extracts content from ANALYSIS, COMMENTARY, and FINAL channels
@@ -35,6 +174,7 @@ export function parseHarmonyFormat(raw: string): HarmonyChannels {
 
   // Remove <|end|> and <|endoftext|> tokens first
   let cleaned = raw.replace(/<\|end(?:oftext)?\|>/gi, '');
+  cleaned = normalizeHarmonyTokens(cleaned);
 
   // Common harmony channel markers (including GPT-OSS variations)
   const channelMarkers = [
@@ -102,54 +242,20 @@ export function parseHarmonyFormat(raw: string): HarmonyChannels {
  * Exported for debugging and direct use
  */
 export function extractJsonFromHarmony(raw: string): string | null {
-  const channels = parseHarmonyFormat(raw);
-
-  // Prefer FINAL channel for JSON
-  let source = channels.final || channels.analysis || '';
-
-  // If still no source, fall back to stripping tokens from raw
-  if (!source) {
-    source = raw.replace(/<\|[^|]+\|>/g, ' ').trim();
-  }
-
-  // Strategy 1: Find balanced JSON object
-  const jsonObjects = findAllJsonObjects(source);
-  if (jsonObjects.length > 0) {
-    // Prefer objects that look like our expected format
-    const directorJson = jsonObjects.find(obj =>
-      obj.includes('"thoughts_summary"') ||
-      obj.includes('"plan"') ||
-      obj.includes('"sections"')
+  const finalSegment = findHarmonyFinalSegment(raw);
+  if (finalSegment) {
+    const json = extractBalancedJson(
+      raw,
+      finalSegment.start,
+      Math.min(finalSegment.end, finalSegment.start + HARMONY_SCAN_LIMIT)
     );
-    if (directorJson) {
-      return directorJson;
-    }
-    // Otherwise return the largest object
-    return jsonObjects.reduce((a, b) => a.length > b.length ? a : b);
+    if (json) return json;
   }
 
-  // Strategy 2: Simple regex match for any JSON object
-  const jsonMatch = source.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return jsonMatch[0];
-  }
-
-  // Strategy 3: Try to find JSON starting patterns and extract from there
-  const jsonStarts = [
-    source.indexOf('{"thoughts_summary"'),
-    source.indexOf('{"plan"'),
-    source.indexOf('{"sections"'),
-    source.indexOf('{"analysis"'),
-  ].filter(i => i >= 0);
-
-  if (jsonStarts.length > 0) {
-    const startIndex = Math.min(...jsonStarts);
-    const fromStart = source.slice(startIndex);
-    const endMatch = fromStart.match(/\}(?:\s*\})*\s*$/);
-    if (endMatch) {
-      return fromStart;
-    }
-  }
+  // Fallback: normalize tokens and attempt to find JSON in the whole response
+  const normalized = normalizeHarmonyTokens(raw);
+  const json = extractBalancedJson(normalized, 0, Math.min(normalized.length, HARMONY_SCAN_LIMIT));
+  if (json) return json;
 
   return null;
 }
@@ -472,6 +578,14 @@ export function preprocessForModel(raw: string, modelId?: string): string {
   // Apply model-specific preprocessing
   if (config?.preprocess) {
     processed = config.preprocess(processed);
+  }
+
+  // Handle harmony-style tokens even when model isn't flagged as GPT-OSS
+  if (!config?.useHarmonyParser && /<\|(?:analysis|commentary|final|message|channel|assistant|response)\|>/i.test(processed)) {
+    const harmonyJson = extractJsonFromHarmony(processed);
+    if (harmonyJson) {
+      processed = harmonyJson;
+    }
   }
 
   // Common preprocessing steps

@@ -480,6 +480,7 @@ export class DirectorOrchestrator {
         ...section,
         light: stageSection?.light || section.light || defaultLight as PlanSection["light"],
         camera: cameraSection?.camera || section.camera || defaultCamera as PlanSection["camera"],
+        effects: postFxSection?.effects,
         notes: notes || undefined,
         actions: actions.length > 0 ? actions : undefined
       };

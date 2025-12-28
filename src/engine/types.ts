@@ -1,10 +1,11 @@
 /**
  * Multi-Layer Performance Engine - Core Types
  *
- * Defines data structures for coordinating 6 animation/control layers:
+ * Defines data structures for coordinating 7 animation/control layers:
  * - viseme: Lip sync from audio
  * - dance: Full-body animations (Mixamo FBX)
  * - blendshape: Facial expressions / morph targets
+ * - emoji: Emoji expression triggers
  * - lighting: Stage lighting presets & transitions
  * - camera: Camera movements & views
  * - fx: Post-processing effects
@@ -20,6 +21,7 @@ export const LAYER_TYPES = [
   "viseme",
   "dance",
   "blendshape",
+  "emoji",
   "lighting",
   "camera",
   "fx",
@@ -153,6 +155,10 @@ export interface BlendshapeBlockData {
   intensity?: number;
 }
 
+export interface EmojiBlockData {
+  emoji: string;
+}
+
 export type LightTransition = "cut" | "fade" | "pulse";
 
 export interface LightingBlockData {
@@ -226,6 +232,7 @@ export type BlockDataMap = {
   viseme: VisemeBlockData;
   dance: DanceBlockData;
   blendshape: BlendshapeBlockData;
+  emoji: EmojiBlockData;
   lighting: LightingBlockData;
   camera: CameraBlockData;
   fx: FXBlockData;
@@ -316,6 +323,7 @@ export function createDefaultLayers(): LayerConfig[] {
     viseme: "#4CAF50",
     dance: "#2196F3",
     blendshape: "#FF9800",
+    emoji: "#009688",
     lighting: "#FFEB3B",
     camera: "#9C27B0",
     fx: "#E91E63",
@@ -325,6 +333,7 @@ export function createDefaultLayers(): LayerConfig[] {
     viseme: "Lip Sync",
     dance: "Dance/Animation",
     blendshape: "Expressions",
+    emoji: "Emoji",
     lighting: "Lighting",
     camera: "Camera",
     fx: "Effects",

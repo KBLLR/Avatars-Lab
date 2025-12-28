@@ -117,7 +117,7 @@ export const stageFunctionDefs = [
     parameters: {
       type: "object",
       properties: {
-        emoji: { type: "string", description: "Single face emoji or emoji name to play." },
+        emoji: { type: "string", description: "Single face emoji, or expression name like happy/sad/angry/neutral/fear/disgust/sleep. Non-face emoji map to 😐." },
         duration: { type: "number", description: "Duration in seconds (optional)." }
       },
       required: ["emoji"]

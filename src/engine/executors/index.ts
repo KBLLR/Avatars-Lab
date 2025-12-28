@@ -6,6 +6,7 @@ export { BaseExecutor } from "./base-executor";
 export type { LayerExecutor } from "./base-executor";
 
 export { BlendshapeExecutor } from "./blendshape-executor";
+export { EmojiExecutor } from "./emoji-executor";
 export { LightingExecutor } from "./lighting-executor";
 export { DanceExecutor } from "./dance-executor";
 export { CameraExecutor } from "./camera-executor";

@@ -1,10 +1,11 @@
 /**
  * Multi-Layer Performance Engine
  *
- * Coordinates 6 animation/control layers through a unified state machine:
+ * Coordinates 7 animation/control layers through a unified state machine:
  * - viseme: Lip sync from audio
  * - dance: Full-body animations
  * - blendshape: Facial expressions
+ * - emoji: Emoji expressions
  * - lighting: Stage lighting
  * - camera: Camera movements
  * - fx: Post-processing effects

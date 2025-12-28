@@ -19,6 +19,7 @@ import {
   type CameraBlockData,
   type LightingBlockData,
   type BlendshapeBlockData,
+  type EmojiBlockData,
   type DanceBlockData,
   type FXBlockData,
   type BlockEvent,
@@ -84,6 +85,34 @@ const addParam = (
   }
 };
 
+const normalizeFxEffect = (value?: string): FXBlockData["effect"] | null => {
+  if (!value) return null;
+  const cleaned = value.trim().toLowerCase();
+  if (!cleaned) return null;
+
+  switch (cleaned) {
+    case "bloom":
+      return "bloom";
+    case "vignette":
+      return "vignette";
+    case "chromatic":
+    case "chromatic_aberration":
+    case "chromatic-aberration":
+      return "chromatic";
+    case "glitch":
+      return "glitch";
+    case "pixel":
+    case "pixelation":
+    case "pixelate":
+      return "pixelation";
+    case "clean":
+    case "none":
+      return "none";
+    default:
+      return null;
+  }
+};
+
 const addSectionDefaults = (
   blocks: TimelineBlock[],
   section: PlanSection,
@@ -136,6 +165,24 @@ const addSectionDefaults = (
     );
     blocks.push(block);
   }
+
+  const fxEffect = normalizeFxEffect(section.effects);
+  if (fxEffect) {
+    const data: FXBlockData = {
+      effect: fxEffect,
+      params: {},
+    };
+    blocks.push(
+      createBlock(
+        "fx",
+        "fx",
+        section.start_ms,
+        durationMs,
+        data,
+        `fx:${section.effects || fxEffect}`
+      )
+    );
+  }
 };
 
 const mapActionToBlocks = (
@@ -177,10 +224,10 @@ const mapActionToBlocks = (
         toMs(args.duration as number),
         DEFAULT_EXPRESSION_DURATION_MS
       );
-      const data: BlendshapeBlockData = { emoji: args.emoji as string };
+      const data: EmojiBlockData = { emoji: args.emoji as string };
       const block = createBlock(
-        "blendshape",
-        "blendshape",
+        "emoji",
+        "emoji",
         start_ms,
         durationMsLocal,
         data,
