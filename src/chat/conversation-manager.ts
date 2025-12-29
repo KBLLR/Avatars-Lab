@@ -2,6 +2,7 @@ import type { TalkingHead } from "@met4citizen/talkinghead";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
+import audioProcessorUrl from "./audio-processor.js?url"; // Import local worklet
 import { getMlxConfig } from "../mlx-config";
 
 export type MlxConfig = ReturnType<typeof getMlxConfig>;
@@ -32,7 +33,7 @@ export class ConversationManager {
   private micStream: MediaStream | null = null;
   private micSource: MediaStreamAudioSourceNode | null = null;
   private micAnalyser: AnalyserNode | null = null;
-  private micProcessor: ScriptProcessorNode | null = null;
+  private micWorklet: AudioWorkletNode | null = null; // Replaces micProcessor
   private silenceGain: GainNode | null = null;
   private vadBuffer = new Float32Array(2048);
   
@@ -88,18 +89,42 @@ export class ConversationManager {
 
   public async stopSession() {
     this.state.sessionActive = false;
+    this.state.busy = false;
     this.stopRecording();
     this.resetMicNodes();
+
+    // Clean up mic stream
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(track => track.stop());
+      this.micStream = null;
+    }
+
+    // Reset message history but keep system message
+    const systemMessage = this.state.messages.find(m => m.role === "system");
+    this.state.messages = systemMessage ? [systemMessage] : [];
+
     this.callbacks.onStatusUpdate("Session stopped.");
+  }
+
+  public isSessionActive(): boolean {
+    return this.state.sessionActive;
+  }
+
+  public isBusy(): boolean {
+    return this.state.busy;
   }
 
   public setMode(mode: ConversationMode) {
     this.state.mode = mode;
     this.callbacks.onModeChange(this.state.mode, this.state.isRecording);
     if (mode === "vad") {
+       this.callbacks.onStatusUpdate("Initializing VAD...");
        this.ensureMic().then(() => {
+          this.callbacks.onStatusUpdate("VAD active - listening");
           requestAnimationFrame(this.runVadLoop.bind(this));
        });
+    } else {
+       this.callbacks.onStatusUpdate("Push-to-talk mode");
     }
   }
 
@@ -109,7 +134,10 @@ export class ConversationManager {
   }
 
   public async startRecording(reason: "vad" | "manual") {
-    if (this.state.isRecording || !this.micProcessor || !this.head) return;
+    if (this.state.isRecording || !this.micWorklet || !this.head) return;
+    
+    // Notify worklet to start recording
+    this.micWorklet.port.postMessage({ message: "setRecording", isRecording: true });
     
     this.state.isRecording = true;
     this.recordStart = performance.now();
@@ -124,6 +152,12 @@ export class ConversationManager {
     if (!this.state.isRecording || !this.head) return;
     
     this.state.isRecording = false;
+
+    // Notify worklet to stop recording
+    if (this.micWorklet) {
+       this.micWorklet.port.postMessage({ message: "setRecording", isRecording: false });
+    }
+
     this.callbacks.onModeChange(this.state.mode, false);
     
     const samples = this.mergeChunks(this.audioChunks, this.totalSamples);
@@ -155,6 +189,13 @@ export class ConversationManager {
       return;
     }
 
+    // Prevent overlapping requests
+    if (this.state.busy) {
+      this.callbacks.onStatusUpdate("Please wait...");
+      return;
+    }
+
+    this.state.busy = true;
     this.callbacks.onLogMessage("user", text);
     this.state.messages.push({ role: "user", content: text });
     this.callbacks.onStatusUpdate("Thinking...");
@@ -208,8 +249,12 @@ export class ConversationManager {
         this.callbacks.onLogMessage("assistant", assistant.content);
         await this.speakResponse(assistant.content);
       }
+
+      this.state.busy = false;
+      this.callbacks.onStatusUpdate("Ready");
     } catch (error: any) {
        console.error(error);
+       this.state.busy = false;
        this.callbacks.onStatusUpdate(`Error: ${error.message}`);
     }
   }
@@ -238,57 +283,92 @@ export class ConversationManager {
     if (!this.head) return;
 
     // Use configured voice or fallback
-    const voice = this.config.ttsVoice; 
-    
-    // We can pull voiceInput from UI if passed or assume config
-    const response = await fetch(`${this.config.audioBaseUrl}/v1/audio/speech`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: this.config.ttsModel,
-        input: text,
-        voice,
-        response_format: "wav",
-        speed: 1.0
-      })
-    });
+    let voice = this.config.ttsVoice;
 
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`TTS error (${response.status}): ${detail}`);
-    }
-
-    const wavBuffer = await response.arrayBuffer();
-    await this.head.audioCtx.resume();
-    const audioBuffer = await this.head.audioCtx.decodeAudioData(wavBuffer.slice(0));
-
-    const pcm = new Int16Array(audioBuffer.length);
-    const channel = audioBuffer.getChannelData(0);
-    const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
-    for (let i = 0; i < channel.length; i += 1) {
-      const sample = clamp(channel[i], -1, 1);
-      pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-    }
-
-    await this.head.streamStart(
-      {
-        sampleRate: audioBuffer.sampleRate,
-        lipsyncType: "visemes",
-        gain: 0.75,
-        waitForAudioChunks: false
-      },
-      () => {
-        this.callbacks.onStatusUpdate("Speaking...");
-      },
-      () => {
-        this.callbacks.onStatusUpdate("Listening...");
+    try {
+      // Ensure AudioContext is resumed (Chrome autoplay policy)
+      if (this.head.audioCtx.state === "suspended") {
+        await this.head.audioCtx.resume();
       }
-    );
 
-    this.head.streamAudio({
-      audio: pcm.buffer
-    });
-    this.head.streamNotifyEnd();
+      // Determine TTS model based on backend preference
+      const ttsBackend = (this.config as any).ttsBackend || "kokoro";
+      let ttsModel = this.config.ttsModel;
+
+      if (ttsBackend === "chatterbox") {
+        ttsModel = "chatterbox";
+
+        // For Chatterbox, check if we have a voice reference path
+        // Voice can be: "default", a voice ID (maps to /voices/chatterbox/{id}.wav),
+        // or a full path for custom cloning
+        const voiceRefPath = (this.config as any).voiceRefPath;
+        if (voiceRefPath) {
+          // User uploaded custom reference
+          voice = voiceRefPath;
+        } else if (voice && voice !== "default") {
+          // Try to map voice ID to reference file path
+          const refPath = `/voices/chatterbox/${voice}.wav`;
+          voice = refPath;
+        }
+      }
+
+      // Call TTS service
+      const response = await fetch(`${this.config.audioBaseUrl}/v1/audio/speech`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: ttsModel,
+          input: text,
+          voice,
+          response_format: "wav",
+          speed: 1.0
+        })
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        // Log response anyway (text-only fallback)
+        this.callbacks.onStatusUpdate(`TTS unavailable - showing text`);
+        console.error(`TTS error (${response.status}): ${detail}`);
+        return;
+      }
+
+      const wavBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.head.audioCtx.decodeAudioData(wavBuffer.slice(0));
+
+      const pcm = new Int16Array(audioBuffer.length);
+      const channel = audioBuffer.getChannelData(0);
+      const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+      for (let i = 0; i < channel.length; i += 1) {
+        const sample = clamp(channel[i], -1, 1);
+        pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+      }
+
+      await this.head.streamStart(
+        {
+          sampleRate: audioBuffer.sampleRate,
+          lipsyncType: "visemes",
+          gain: 0.75,
+          waitForAudioChunks: false
+        },
+        () => {
+          this.callbacks.onStatusUpdate("Speaking...");
+        },
+        () => {
+          this.callbacks.onStatusUpdate("Listening...");
+        }
+      );
+
+      this.head.streamAudio({
+        audio: pcm.buffer
+      });
+      this.head.streamNotifyEnd();
+
+    } catch (err: any) {
+      // TTS failed but we have the text - show text-only response
+      console.error("TTS error:", err);
+      this.callbacks.onStatusUpdate("Audio unavailable");
+    }
   }
 
   private async sendToStt(wavBuffer: ArrayBuffer) {
@@ -322,22 +402,32 @@ export class ConversationManager {
         this.resetMicNodes();
         
         const ctx = this.head.audioCtx;
+
+        // Load the AudioWorklet module
+        try {
+            await ctx.audioWorklet.addModule(audioProcessorUrl);
+        } catch (err) {
+            console.error("Failed to add AudioWorklet module:", err);
+            throw err;
+        }
+
         this.micSource = ctx.createMediaStreamSource(this.micStream);
         this.micAnalyser = ctx.createAnalyser();
         this.micAnalyser.fftSize = 2048;
         this.micSource.connect(this.micAnalyser);
         
-        this.micProcessor = ctx.createScriptProcessor(4096, 1, 1);
+        this.micWorklet = new AudioWorkletNode(ctx, "audio-processor");
         this.silenceGain = ctx.createGain();
         this.silenceGain.gain.value = 0;
         
-        this.micSource.connect(this.micProcessor);
-        this.micProcessor.connect(this.silenceGain);
+        this.micSource.connect(this.micWorklet);
+        this.micWorklet.connect(this.silenceGain);
         this.silenceGain.connect(ctx.destination);
         
-        this.micProcessor.onaudioprocess = (event) => {
+        this.micWorklet.port.onmessage = (event) => {
             if (!this.state.isRecording) return;
-            const input = event.inputBuffer.getChannelData(0);
+            // event.data is the float32 buffer
+            const input = event.data;
             this.audioChunks.push(new Float32Array(input));
             this.totalSamples += input.length;
         };
@@ -350,11 +440,11 @@ export class ConversationManager {
   private resetMicNodes() {
     this.micSource?.disconnect();
     this.micAnalyser?.disconnect();
-    this.micProcessor?.disconnect();
+    this.micWorklet?.disconnect();
     this.silenceGain?.disconnect();
     this.micSource = null;
     this.micAnalyser = null;
-    this.micProcessor = null;
+    this.micWorklet = null;
     this.silenceGain = null;
   }
   

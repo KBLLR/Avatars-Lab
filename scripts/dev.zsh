@@ -219,4 +219,8 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$HOUSE_DIR"
-exec npm run dev:ui
+vite_args=()
+if [[ -n "${AVATAR_LABS_VITE_PORT:-}" ]]; then
+  vite_args=(-- --port "$AVATAR_LABS_VITE_PORT")
+fi
+exec npm run dev:ui "${vite_args[@]}"

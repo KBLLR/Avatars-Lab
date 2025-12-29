@@ -45,10 +45,11 @@ export const modelLabel = (model: RegistryModel): string => {
 };
 
 export const populateModelSelect = (
-  select: HTMLSelectElement,
+  select: HTMLSelectElement | null,
   models: RegistryModel[],
   selected?: string
 ): void => {
+  if (!select) return;
   select.innerHTML = "";
   if (!models.length) {
     const option = document.createElement("option");

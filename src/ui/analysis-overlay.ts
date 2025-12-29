@@ -5,8 +5,8 @@ export const setAnalysisOverlay = (
   active: boolean,
   step?: string
 ): void => {
-  els.analysisOverlay.classList.toggle("active", active);
-  if (step) {
+  if (els.analysisOverlay) els.analysisOverlay.classList.toggle("active", active);
+  if (step && els.analysisStepText) {
     els.analysisStepText.textContent = step;
   }
 };
@@ -16,7 +16,7 @@ export const resetAnalysisThoughts = (
   text: string
 ): string[] => {
   const segments = text ? [text] : [];
-  els.analysisThoughts.textContent = segments.join("\n\n") || "Awaiting performance analysis.";
+  if (els.analysisThoughts) els.analysisThoughts.textContent = segments.join("\n\n") || "Awaiting performance analysis.";
   return segments;
 };
 
@@ -27,7 +27,7 @@ export const appendAnalysisThought = (
 ): string[] => {
   if (!text) return segments;
   const next = [...segments, text.trim()];
-  els.analysisThoughts.textContent = next.join("\n\n");
+  if (els.analysisThoughts) els.analysisThoughts.textContent = next.join("\n\n");
   return next;
 };
 

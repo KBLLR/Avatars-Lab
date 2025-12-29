@@ -24,6 +24,7 @@ export interface ModelSelectorElements {
   embedModelSelect: HTMLSelectElement;
   llmRuntimeModelSelect: HTMLSelectElement;
   sttChip: HTMLElement;
+  ttsChip: HTMLElement;
   chatChip: HTMLElement;
   vlmChip: HTMLElement;
   llmChip: HTMLElement;

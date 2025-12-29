@@ -1,0 +1,141 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2025-12-28T00:00:00Z",
+  "backends": {
+    "kokoro": {
+      "id": "kokoro",
+      "name": "Kokoro TTS",
+      "description": "Fast, high-quality multi-voice TTS",
+      "sample_rate": 24000,
+      "supports_voice_cloning": false,
+      "voices_path": "/model-zoo/mlx/models/voices",
+      "voice_format": "bin",
+      "voices": [
+        {
+          "id": "af_heart",
+          "name": "Heart (American Female)",
+          "gender": "female",
+          "accent": "american",
+          "description": "Warm, friendly voice",
+          "file": "af_heart.bin",
+          "default": true
+        },
+        {
+          "id": "af_alloy",
+          "name": "Alloy (American Female)",
+          "gender": "female",
+          "accent": "american",
+          "file": "af_alloy.bin"
+        },
+        {
+          "id": "af_bella",
+          "name": "Bella (American Female)",
+          "gender": "female",
+          "accent": "american",
+          "file": "af_bella.bin"
+        },
+        {
+          "id": "af_nova",
+          "name": "Nova (American Female)",
+          "gender": "female",
+          "accent": "american",
+          "file": "af_nova.bin"
+        },
+        {
+          "id": "af_sky",
+          "name": "Sky (American Female)",
+          "gender": "female",
+          "accent": "american",
+          "file": "af_sky.bin"
+        },
+        {
+          "id": "am_adam",
+          "name": "Adam (American Male)",
+          "gender": "male",
+          "accent": "american",
+          "file": "am_adam.bin"
+        },
+        {
+          "id": "am_echo",
+          "name": "Echo (American Male)",
+          "gender": "male",
+          "accent": "american",
+          "file": "am_echo.bin"
+        },
+        {
+          "id": "am_onyx",
+          "name": "Onyx (American Male)",
+          "gender": "male",
+          "accent": "american",
+          "file": "am_onyx.bin"
+        },
+        {
+          "id": "bf_alice",
+          "name": "Alice (British Female)",
+          "gender": "female",
+          "accent": "british",
+          "file": "bf_alice.bin"
+        },
+        {
+          "id": "bf_emma",
+          "name": "Emma (British Female)",
+          "gender": "female",
+          "accent": "british",
+          "file": "bf_emma.bin"
+        },
+        {
+          "id": "bm_daniel",
+          "name": "Daniel (British Male)",
+          "gender": "male",
+          "accent": "british",
+          "file": "bm_daniel.bin"
+        },
+        {
+          "id": "bm_george",
+          "name": "George (British Male)",
+          "gender": "male",
+          "accent": "british",
+          "file": "bm_george.bin"
+        }
+      ]
+    },
+    "chatterbox": {
+      "id": "chatterbox",
+      "name": "Chatterbox TTS",
+      "description": "Voice cloning capable TTS with MLX optimization",
+      "sample_rate": 24000,
+      "supports_voice_cloning": true,
+      "model_path": "/model-zoo/chatterbox",
+      "model_size_gb": 2.98,
+      "voices": [
+        {
+          "id": "default",
+          "name": "Default Voice",
+          "description": "Built-in default voice (no reference audio needed)",
+          "default": true
+        },
+        {
+          "id": "cloned",
+          "name": "Cloned Voice",
+          "description": "Uses uploaded reference audio for voice cloning",
+          "requires_reference": true
+        }
+      ],
+      "clone_requirements": {
+        "min_audio_seconds": 5,
+        "recommended_audio_seconds": 10,
+        "supported_formats": ["wav", "mp3", "flac"],
+        "max_file_size_mb": 50
+      }
+    }
+  },
+  "download_sources": {
+    "kokoro_voices": {
+      "huggingface": "hexgrad/Kokoro-82M",
+      "voices_subdir": "voices"
+    },
+    "chatterbox_model": {
+      "huggingface": "mlx-community/chatterbox-turbo-fp16"
+    }
+  }
+}

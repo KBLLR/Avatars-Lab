@@ -1,18 +1,22 @@
 import type { StatusElements, ChipElements, HudElements, HeroElements } from "./types";
 
 export const updateStatus = (els: Pick<StatusElements, "status">, text: string): void => {
-  els.status.textContent = text;
+  if (els.status) {
+    els.status.textContent = text;
+  }
 };
 
-export const setChip = (el: HTMLElement, label: string, value?: string): void => {
-  el.textContent = `${label}: ${value || "-"}`;
+export const setChip = (el: HTMLElement | null, label: string, value?: string): void => {
+  if (el) {
+    el.textContent = `${label}: ${value || "-"}`;
+  }
 };
 
 export const setHud = (els: HudElements, scene: string, camera: string, lights: string, mode: string): void => {
-  els.hudScene.textContent = scene;
-  els.hudCamera.textContent = camera;
-  els.hudLights.textContent = lights;
-  els.hudMode.textContent = mode;
+  if (els.hudScene) els.hudScene.textContent = scene;
+  if (els.hudCamera) els.hudCamera.textContent = camera;
+  if (els.hudLights) els.hudLights.textContent = lights;
+  if (els.hudMode) els.hudMode.textContent = mode;
 };
 
 export const updateHero = (
@@ -21,11 +25,16 @@ export const updateHero = (
   songName?: string,
   sectionLabel?: string
 ): void => {
-  const avatarLabel = avatarName || els.avatarSelect.value || "Avatar";
+  const avatarLabel = avatarName || (els.avatarSelect ? els.avatarSelect.value : "Avatar") || "Avatar";
   const rawSong = songName ? `Performing ${songName}` : "No song";
   const songLabel = rawSong ? rawSong : "Awaiting Audio";
-  els.heroTitle.textContent = `${avatarLabel.replace(/\.glb$/i, "")}`;
-  els.heroSubtitle.textContent = sectionLabel ? `${songLabel} · ${sectionLabel}` : songLabel;
+  
+  if (els.heroTitle) {
+    els.heroTitle.textContent = `${avatarLabel.replace(/\.glb$/i, "")}`;
+  }
+  if (els.heroSubtitle) {
+    els.heroSubtitle.textContent = sectionLabel ? `${songLabel} · ${sectionLabel}` : songLabel;
+  }
 };
 
 export type StagePhase =
@@ -53,12 +62,16 @@ export const updateStageHeroDesc = (
   els: Pick<HeroElements, "stageHeroDesc">,
   phase: StagePhase
 ): void => {
-  els.stageHeroDesc.textContent = phaseDescriptions[phase];
+  if (els.stageHeroDesc) {
+    els.stageHeroDesc.textContent = phaseDescriptions[phase];
+  }
 };
 
 export const setStageHeroDescText = (
   els: Pick<HeroElements, "stageHeroDesc">,
   text: string
 ): void => {
-  els.stageHeroDesc.textContent = text;
+  if (els.stageHeroDesc) {
+    els.stageHeroDesc.textContent = text;
+  }
 };

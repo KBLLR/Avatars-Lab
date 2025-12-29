@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-28T14:10:58.104Z",
+  "generated_at": "2025-12-29T01:00:12.537Z",
   "registry_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/registry.json",
   "models": [
     {
@@ -61,7 +61,8 @@
       "id": "hf/mlx-community__chatterbox-turbo-fp16",
       "type": "text-to-speech",
       "capabilities": [
-        "audio-generate"
+        "audio-generate",
+        "voice-cloning"
       ],
       "description": null,
       "tags": []

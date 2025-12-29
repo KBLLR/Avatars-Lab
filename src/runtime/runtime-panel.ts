@@ -7,7 +7,7 @@ export const trimModelId = (value?: string | null): string => {
 };
 
 export const setRuntimeStatusText = (els: RuntimePanelElements, text: string): void => {
-  els.llmRuntimeStatus.textContent = text;
+  if (els.llmRuntimeStatus) els.llmRuntimeStatus.textContent = text;
 };
 
 export const setRuntimeValue = (el: HTMLElement, value: string, title?: string | null): void => {
@@ -20,9 +20,9 @@ export const setRuntimeValue = (el: HTMLElement, value: string, title?: string |
 };
 
 export const setRuntimeBusy = (els: RuntimePanelElements, busy: boolean): void => {
-  els.llmRuntimeRefresh.disabled = busy;
-  els.llmRuntimeUnload.disabled = busy;
-  els.llmRuntimeLoad.disabled = busy;
+  if (els.llmRuntimeRefresh) els.llmRuntimeRefresh.disabled = busy;
+  if (els.llmRuntimeUnload) els.llmRuntimeUnload.disabled = busy;
+  if (els.llmRuntimeLoad) els.llmRuntimeLoad.disabled = busy;
 };
 
 export const fetchModelRuntimeStatus = async (llmBaseUrl: string): Promise<ModelRuntimeStatus | null> => {
@@ -104,12 +104,12 @@ export const updateRuntimePanel = (els: RuntimePanelElements, status: ModelRunti
     configBits.push(status.config.mlx_warmup ? "warmup:on" : "warmup:off");
   }
 
-  setRuntimeValue(els.llmRuntimeLoaded, loaded);
-  setRuntimeValue(els.llmRuntimeType, modelType);
-  setRuntimeValue(els.llmRuntimeModel, trimModelId(modelId), modelId || null);
-  setRuntimeValue(els.llmRuntimeQueue, `${activeRequests} active / ${queued} queued`);
-  setRuntimeValue(els.llmRuntimeActive, `${activeStreams} streams`);
-  setRuntimeValue(els.llmRuntimeConfig, configBits.length ? configBits.join(" | ") : "-");
+  if (els.llmRuntimeLoaded) setRuntimeValue(els.llmRuntimeLoaded, loaded);
+  if (els.llmRuntimeType) setRuntimeValue(els.llmRuntimeType, modelType);
+  if (els.llmRuntimeModel) setRuntimeValue(els.llmRuntimeModel, trimModelId(modelId), modelId || null);
+  if (els.llmRuntimeQueue) setRuntimeValue(els.llmRuntimeQueue, `${activeRequests} active / ${queued} queued`);
+  if (els.llmRuntimeActive) setRuntimeValue(els.llmRuntimeActive, `${activeStreams} streams`);
+  if (els.llmRuntimeConfig) setRuntimeValue(els.llmRuntimeConfig, configBits.length ? configBits.join(" | ") : "-");
   setRuntimeStatusText(els, "LLM status updated.");
 };
 
@@ -142,7 +142,7 @@ export const unloadRuntimeModel = async (
   const response = await fetch(`${llmBaseUrl}/internal/models/unload`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ force: els.llmRuntimeForce.checked })
+    body: JSON.stringify({ force: els.llmRuntimeForce ? els.llmRuntimeForce.checked : false })
   });
   if (!response.ok) {
     const detail = await response.text();
@@ -162,6 +162,7 @@ export const loadRuntimeModel = async (
     setRuntimeStatusText(els, "Missing LLM base URL.");
     return;
   }
+  if (!els.llmRuntimeModelSelect) return;
   const modelId = els.llmRuntimeModelSelect.value;
   if (!modelId) {
     setRuntimeStatusText(els, "Select a model to load.");
@@ -172,7 +173,7 @@ export const loadRuntimeModel = async (
   const response = await fetch(`${llmBaseUrl}/internal/models/load`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model_id: modelId, force: els.llmRuntimeForce.checked })
+    body: JSON.stringify({ model_id: modelId, force: els.llmRuntimeForce ? els.llmRuntimeForce.checked : false })
   });
   if (!response.ok) {
     const detail = await response.text();

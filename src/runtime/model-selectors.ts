@@ -81,30 +81,32 @@ export const initModelSelectors = async (
   populateModelSelect(els.directorModelSelect, llmModels, directorDefault);
   populateModelSelect(els.llmRuntimeModelSelect, llmModels, directorDefault || llmDefault);
   populateModelSelect(els.sttModelSelect, sttModels, sttDefault);
+  populateModelSelect(els.ttsModelSelect, ttsModels, ttsDefault);
   populateModelSelect(els.embedModelSelect, embedModels, embedDefault);
 
   if (llmDefault) {
     config.llmModel = llmDefault;
-    setChip(els.chatChip, "Chat", llmDefault);
+    if (els.chatChip) setChip(els.chatChip, "Chat", llmDefault);
   }
   if (vlmDefault) {
     config.vlmModel = vlmDefault;
-    setChip(els.vlmChip, "VLM", vlmDefault);
+    if (els.vlmChip) setChip(els.vlmChip, "VLM", vlmDefault);
   }
   if (directorDefault) {
     config.directorModel = directorDefault;
-    setChip(els.llmChip, "LLM", directorDefault);
+    if (els.llmChip) setChip(els.llmChip, "LLM", directorDefault);
   }
   if (sttDefault) {
     config.sttModel = sttDefault;
-    setChip(els.sttChip, "STT", sttDefault);
+    if (els.sttChip) setChip(els.sttChip, "STT", sttDefault);
   }
   if (ttsDefault) {
     config.ttsModel = ttsDefault;
+    if (els.ttsChip) setChip(els.ttsChip, "TTS", ttsDefault);
   }
   if (embedDefault) {
     config.embedModel = embedDefault;
-    setChip(els.embedChip, "Embed", embedDefault);
+    if (els.embedChip) setChip(els.embedChip, "Embed", embedDefault);
   }
 
   return { registry, llmModels, vlmModels, sttModels, ttsModels, embedModels };

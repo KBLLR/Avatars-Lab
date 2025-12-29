@@ -1,8 +1,13 @@
+type TtsBackend = "kokoro" | "chatterbox";
+
 type MlxOverrides = {
   llmModel?: string;
   vlmModel?: string;
   sttModel?: string;
   ttsModel?: string;
+  ttsVoice?: string;
+  ttsBackend?: TtsBackend;
+  voiceRefPath?: string; // Path to reference audio for voice cloning
   directorModel?: string;
   embedModel?: string;
   mfluxModel?: string;
@@ -25,9 +30,9 @@ const writeOverrides = (overrides: MlxOverrides) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
 };
 
-const setOverride = (key: keyof MlxOverrides, value: string | undefined) => {
+const setOverride = <K extends keyof MlxOverrides>(key: K, value: MlxOverrides[K] | undefined) => {
   const overrides = readOverrides();
-  if (value) {
+  if (value !== undefined) {
     overrides[key] = value;
   } else {
     delete overrides[key];
@@ -44,6 +49,9 @@ const getMlxConfig = () => {
   const directorModel = overrides.directorModel || import.meta.env.VITE_MLX_DEFAULT_DIRECTOR_MODEL || llmModel;
   const embedModel = overrides.embedModel || import.meta.env.VITE_MLX_DEFAULT_EMBED_MODEL;
   const mfluxModel = overrides.mfluxModel || import.meta.env.VITE_MLX_DEFAULT_MFLUX_MODEL || "flux-schnell";
+
+  // TTS backend selection (kokoro or chatterbox)
+  const ttsBackend = overrides.ttsBackend || (import.meta.env.VITE_MLX_DEFAULT_TTS_BACKEND as TtsBackend) || "kokoro";
 
   const llmBaseUrl = import.meta.env.VITE_MLX_LLM_BASE_URL;
 
@@ -67,11 +75,14 @@ const getMlxConfig = () => {
     vlmModel,
     sttModel,
     ttsModel,
+    ttsBackend,
+    voiceRefPath: overrides.voiceRefPath || undefined,
     directorModel,
     embedModel,
     mfluxModel,
-    ttsVoice: import.meta.env.VITE_MLX_DEFAULT_TTS_VOICE || "default"
+    ttsVoice: overrides.ttsVoice || import.meta.env.VITE_MLX_DEFAULT_TTS_VOICE || "default"
   };
 };
 
 export { getMlxConfig, setOverride, readOverrides };
+export type { TtsBackend, MlxOverrides };

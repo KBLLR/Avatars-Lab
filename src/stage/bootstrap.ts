@@ -96,56 +96,74 @@ export const bootstrapStage = async ({
     })
     .catch(() => updateStatus("Avatar preview requires a user gesture."));
 
-  els.avatarSelect.addEventListener("change", () => {
-    resetHead();
-    loadAvatar()
-      .then(initHeadAudio)
-      .then(async () => {
-        const nextState = getState();
-        initLipsync(nextState.head);
-        if (nextState.audioFile && nextState.head) {
-          const audioBuffer = await decodeAudioFile(nextState.audioFile, nextState.head.audioCtx);
-          updateState({ audioBuffer });
-        }
-        return null;
-      })
-      .catch((error) => updateStatus(error instanceof Error ? error.message : "Failed to load avatar."));
-  });
+  if (els.avatarSelect) {
+    els.avatarSelect.addEventListener("change", () => {
+      resetHead();
+      loadAvatar()
+        .then(initHeadAudio)
+        .then(async () => {
+          const nextState = getState();
+          initLipsync(nextState.head);
+          if (nextState.audioFile && nextState.head) {
+            const audioBuffer = await decodeAudioFile(nextState.audioFile, nextState.head.audioCtx);
+            updateState({ audioBuffer });
+          }
+          return null;
+        })
+        .catch((error) => updateStatus(error instanceof Error ? error.message : "Failed to load avatar."));
+    });
+  }
 
-  els.songInput.addEventListener("change", () => {
-    const file = els.songInput.files?.[0];
-    if (!file) return;
-    handleFile(file).catch((error) => updateStatus(error instanceof Error ? error.message : "Failed to load audio."));
-  });
+  if (els.songInput) {
+    els.songInput.addEventListener("change", () => {
+      const file = els.songInput.files?.[0];
+      if (!file) return;
+      handleFile(file).catch((error) => updateStatus(error instanceof Error ? error.message : "Failed to load audio."));
+    });
+  }
 
-  els.transcribeBtn.addEventListener("click", () => {
-    transcribeAudio().catch((error) =>
-      updateStatus(error instanceof Error ? error.message : "Transcribe failed.")
-    );
-  });
+  if (els.transcribeBtn) {
+    els.transcribeBtn.addEventListener("click", () => {
+      transcribeAudio().catch((error) =>
+        updateStatus(error instanceof Error ? error.message : "Transcribe failed.")
+      );
+    });
+  }
 
-  els.analyzeBtn.addEventListener("click", () => {
-    analyzePerformance().catch((error) =>
-      updateStatus(error instanceof Error ? error.message : "Analysis failed.")
-    );
-  });
+  if (els.analyzeBtn) {
+    els.analyzeBtn.addEventListener("click", () => {
+      analyzePerformance().catch((error) =>
+        updateStatus(error instanceof Error ? error.message : "Analysis failed.")
+      );
+    });
+  }
 
-  els.playBtn.addEventListener("click", () => {
-    performSong().catch((error) =>
-      updateStatus(error instanceof Error ? error.message : "Performance failed.")
-    );
-  });
+  if (els.playBtn) {
+    els.playBtn.addEventListener("click", () => {
+      performSong().catch((error) =>
+        updateStatus(error instanceof Error ? error.message : "Performance failed.")
+      );
+    });
+  }
 
-  els.lipsyncBtn.addEventListener("click", () => {
-    const text = els.transcript.value || "Hello, I am ready to lipsync.";
-    speakWithLipsync(text).catch((error) =>
-      updateStatus(error instanceof Error ? `Lipsync failed: ${error.message}` : "Lipsync failed.")
-    );
-  });
+  if (els.lipsyncBtn) {
+    els.lipsyncBtn.addEventListener("click", () => {
+      if (!els.transcript) {
+        updateStatus("No transcript available.");
+        return;
+      }
+      const text = els.transcript.value || "Hello, I am ready to lipsync.";
+      speakWithLipsync(text).catch((error) =>
+        updateStatus(error instanceof Error ? `Lipsync failed: ${error.message}` : "Lipsync failed.")
+      );
+    });
+  }
 
-  els.stopBtn.addEventListener("click", () => {
-    stopPerformance();
-  });
+  if (els.stopBtn) {
+    els.stopBtn.addEventListener("click", () => {
+      stopPerformance();
+    });
+  }
 
   bindControls();
 };

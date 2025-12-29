@@ -74,28 +74,30 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
   const store = createPerformanceStore({ baseUrl: deps.config.dataLakeUrl });
 
   const setLibraryStatus = (text: string) => {
-    deps.els.dataPoolStatus.textContent = text;
+    if (deps.els.dataPoolStatus) deps.els.dataPoolStatus.textContent = text;
   };
 
   const refresh = async () => {
     try {
       setLibraryStatus("Refreshing library...");
       const items = await store.list();
-      deps.els.dataPoolSelect.innerHTML = "";
-      if (!items.length) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "No saved performances";
-        deps.els.dataPoolSelect.appendChild(option);
-        setLibraryStatus("No saved performances yet.");
-        return;
+      if (deps.els.dataPoolSelect) {
+        deps.els.dataPoolSelect.innerHTML = "";
+        if (!items.length) {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = "No saved performances";
+          deps.els.dataPoolSelect.appendChild(option);
+          setLibraryStatus("No saved performances yet.");
+          return;
+        }
+        items.forEach((item) => {
+          const option = document.createElement("option");
+          option.value = item.path;
+          option.textContent = item.path.split("/").slice(-2).join("/");
+          deps.els.dataPoolSelect.appendChild(option);
+        });
       }
-      items.forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item.path;
-        option.textContent = item.path.split("/").slice(-2).join("/");
-        deps.els.dataPoolSelect.appendChild(option);
-      });
       setLibraryStatus(`${items.length} performance(s) available.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to refresh library.";
@@ -110,7 +112,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
       return;
     }
     const title =
-      deps.els.dataPoolTitle.value.trim() ||
+      (deps.els.dataPoolTitle ? deps.els.dataPoolTitle.value.trim() : "") ||
       state.audioFile?.name.replace(/\.[^/.]+$/, "") ||
       `Performance ${new Date().toLocaleString()}`;
     const recordId = createId();
@@ -122,7 +124,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         type: state.audioFile.type || "audio/mpeg",
         size: state.audioFile.size
       };
-      if (deps.els.dataPoolIncludeAudio.checked) {
+      if (deps.els.dataPoolIncludeAudio && deps.els.dataPoolIncludeAudio.checked) {
         if (state.audioFile.size > MAX_AUDIO_BYTES) {
           setLibraryStatus("Audio too large to embed. Save without audio.");
         } else {
@@ -141,7 +143,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
       planSource: state.planSource,
       directorNotes: state.directorNotes,
       analysisSeed: state.analysisSeed,
-      directorStyle: deps.els.directorStyle.value,
+      directorStyle: deps.els.directorStyle ? deps.els.directorStyle.value : "default",
       models: {
         llmModel: deps.config.llmModel,
         vlmModel: deps.config.vlmModel,
@@ -169,7 +171,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
   };
 
   const load = async () => {
-    const selected = deps.els.dataPoolSelect.value;
+    const selected = deps.els.dataPoolSelect ? deps.els.dataPoolSelect.value : "";
     if (!selected) {
       setLibraryStatus("Select a saved performance first.");
       return;
@@ -193,13 +195,13 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
           "Performance loaded. Review and approve to perform."
         )
       });
-      deps.els.transcript.value = record.transcriptText || "";
-      deps.els.dataPoolTitle.value = record.title || "";
+      if (deps.els.transcript) deps.els.transcript.value = record.transcriptText || "";
+      if (deps.els.dataPoolTitle) deps.els.dataPoolTitle.value = record.title || "";
       deps.setAnalysisOverlay(false);
       deps.renderPlan(record.plan?.sections || []);
       deps.applyPlanApproved(false);
 
-      if (record.directorStyle) {
+      if (record.directorStyle && deps.els.directorStyle) {
         deps.els.directorStyle.value = record.directorStyle;
       }
 
@@ -233,7 +235,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         deps.setOverride("ttsModel", next);
       });
 
-      if (record.models?.ttsVoice) {
+      if (record.models?.ttsVoice && deps.els.voiceSelect) {
         const hasVoice = Array.from(deps.els.voiceSelect.options).some(
           (option) => option.value === record.models.ttsVoice
         );
@@ -263,12 +265,12 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         } else {
           deps.updateState({ audioBuffer: null });
         }
-        deps.els.heroLyrics.textContent = "Performance loaded. Approve to perform.";
+        if (deps.els.heroLyrics) deps.els.heroLyrics.textContent = "Performance loaded. Approve to perform.";
       } else {
         deps.updateState({ audioFile: null, audioBuffer: null });
         deps.setChip(deps.els.audioChip, "Audio", record.audio?.name || "-");
         deps.updateHero(undefined, undefined, "Loaded Performance");
-        deps.els.heroLyrics.textContent = "Performance loaded. Load audio to perform.";
+        if (deps.els.heroLyrics) deps.els.heroLyrics.textContent = "Performance loaded. Load audio to perform.";
       }
 
       deps.updateStatus("Performance loaded from data pool.");
@@ -279,15 +281,21 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
     }
   };
 
-  deps.els.dataPoolSave.addEventListener("click", () => {
-    save().catch(() => null);
-  });
-  deps.els.dataPoolRefresh.addEventListener("click", () => {
-    refresh().catch(() => null);
-  });
-  deps.els.dataPoolLoad.addEventListener("click", () => {
-    load().catch(() => null);
-  });
+  if (deps.els.dataPoolSave) {
+    deps.els.dataPoolSave.addEventListener("click", () => {
+      save().catch(() => null);
+    });
+  }
+  if (deps.els.dataPoolRefresh) {
+    deps.els.dataPoolRefresh.addEventListener("click", () => {
+      refresh().catch(() => null);
+    });
+  }
+  if (deps.els.dataPoolLoad) {
+    deps.els.dataPoolLoad.addEventListener("click", () => {
+      load().catch(() => null);
+    });
+  }
 
   refresh().catch(() => null);
 

@@ -10,6 +10,8 @@ export interface AvatarManifestEntry {
   display_name?: string;
   body?: "M" | "F";
   voice_id?: string;
+  kokoro_voice?: string;
+  chatterbox_voice?: string;
   intro?: string;
   background?: string;
   project?: string;

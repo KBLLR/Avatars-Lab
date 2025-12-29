@@ -803,10 +803,28 @@
                 <span class="value" id="vadSilenceVal">600</span>
               </div>
               <div>
+                <label>TTS Backend</label>
+                <div class="chat-mode-toggle" style="width: 100%; margin-bottom: 8px;">
+                  <button id="kokoroBackendBtn" class="active" style="flex: 1;">Kokoro</button>
+                  <button id="chatterboxBackendBtn" style="flex: 1;">Chatterbox</button>
+                </div>
+              </div>
+              <div>
                 <label>TTS Voice</label>
                 <select id="voiceSelect">
                   <option value="default">Default</option>
                 </select>
+              </div>
+              <!-- Voice Cloning (Chatterbox only) -->
+              <div id="voiceCloningSection" style="display: none; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                <label>Voice Cloning</label>
+                <p style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Upload reference audio (5+ seconds) to clone a voice</p>
+                <input type="file" id="voiceRefInput" accept="audio/*" style="display: none;" />
+                <div class="row">
+                  <button id="selectVoiceRefBtn" style="font-size: 11px;">Select Audio</button>
+                  <button id="clearVoiceRefBtn" style="font-size: 11px;" disabled>Clear</button>
+                </div>
+                <div id="voiceRefStatus" style="font-size: 10px; color: var(--muted); margin-top: 6px;"></div>
               </div>
             </div>
           </div>
@@ -927,10 +945,10 @@
           <div class="card-body">
             <div class="card-body-inner">
               <div class="row">
-                <button id="refreshRuntimeBtn">Ping Services</button>
-                <button id="loadModelBtn" class="primary">Load Model</button>
+                <button id="llmRuntimeRefresh">Ping Services</button>
+                <button id="llmRuntimeLoad" class="primary">Load Model</button>
               </div>
-              <div id="runtimeStatus" style="font-size: 11px; color: var(--muted);">
+              <div id="llmRuntimeStatus" style="font-size: 11px; color: var(--muted);">
                 Services not checked
               </div>
             </div>

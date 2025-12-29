@@ -38,10 +38,10 @@ export const applyCameraSettings = (
   }
 
   setHud(
-    els.hudScene.textContent || "Idle",
+    (els.hudScene && els.hudScene.textContent) || "Idle",
     view,
-    els.hudLights.textContent || "Neon",
-    els.hudMode.textContent || "Awaiting"
+    (els.hudLights && els.hudLights.textContent) || "Neon",
+    (els.hudMode && els.hudMode.textContent) || "Awaiting"
   );
 };
 
@@ -55,12 +55,12 @@ export const getCameraSettingsFromInputs = (els: {
   autoRotate: HTMLInputElement;
   autoRotateSpeed: HTMLInputElement;
 }): CameraSettings => ({
-  view: els.cameraView.value,
-  distance: parseFloat(els.cameraDistance.value),
-  x: parseFloat(els.cameraX.value),
-  y: parseFloat(els.cameraY.value),
-  rotateX: parseFloat(els.cameraRotateX.value),
-  rotateY: parseFloat(els.cameraRotateY.value),
-  autoRotate: els.autoRotate.checked,
-  autoRotateSpeed: parseFloat(els.autoRotateSpeed.value)
+  view: els.cameraView?.value || "upper",
+  distance: els.cameraDistance ? parseFloat(els.cameraDistance.value) : 1.5,
+  x: els.cameraX ? parseFloat(els.cameraX.value) : 0,
+  y: els.cameraY ? parseFloat(els.cameraY.value) : 0,
+  rotateX: els.cameraRotateX ? parseFloat(els.cameraRotateX.value) : 0,
+  rotateY: els.cameraRotateY ? parseFloat(els.cameraRotateY.value) : 0,
+  autoRotate: els.autoRotate ? els.autoRotate.checked : false,
+  autoRotateSpeed: els.autoRotateSpeed ? parseFloat(els.autoRotateSpeed.value) : 1.0
 });

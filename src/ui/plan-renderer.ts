@@ -13,13 +13,15 @@ export const setPlanApproved = (
   state: PlanState,
   approved: boolean
 ): void => {
-  els.approveBtn.disabled = approved || !state.plan;
-  els.playBtn.disabled = !approved;
-  els.planStatus.textContent = approved
-    ? "Approved"
-    : state.plan
-    ? "Awaiting approval"
-    : "Pending analysis";
+  if (els.approveBtn) els.approveBtn.disabled = approved || !state.plan;
+  if (els.playBtn) els.playBtn.disabled = !approved;
+  if (els.planStatus) {
+    els.planStatus.textContent = approved
+      ? "Approved"
+      : state.plan
+      ? "Awaiting approval"
+      : "Pending analysis";
+  }
 };
 
 export const markPlanDirty = (
@@ -30,7 +32,7 @@ export const markPlanDirty = (
   if (state.planApproved) {
     setPlanApproved(els, state, false);
   } else {
-    els.planStatus.textContent = "Awaiting approval";
+    if (els.planStatus) els.planStatus.textContent = "Awaiting approval";
   }
 };
 
@@ -86,16 +88,18 @@ export const updatePlanDetails = (
     if (section.actions?.length) details.push(`   actions: ${section.actions.length}`);
   });
   const header = `Source: ${state.planSource === "llm" ? "Director LLM" : "Fallback"} · Sections: ${sections.length}`;
-  els.planDetails.textContent = [header, ...details].join("\n");
-  els.directorNotes.textContent = state.directorNotes || "Director notes unavailable.";
+  if (els.planDetails) els.planDetails.textContent = [header, ...details].join("\n");
+  if (els.directorNotes) els.directorNotes.textContent = state.directorNotes || "Director notes unavailable.";
 };
 
 export const clearPlan = (els: PlanElements): void => {
-  els.planList.innerHTML = "";
-  const empty = document.createElement("div");
-  empty.className = "plan-item";
-  empty.textContent = "No staged sections yet.";
-  els.planList.appendChild(empty);
-  els.planDetails.textContent = "No performance plan yet.";
-  els.directorNotes.textContent = "Director notes will appear here after analysis.";
+  if (els.planList) {
+    els.planList.innerHTML = "";
+    const empty = document.createElement("div");
+    empty.className = "plan-item";
+    empty.textContent = "No staged sections yet.";
+    els.planList.appendChild(empty);
+  }
+  if (els.planDetails) els.planDetails.textContent = "No performance plan yet.";
+  if (els.directorNotes) els.directorNotes.textContent = "Director notes will appear here after analysis.";
 };

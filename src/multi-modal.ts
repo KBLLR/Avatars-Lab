@@ -104,19 +104,23 @@ const bindStateUi = () => {
   stateManager.subscribe((nextState, changed) => {
     if (!els) return;
     if (changed.planApproved !== undefined || changed.plan !== undefined) {
-      els.approveBtn.disabled = nextState.planApproved || !nextState.plan;
-      els.playBtn.disabled = !nextState.planApproved;
-      els.planStatus.textContent = nextState.planApproved
-        ? "Approved"
-        : nextState.plan
-        ? "Awaiting approval"
-        : "Pending analysis";
+      if (els.approveBtn) els.approveBtn.disabled = nextState.planApproved || !nextState.plan;
+      if (els.playBtn) els.playBtn.disabled = !nextState.planApproved;
+      if (els.planStatus) {
+        els.planStatus.textContent = nextState.planApproved
+          ? "Approved"
+          : nextState.plan
+          ? "Awaiting approval"
+          : "Pending analysis";
+      }
     }
     if (changed.directorNotes !== undefined) {
-      if (nextState.directorNotes) {
-        els.directorNotes.textContent = nextState.directorNotes;
-      } else if (nextState.plan) {
-        els.directorNotes.textContent = "Director notes unavailable.";
+      if (els.directorNotes) {
+        if (nextState.directorNotes) {
+          els.directorNotes.textContent = nextState.directorNotes;
+        } else if (nextState.plan) {
+          els.directorNotes.textContent = "Director notes unavailable.";
+        }
       }
     }
     if (changed.cameraSettings !== undefined && nextState.head) {
@@ -154,7 +158,7 @@ const applyPlanDirty = () => {
   if (state.planApproved) {
     applyPlanApproved(false);
   } else {
-    els.planStatus.textContent = "Awaiting approval";
+    if (els.planStatus) els.planStatus.textContent = "Awaiting approval";
   }
 };
 
@@ -270,6 +274,7 @@ const initModelSelectors = async () => {
       embedModelSelect: els.embedModelSelect,
       llmRuntimeModelSelect: els.llmRuntimeModelSelect,
       sttChip: els.sttChip,
+      ttsChip: els.ttsChip,
       chatChip: els.chatChip,
       vlmChip: els.vlmChip,
       llmChip: els.llmChip,
@@ -309,20 +314,30 @@ const loadAvatar = async () => {
     state.audioFile ? state.audioFile.name : undefined,
     avatarEntry
   );
-  if (avatarEntry?.voice_id) {
-    const voiceId = avatarEntry.voice_id;
-    const hasVoice = Array.from(els.voiceSelect.options).some(
-      (option) => option.value === voiceId
-    );
-    if (!hasVoice) {
-      const option = document.createElement("option");
-      option.value = voiceId;
-      option.textContent = voiceId;
-      els.voiceSelect.appendChild(option);
+  if (avatarEntry) {
+    const backend = (config as any).ttsBackend || "kokoro";
+    let targetVoiceId = avatarEntry.voice_id;
+
+    if (backend === "kokoro") {
+      targetVoiceId = avatarEntry.kokoro_voice || avatarEntry.voice_id;
+    } else if (backend === "chatterbox") {
+      targetVoiceId = avatarEntry.chatterbox_voice || "default";
     }
-    els.voiceSelect.value = voiceId;
-    config.ttsVoice = voiceId;
-    setOverride("ttsVoice", voiceId);
+
+    if (targetVoiceId) {
+      const hasVoice = Array.from(els.voiceSelect.options).some(
+        (option) => option.value === targetVoiceId
+      );
+      if (!hasVoice) {
+        const option = document.createElement("option");
+        option.value = targetVoiceId;
+        option.textContent = targetVoiceId;
+        els.voiceSelect.appendChild(option);
+      }
+      els.voiceSelect.value = targetVoiceId;
+      config.ttsVoice = targetVoiceId;
+      setOverride("ttsVoice", targetVoiceId);
+    }
   }
   if (conversationManager && state.head) {
       conversationManager.setHead(state.head);
@@ -379,23 +394,102 @@ const getConversationElements = () => ({
   vadSilence: document.getElementById("vadSilence") as HTMLInputElement,
   levelMeter: document.getElementById("levelMeter") as HTMLElement,
   chatLog: document.getElementById("chatLog") as HTMLElement,
+  chatInput: document.getElementById("chatInput") as HTMLTextAreaElement,
+  sessionDot: document.getElementById("sessionDot") as HTMLElement,
+  sessionStatus: document.getElementById("sessionStatus") as HTMLElement,
+  canvasStatus: document.getElementById("canvasStatus") as HTMLElement,
+  // TTS backend elements
+  kokoroBackendBtn: document.getElementById("kokoroBackendBtn") as HTMLButtonElement,
+  chatterboxBackendBtn: document.getElementById("chatterboxBackendBtn") as HTMLButtonElement,
+  voiceCloningSection: document.getElementById("voiceCloningSection") as HTMLElement,
+  voiceRefInput: document.getElementById("voiceRefInput") as HTMLInputElement,
+  selectVoiceRefBtn: document.getElementById("selectVoiceRefBtn") as HTMLButtonElement,
+  clearVoiceRefBtn: document.getElementById("clearVoiceRefBtn") as HTMLButtonElement,
+  voiceRefStatus: document.getElementById("voiceRefStatus") as HTMLElement,
 });
 
 let conversationManager: ConversationManager;
 
-const initConversationControls = () => {
+const initConversationControls = async () => {
    const cEls = getConversationElements();
-   
+
+   // Check service health on init
+   cEls.canvasStatus.textContent = "Checking services...";
+   cEls.startSessionBtn.disabled = true;
+   const health = await checkServiceHealth();
+   updateServiceHealthUI(health);
+
+   // Create or get typing indicator
+   let typingIndicator: HTMLElement | null = document.getElementById("typingIndicator");
+   if (!typingIndicator) {
+     typingIndicator = document.createElement("div");
+     typingIndicator.id = "typingIndicator";
+     typingIndicator.className = "typing-indicator";
+     typingIndicator.innerHTML = `
+       <span class="dot"></span>
+       <span class="dot"></span>
+       <span class="dot"></span>
+     `;
+     typingIndicator.style.cssText = `
+       display: none;
+       padding: 8px 12px;
+       background: rgba(91, 242, 214, 0.1);
+       border-radius: 8px;
+       margin-bottom: 4px;
+     `;
+     cEls.chatLog.appendChild(typingIndicator);
+   }
+
+   const showTypingIndicator = (show: boolean) => {
+     if (typingIndicator) {
+       typingIndicator.style.display = show ? "flex" : "none";
+       if (show) {
+         cEls.chatLog.scrollTop = cEls.chatLog.scrollHeight;
+       }
+     }
+   };
+
    conversationManager = new ConversationManager({
-       onStatusUpdate: (text) => updateStatus(els, text),
+       onStatusUpdate: (text) => {
+         updateStatus(els, text);
+         // Show typing indicator when thinking
+         if (text === "Thinking...") {
+           showTypingIndicator(true);
+         } else if (text === "Ready" || text.startsWith("Error") || text === "Speaking...") {
+           showTypingIndicator(false);
+         }
+       },
        onLogMessage: (role, text) => {
+           // Hide typing indicator when assistant responds
+           if (role === "assistant") {
+             showTypingIndicator(false);
+           }
+
            const bubble = document.createElement("div");
-           bubble.style.padding = "4px 8px";
-           bubble.style.borderRadius = "4px";
-           bubble.style.marginBottom = "4px";
-           bubble.style.background = role === "user" ? "rgba(255,255,255,0.1)" : role === "assistant" ? "rgba(91, 242, 214, 0.1)" : "rgba(255, 179, 71, 0.1)";
-           bubble.style.color = role === "assistant" ? "#5bf2d6" : role === "tool" ? "#ffb347" : "#fff";
-           bubble.textContent = `[${role}] ${text}`;
+           bubble.className = `chat-message ${role}`;
+           bubble.style.cssText = `
+             padding: 8px 12px;
+             border-radius: 8px;
+             margin-bottom: 4px;
+             background: ${role === "user" ? "rgba(255,255,255,0.1)" : role === "assistant" ? "rgba(91, 242, 214, 0.1)" : "rgba(255, 179, 71, 0.1)"};
+             color: ${role === "assistant" ? "#5bf2d6" : role === "tool" ? "#ffb347" : "#fff"};
+           `;
+
+           // Format message with avatar initial
+           const avatar = role === "user" ? "U" : role === "assistant" ? "A" : "T";
+           bubble.innerHTML = `
+             <div style="display: flex; gap: 8px; align-items: flex-start;">
+               <span style="
+                 width: 24px; height: 24px;
+                 border-radius: 50%;
+                 background: ${role === "assistant" ? "#5bf2d6" : role === "tool" ? "#ffb347" : "#666"};
+                 color: #000;
+                 display: flex; align-items: center; justify-content: center;
+                 font-size: 12px; font-weight: bold; flex-shrink: 0;
+               ">${avatar}</span>
+               <span style="flex: 1; word-break: break-word;">${escapeHtml(text)}</span>
+             </div>
+           `;
            cEls.chatLog.appendChild(bubble);
            cEls.chatLog.scrollTop = cEls.chatLog.scrollHeight;
        },
@@ -416,6 +510,10 @@ const initConversationControls = () => {
        cEls.startSessionBtn.disabled = true;
        cEls.stopSessionBtn.disabled = false;
        cEls.recordBtn.disabled = false;
+       // Update session status
+       cEls.sessionDot.classList.add("active");
+       cEls.sessionStatus.textContent = "Connected";
+       cEls.canvasStatus.textContent = "Session active";
        // Ensure head is set
        if (state.head) conversationManager.setHead(state.head);
    });
@@ -425,6 +523,10 @@ const initConversationControls = () => {
        cEls.startSessionBtn.disabled = false;
        cEls.stopSessionBtn.disabled = true;
        cEls.recordBtn.disabled = true;
+       // Update session status
+       cEls.sessionDot.classList.remove("active");
+       cEls.sessionStatus.textContent = "Disconnected";
+       cEls.canvasStatus.textContent = "Ready to connect";
    });
 
    cEls.pushModeBtn.addEventListener("click", () => conversationManager.setMode("push"));
@@ -444,6 +546,206 @@ const initConversationControls = () => {
    cEls.vadSilence.addEventListener("input", () => {
        conversationManager.setVadSettings(Number(cEls.vadThreshold.value), Number(cEls.vadSilence.value));
    });
+
+   // Text input handler - Enter to send (Shift+Enter for newline)
+   cEls.chatInput.addEventListener("keydown", async (e) => {
+       if (e.key === "Enter" && !e.shiftKey) {
+           e.preventDefault();
+           const text = cEls.chatInput.value.trim();
+           if (!text) return;
+
+           // Check if session is active
+           if (!conversationManager.isSessionActive()) {
+               updateStatus(els, "Start a session first.");
+               return;
+           }
+
+           // Clear input immediately
+           cEls.chatInput.value = "";
+
+           // Log user message to chat
+           const userBubble = document.createElement("div");
+           userBubble.className = "chat-message user";
+           userBubble.innerHTML = `
+               <div class="chat-avatar">U</div>
+               <div class="chat-bubble">${escapeHtml(text)}</div>
+           `;
+           cEls.chatLog.appendChild(userBubble);
+           cEls.chatLog.scrollTop = cEls.chatLog.scrollHeight;
+
+           // Process via ConversationManager
+           try {
+               await conversationManager.handleUserText(text);
+           } catch (err: any) {
+               updateStatus(els, `Error: ${err.message}`);
+           }
+       }
+   });
+
+   // TTS Backend toggle handlers
+   const overrides = readOverrides();
+   const currentBackend = overrides.ttsBackend || config.ttsBackend || "kokoro";
+
+   // Initialize button states based on saved preference
+   if (currentBackend === "chatterbox") {
+     cEls.kokoroBackendBtn.classList.remove("active");
+     cEls.chatterboxBackendBtn.classList.add("active");
+     cEls.voiceCloningSection.style.display = "block";
+   }
+
+   cEls.kokoroBackendBtn.addEventListener("click", () => {
+     cEls.kokoroBackendBtn.classList.add("active");
+     cEls.chatterboxBackendBtn.classList.remove("active");
+     cEls.voiceCloningSection.style.display = "none";
+      setOverride("ttsBackend", "kokoro");
+      (config as any).ttsBackend = "kokoro";
+
+      // Switch voice for current avatar
+      const currentAvatarName = els.avatarSelect.value;
+      const avatarEntry = findAvatarEntry(avatarManifest, currentAvatarName);
+      if (avatarEntry) {
+        const targetVoiceId = avatarEntry.kokoro_voice || avatarEntry.voice_id;
+        if (targetVoiceId) {
+            els.voiceSelect.value = targetVoiceId;
+            config.ttsVoice = targetVoiceId;
+            setOverride("ttsVoice", targetVoiceId);
+        }
+      }
+   });
+
+   cEls.chatterboxBackendBtn.addEventListener("click", () => {
+     cEls.chatterboxBackendBtn.classList.add("active");
+     cEls.kokoroBackendBtn.classList.remove("active");
+     cEls.voiceCloningSection.style.display = "block";
+      setOverride("ttsBackend", "chatterbox");
+      (config as any).ttsBackend = "chatterbox";
+
+      // Switch voice for current avatar
+      const currentAvatarName = els.avatarSelect.value;
+      const avatarEntry = findAvatarEntry(avatarManifest, currentAvatarName);
+      if (avatarEntry) {
+        const targetVoiceId = avatarEntry.chatterbox_voice || "default";
+        if (targetVoiceId) {
+             // Ensure option exists if it's "default" or custom
+             const hasVoice = Array.from(els.voiceSelect.options).some(o => o.value === targetVoiceId);
+             if (!hasVoice) {
+                const opt = document.createElement("option");
+                opt.value = targetVoiceId;
+                opt.textContent = targetVoiceId;
+                els.voiceSelect.appendChild(opt);
+             }
+            els.voiceSelect.value = targetVoiceId;
+            config.ttsVoice = targetVoiceId;
+            setOverride("ttsVoice", targetVoiceId);
+        }
+      }
+   });
+
+   // Voice cloning handlers
+   let voiceRefFile: File | null = null;
+
+   cEls.selectVoiceRefBtn.addEventListener("click", () => {
+     cEls.voiceRefInput.click();
+   });
+
+   cEls.voiceRefInput.addEventListener("change", async () => {
+     const files = cEls.voiceRefInput.files;
+     if (!files || files.length === 0) return;
+
+     voiceRefFile = files[0];
+     cEls.voiceRefStatus.textContent = `Selected: ${voiceRefFile.name}`;
+     cEls.clearVoiceRefBtn.disabled = false;
+
+     // Store the file for voice cloning (we'd need to upload it to a temp location)
+     // For now, we just show it's selected - actual cloning happens on TTS call
+     cEls.voiceRefStatus.style.color = "#5bf2d6";
+   });
+
+   cEls.clearVoiceRefBtn.addEventListener("click", () => {
+     voiceRefFile = null;
+     cEls.voiceRefInput.value = "";
+     cEls.voiceRefStatus.textContent = "";
+     cEls.clearVoiceRefBtn.disabled = true;
+     setOverride("voiceRefPath", "");
+   });
+};
+
+// Helper to escape HTML for display
+const escapeHtml = (text: string): string => {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+};
+
+// Service health check types
+interface ServiceHealth {
+  llm: boolean;
+  audio: boolean;
+  stt: boolean;
+  tts: boolean;
+}
+
+// Check health of MLX services on page load
+const checkServiceHealth = async (): Promise<ServiceHealth> => {
+  const health: ServiceHealth = {
+    llm: false,
+    audio: false,
+    stt: false,
+    tts: false
+  };
+
+  // Check LLM service
+  try {
+    const llmResponse = await fetch(`${config.llmBaseUrl}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(3000)
+    });
+    health.llm = llmResponse.ok;
+  } catch {
+    // LLM service offline
+  }
+
+  // Check Audio service (includes STT and TTS status)
+  try {
+    const audioResponse = await fetch(`${config.audioBaseUrl}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(3000)
+    });
+    if (audioResponse.ok) {
+      const audioHealth = await audioResponse.json();
+      health.audio = true;
+      health.stt = audioHealth.stt_ready ?? false;
+      health.tts = audioHealth.tts_ready ?? false;
+    }
+  } catch {
+    // Audio service offline
+  }
+
+  return health;
+};
+
+// Update UI based on service health
+const updateServiceHealthUI = (health: ServiceHealth) => {
+  const cEls = getConversationElements();
+
+  const services: string[] = [];
+  if (!health.llm) services.push("LLM");
+  if (!health.audio) services.push("Audio");
+  else {
+    if (!health.stt) services.push("STT");
+    if (!health.tts) services.push("TTS");
+  }
+
+  if (services.length === 0) {
+    cEls.canvasStatus.textContent = "All services online";
+    cEls.canvasStatus.style.color = "#5bf2d6";
+    cEls.startSessionBtn.disabled = false;
+  } else {
+    cEls.canvasStatus.textContent = `Offline: ${services.join(", ")}`;
+    cEls.canvasStatus.style.color = "#ff6b6b";
+    cEls.startSessionBtn.disabled = true;
+    cEls.startSessionBtn.title = `Cannot start session: ${services.join(", ")} service(s) offline`;
+  }
 };
 
 
@@ -870,7 +1172,7 @@ const init = async () => {
     setOverride
   });
 
-  initConversationControls();
+  await initConversationControls();
 };
 
 init().catch((error) => {

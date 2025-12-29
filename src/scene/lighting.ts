@@ -71,15 +71,15 @@ export const updateSliderReadouts = (els: LightingElements & {
   cameraRotateY: HTMLInputElement;
   autoRotateSpeed: HTMLInputElement;
 }): void => {
-  els.cameraDistanceVal.textContent = Number(els.cameraDistance.value).toFixed(2);
-  els.cameraXVal.textContent = Number(els.cameraX.value).toFixed(2);
-  els.cameraYVal.textContent = Number(els.cameraY.value).toFixed(2);
-  els.cameraRotateXVal.textContent = Number(els.cameraRotateX.value).toFixed(2);
-  els.cameraRotateYVal.textContent = Number(els.cameraRotateY.value).toFixed(2);
-  els.autoRotateSpeedVal.textContent = Number(els.autoRotateSpeed.value).toFixed(2);
-  els.ambientIntensityVal.textContent = Number(els.ambientIntensity.value).toFixed(1);
-  els.directIntensityVal.textContent = Number(els.directIntensity.value).toFixed(1);
-  els.spotIntensityVal.textContent = Number(els.spotIntensity.value).toFixed(1);
+  if (els.cameraDistanceVal && els.cameraDistance) els.cameraDistanceVal.textContent = Number(els.cameraDistance.value).toFixed(2);
+  if (els.cameraXVal && els.cameraX) els.cameraXVal.textContent = Number(els.cameraX.value).toFixed(2);
+  if (els.cameraYVal && els.cameraY) els.cameraYVal.textContent = Number(els.cameraY.value).toFixed(2);
+  if (els.cameraRotateXVal && els.cameraRotateX) els.cameraRotateXVal.textContent = Number(els.cameraRotateX.value).toFixed(2);
+  if (els.cameraRotateYVal && els.cameraRotateY) els.cameraRotateYVal.textContent = Number(els.cameraRotateY.value).toFixed(2);
+  if (els.autoRotateSpeedVal && els.autoRotateSpeed) els.autoRotateSpeedVal.textContent = Number(els.autoRotateSpeed.value).toFixed(2);
+  if (els.ambientIntensityVal && els.ambientIntensity) els.ambientIntensityVal.textContent = Number(els.ambientIntensity.value).toFixed(1);
+  if (els.directIntensityVal && els.directIntensity) els.directIntensityVal.textContent = Number(els.directIntensity.value).toFixed(1);
+  if (els.spotIntensityVal && els.spotIntensity) els.spotIntensityVal.textContent = Number(els.spotIntensity.value).toFixed(1);
 };
 
 export interface ApplyLightPresetResult {
@@ -113,12 +113,12 @@ export const applyLightPreset = (
     }
   };
 
-  els.ambientColor.value = preset.ambientColor;
-  els.directColor.value = preset.directColor;
-  els.spotColor.value = preset.spotColor;
-  els.ambientIntensity.value = String(preset.ambient);
-  els.directIntensity.value = String(preset.direct);
-  els.spotIntensity.value = String(preset.spot);
+  if (els.ambientColor) els.ambientColor.value = preset.ambientColor;
+  if (els.directColor) els.directColor.value = preset.directColor;
+  if (els.spotColor) els.spotColor.value = preset.spotColor;
+  if (els.ambientIntensity) els.ambientIntensity.value = String(preset.ambient);
+  if (els.directIntensity) els.directIntensity.value = String(preset.direct);
+  if (els.spotIntensity) els.spotIntensity.value = String(preset.spot);
 
   updateSliders();
 
@@ -127,10 +127,10 @@ export const applyLightPreset = (
   }
 
   setHud(
-    els.hudScene.textContent || "Idle",
-    els.hudCamera.textContent || "Upper",
+    (els.hudScene && els.hudScene.textContent) || "Idle",
+    (els.hudCamera && els.hudCamera.textContent) || "Upper",
     preset.label,
-    els.hudMode.textContent || "Awaiting"
+    (els.hudMode && els.hudMode.textContent) || "Awaiting"
   );
 
   return newState;

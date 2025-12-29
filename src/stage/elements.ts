@@ -46,6 +46,7 @@ export interface StageElements {
   dataPoolLoad: HTMLButtonElement;
   dataPoolStatus: HTMLElement;
   sttChip: HTMLElement;
+  ttsChip: HTMLElement;
   chatChip: HTMLElement;
   vlmChip: HTMLElement;
   llmChip: HTMLElement;
@@ -158,6 +159,7 @@ export const getElements = (): StageElements => {
     dataPoolLoad: document.getElementById("dataPoolLoad") as HTMLButtonElement,
     dataPoolStatus: document.getElementById("dataPoolStatus") as HTMLElement,
     sttChip: document.getElementById("sttChip") as HTMLElement,
+    ttsChip: document.getElementById("ttsChip") as HTMLElement,
     chatChip: document.getElementById("chatChip") as HTMLElement,
     vlmChip: document.getElementById("vlmChip") as HTMLElement,
     llmChip: document.getElementById("llmChip") as HTMLElement,
