@@ -7,19 +7,50 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: 5177,
-    strictPort: true
+    strictPort: true,
+    proxy: {
+      "/api/audio": {
+        target: "http://127.0.0.1:8090",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/audio/, ""),
+      },
+      "/api/llm": {
+        target: "http://127.0.0.1:8090",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/llm/, ""),
+      },
+      "/api/said": {
+        target: "http://127.0.0.1:8090",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/said/, ""),
+      },
+      "/api/mflux": {
+        target: "http://127.0.0.1:8090",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/mflux/, ""),
+      },
+    },
   },
   resolve: {
     alias: {
-      "lipsync-en.mjs": resolve(root, "node_modules/@met4citizen/talkinghead/modules/lipsync-en.mjs"),
-      "lipsync-fi.mjs": resolve(root, "node_modules/@met4citizen/talkinghead/modules/lipsync-fi.mjs"),
-      "lipsync-lt.mjs": resolve(root, "node_modules/@met4citizen/talkinghead/modules/lipsync-lt.mjs")
-    }
+      "lipsync-en.mjs": resolve(
+        root,
+        "node_modules/@met4citizen/talkinghead/modules/lipsync-en.mjs"
+      ),
+      "lipsync-fi.mjs": resolve(
+        root,
+        "node_modules/@met4citizen/talkinghead/modules/lipsync-fi.mjs"
+      ),
+      "lipsync-lt.mjs": resolve(
+        root,
+        "node_modules/@met4citizen/talkinghead/modules/lipsync-lt.mjs"
+      ),
+    },
   },
   preview: {
     host: "127.0.0.1",
     port: 5177,
-    strictPort: true
+    strictPort: true,
   },
   assetsInclude: ["**/*.glb", "**/*.bin", "**/*.wav"],
   optimizeDeps: {
@@ -33,8 +64,8 @@ export default defineConfig({
       "lipsync-lt.mjs",
       "@met4citizen/talkinghead/modules/lipsync-en.mjs",
       "@met4citizen/talkinghead/modules/lipsync-fi.mjs",
-      "@met4citizen/talkinghead/modules/lipsync-lt.mjs"
-    ]
+      "@met4citizen/talkinghead/modules/lipsync-lt.mjs",
+    ],
   },
   build: {
     rollupOptions: {
@@ -49,8 +80,9 @@ export default defineConfig({
         "gestures-lab": resolve(root, "gestures-lab.html"),
         "dance-studio": resolve(root, "dance-studio.html"),
         info: resolve(root, "info.html"),
-        settings: resolve(root, "settings.html")
-      }
-    }
-  }
+        settings: resolve(root, "settings.html"),
+        "composition-layer": resolve(root, "composition-layer.html"),
+      },
+    },
+  },
 });
