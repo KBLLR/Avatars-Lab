@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test("HeadAudio emits viseme values", async ({ page }) => {
   await page.goto("/head-audio.html", { waitUntil: "domcontentloaded" });
+  await page.click("body");
 
   await page.waitForFunction(() => {
     const result = window.__headaudioResult;

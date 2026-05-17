@@ -41,7 +41,26 @@ async function run() {
 
   const audioCtx = new AudioContext({ sampleRate: 16000 });
   await audioCtx.audioWorklet.addModule(workletUrl);
+  const unlockAudioContext = () => {
+    const handlePointerDown = async () => {
+      try {
+        await audioCtx.resume();
+      } catch (error) {
+        console.warn("HeadAudio: failed to resume audio context after gesture.", error);
+      }
+      if (audioCtx.state === "running") {
+        document.removeEventListener("pointerdown", handlePointerDown);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+  };
+
+  unlockAudioContext();
   await audioCtx.resume();
+  if (audioCtx.state !== "running") {
+    updateStatus("AudioContext suspended. Click to start audio.");
+  }
 
   const headaudio = new HeadAudio(audioCtx, {
     processorOptions: {
@@ -99,12 +118,13 @@ async function run() {
   requestAnimationFrame(tick);
   source.start();
 
+  const timeoutMs = Math.max(8000, Math.ceil(audioBuffer.duration * 1000 + 1000));
   setTimeout(() => {
     if (!result.ready && running) {
       running = false;
       fail("HeadAudio timed out waiting for viseme events.");
     }
-  }, 8000);
+  }, timeoutMs);
 }
 
 run().catch((error) => {

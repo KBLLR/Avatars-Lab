@@ -1,6 +1,6 @@
 # Avatar Labs
 
-A Vite-based house that validates TalkingHead + HeadAudio integration against local MLX services (LLM + Audio). It ships deterministic fixtures, contract tests, browser harnesses, and Playwright E2E checks without relying on Ready Player Me or OpenAI cloud.
+A Vite-based house that validates TalkingHead + HeadAudio integration against local MLX services (LLM + Audio). It ships deterministic fixtures, contract tests, browser harnesses, and Playwright E2E checks without relying on Ready Player Me or cloud inference.
 
 ## Entry Points
 | Page | Purpose |
@@ -59,7 +59,7 @@ This will:
 To run only the UI: `npm run dev:ui`
 
 ## MLX Conversation Lab
-Open `mlx-conversation.html` from the Vite dev server for a local, MLX-backed version of the HeadAudio OpenAI demo. It supports push-to-talk and auto-VAD modes, plus TalkingHead function calls for mood, gestures, and emojis.
+Open `mlx-conversation.html` from the Vite dev server for a local, MLX-backed version of the HeadAudio demo. It supports push-to-talk and auto-VAD modes, plus TalkingHead function calls for mood, gestures, and emojis.
 
 Avatar choices are loaded from `public/avatars/manifest.json`. Add `.glb` files under `public/avatars` and update the manifest to expose them in the UI (supports metadata like body and voice_id).
 
@@ -111,4 +111,4 @@ Tests write artifacts under `houses/avatar-labs/results/` (ignored in git).
 - Consider code splitting via dynamic import in heavy entry points or `build.rollupOptions.output.manualChunks` in `vite.config.mjs`.
 
 ## Security
-This house hard-fails if `OPENAI_API_KEY` is set to avoid accidental outbound calls.
+This house assumes no external API keys and runs inference locally via MLX.

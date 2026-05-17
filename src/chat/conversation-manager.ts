@@ -3,9 +3,8 @@ import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import audioProcessorUrl from "./audio-processor.js?url"; // Import local worklet
-import { getMlxConfig } from "../mlx-config";
-
-export type MlxConfig = ReturnType<typeof getMlxConfig>;
+import { getMlxConfig, MlxConfig } from "../mlx-config";
+import { parseHarmonyFormat, getModelParser } from "../llm/model-parsers";
 
 export type ConversationMode = "push" | "vad";
 
@@ -22,7 +21,16 @@ export interface ConversationCallbacks {
   onLogMessage: (role: "user" | "assistant" | "tool", text: string) => void;
   onModeChange: (mode: ConversationMode, isRecording: boolean) => void;
   onAudioLevel: (level: number) => void; // 0-100
+  onThinking?: (text: string) => void;
 }
+
+const DEFAULT_SYSTEM_PROMPT = [
+  "You are Julia, a clear and conversational assistant.",
+  "Listen for user speech, wait for a brief pause before responding.",
+  "If unclear, ask a brief clarifying question.",
+  "You can control your avatar with function calls.",
+  "Use gestures and mood shifts to amplify intent."
+].join("\n");
 
 export class ConversationManager {
   private config: MlxConfig;
@@ -63,18 +71,30 @@ export class ConversationManager {
     this.config = getMlxConfig();
     this.callbacks = callbacks;
     this.functionDefs = this.getFunctionDefs();
-    
-    // Initial system message
-    this.state.messages.push({
-      role: "system",
-      content: [
-        "You are Julia, a clear and conversational assistant.",
-        "Listen for user speech, wait for a brief pause before responding.",
-        "If unclear, ask a brief clarifying question.",
-        "You can control your avatar with function calls.",
-        "Use gestures and mood shifts to amplify intent."
-      ].join("\n")
-    });
+
+    this.setSystemPrompt(DEFAULT_SYSTEM_PROMPT, { resetHistory: true });
+  }
+
+  private refreshConfig(): MlxConfig {
+    this.config = getMlxConfig();
+    return this.config;
+  }
+
+  public setSystemPrompt(prompt: string, options: { resetHistory?: boolean } = {}) {
+    const content = (prompt || "").trim();
+    const systemMessage = { role: "system", content };
+
+    if (options.resetHistory) {
+      this.state.messages = [systemMessage];
+      return;
+    }
+
+    const systemIndex = this.state.messages.findIndex((msg) => msg.role === "system");
+    if (systemIndex === -1) {
+      this.state.messages.unshift(systemMessage);
+    } else {
+      this.state.messages[systemIndex] = systemMessage;
+    }
   }
 
   public setHead(head: TalkingHead) {
@@ -184,6 +204,7 @@ export class ConversationManager {
 
   public async handleUserText(text: string) {
     if (!text) return;
+    this.refreshConfig();
     if (!this.config.llmModel) {
       this.callbacks.onStatusUpdate("Missing VITE_MLX_DEFAULT_LLM_MODEL");
       return;
@@ -208,6 +229,31 @@ export class ConversationManager {
       }
 
       this.state.messages.push(assistant);
+
+      let responseText: string | undefined;
+
+      // START: Dynamic Model Parsing & Thinking Logic
+      const modelParser = getModelParser(this.config.llmModel);
+      let thinking: string | undefined;
+
+      // Handle Harmony/GPT-OSS thinking channel
+      if (modelParser?.useHarmonyParser && assistant.content) {
+        const channels = parseHarmonyFormat(assistant.content);
+        
+        if (channels.analysis) {
+           thinking = channels.analysis;
+           if (this.callbacks.onThinking) {
+             this.callbacks.onThinking(thinking);
+           }
+           this.callbacks.onLogMessage("tool", `Thinking: ${thinking.slice(0, 150)}...`);
+        }
+        
+        // Use the final channel as the clean response text
+        if (channels.final) {
+           assistant.content = channels.final; // Update the message content to be clean!
+        }
+      }
+      // END: Model Parsing
 
       if (assistant.tool_calls?.length) {
         const toolMessages = [] as Array<Record<string, any>>;
@@ -237,29 +283,37 @@ export class ConversationManager {
           const followUp = await this.callLLM(this.state.messages);
           const followMsg = followUp?.choices?.[0]?.message;
           if (followMsg?.content) {
-            this.state.messages.push(followMsg);
-            this.callbacks.onLogMessage("assistant", followMsg.content);
-            await this.speakResponse(followMsg.content);
-            return;
+             // Basic cleaning for follow-up too
+             if (modelParser?.useHarmonyParser) {
+                 const fChannels = parseHarmonyFormat(followMsg.content);
+                 if (fChannels.final) followMsg.content = fChannels.final;
+             }
+             this.state.messages.push(followMsg);
+             responseText = followMsg.content;
           }
         }
       }
 
-      if (assistant.content) {
-        this.callbacks.onLogMessage("assistant", assistant.content);
-        await this.speakResponse(assistant.content);
+      if (!responseText && assistant.content) {
+        responseText = assistant.content;
       }
 
-      this.state.busy = false;
+      if (responseText) {
+        this.callbacks.onLogMessage("assistant", responseText);
+        await this.speakResponse(responseText);
+      }
+
       this.callbacks.onStatusUpdate("Ready");
     } catch (error: any) {
-       console.error(error);
-       this.state.busy = false;
-       this.callbacks.onStatusUpdate(`Error: ${error.message}`);
+      console.error(error);
+      this.callbacks.onStatusUpdate(`Error: ${error.message}`);
+    } finally {
+      this.state.busy = false;
     }
   }
 
   private async callLLM(messages: Array<Record<string, any>>) {
+    this.refreshConfig();
     const response = await fetch(`${this.config.llmBaseUrl}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -281,6 +335,7 @@ export class ConversationManager {
 
   private async speakResponse(text: string) {
     if (!this.head) return;
+    this.refreshConfig();
 
     // Use configured voice or fallback
     let voice = this.config.ttsVoice;
@@ -307,10 +362,18 @@ export class ConversationManager {
           voice = voiceRefPath;
         } else if (voice && voice !== "default") {
           // Try to map voice ID to reference file path
-          const refPath = `/voices/chatterbox/${voice}.wav`;
-          voice = refPath;
+          if (voice.includes("/") || voice.startsWith("http")) {
+            // Full path provided
+          } else if (voice.includes(".")) {
+            voice = `/voices/chatterbox/${voice}`;
+          } else {
+            const refPath = `/voices/chatterbox/${voice}.wav`;
+            voice = refPath;
+          }
         }
       }
+
+      this.callbacks.onStatusUpdate("Synthesizing speech...");
 
       // Call TTS service
       const response = await fetch(`${this.config.audioBaseUrl}/v1/audio/speech`, {
@@ -334,6 +397,7 @@ export class ConversationManager {
       }
 
       const wavBuffer = await response.arrayBuffer();
+      this.callbacks.onStatusUpdate("Decoding audio...");
       const audioBuffer = await this.head.audioCtx.decodeAudioData(wavBuffer.slice(0));
 
       const pcm = new Int16Array(audioBuffer.length);
@@ -372,6 +436,7 @@ export class ConversationManager {
   }
 
   private async sendToStt(wavBuffer: ArrayBuffer) {
+     this.refreshConfig();
      if (!this.config.sttModel) {
         throw new Error("Missing VITE_MLX_DEFAULT_STT_MODEL");
      }
@@ -549,7 +614,7 @@ export class ConversationManager {
       return buffer;
   }
 
-  private applyFunctionCall(name: string, args: any) {
+  private async applyFunctionCall(name: string, args: any) {
     if (!this.head) {
         return { ok: false, error: "Avatar not initialized." };
     }
@@ -639,6 +704,44 @@ export class ConversationManager {
         // Listening controls handled by UI usually, but could be exposed
         case "start_listening": return { ok: true }; // Handled by manager state
         case "stop_listening": return { ok: true };
+        
+        case "get_time":
+          return { ok: true, time: new Date().toLocaleTimeString() };
+          
+        case "web_search":
+          if (args?.query) {
+             // Call MCP server for real web search via Tavily
+             this.callbacks.onStatusUpdate(`Searching: ${args.query}`);
+             try {
+               const mcpUrl = this.config.mcpBaseUrl || "http://127.0.0.1:8765";
+               const res = await fetch(`${mcpUrl}/call_tool`, {
+                 method: "POST",
+                 headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify({ 
+                   name: "web_search", 
+                   arguments: { query: args.query, max_results: args.max_results || 5 }
+                 })
+               });
+               if (!res.ok) {
+                 throw new Error(`MCP returned ${res.status}`);
+               }
+               const data = await res.json();
+               // Extract content from MCP response format
+               const content = data?.content?.[0];
+               if (content?.json) {
+                 return { ok: true, ...content.json };
+               }
+               if (content?.text) {
+                 return { ok: false, error: content.text };
+               }
+               return { ok: true, results: [] };
+             } catch (e) {
+               console.error("MCP web_search failed:", e);
+               return { ok: false, error: `Web search failed: ${e}` };
+             }
+          }
+          return { ok: false, error: "Missing query." };
+          
         default:
         return { ok: false, error: `Unknown function ${name}` };
     }
@@ -648,112 +751,150 @@ export class ConversationManager {
       // Return the list of function definitions used in mlx-conversation.ts
       return [
         {
-            type: "function",
+          type: "function",
+          function: {
+            name: "get_time",
+            description: "Get the current local time.",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "web_search",
+            description: "Search the web for information.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "The search query." }
+              },
+              required: ["query"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
             name: "set_mood",
             description: "Set the avatar mood (applies mood animations and morph baselines).",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 mood: {
-                type: "string",
-                enum: ["neutral", "happy", "angry", "sad", "fear", "disgust", "love", "sleep"],
-                description: "Mood name"
+                  type: "string",
+                  enum: ["neutral", "happy", "angry", "sad", "fear", "disgust", "love", "sleep"],
+                  description: "Mood name"
                 }
-            },
-            required: ["mood"]
+              },
+              required: ["mood"]
             }
+          }
         },
         {
-            type: "function",
+          type: "function",
+          function: {
             name: "play_gesture",
             description: "Play a named hand gesture or animated emoji.",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 gesture: {
-                type: "string",
-                description: "Gesture name or emoji (e.g. 'handup', 'index', 'ok', 'thumbup', 'thumbdown', 'side', 'shrug', 'namaste' or emoji character)"
+                  type: "string",
+                  description: "Gesture name or emoji (e.g. 'handup', 'index', 'ok', 'thumbup', 'thumbdown', 'side', 'shrug', 'namaste' or emoji character)"
                 },
                 duration: {
-                type: "number",
-                description: "Duration in seconds (optional)."
+                  type: "number",
+                  description: "Duration in seconds (optional)."
                 },
                 mirror: {
-                type: "boolean",
-                description: "If true, mirror gesture to the other hand (optional)."
+                  type: "boolean",
+                  description: "If true, mirror gesture to the other hand (optional)."
                 },
                 ms: {
-                type: "number",
-                description: "Transition time in milliseconds (optional)."
+                  type: "number",
+                  description: "Transition time in milliseconds (optional)."
                 }
-            },
-            required: ["gesture"]
+              },
+              required: ["gesture"]
             }
+          }
         },
-        // ... (Adding other function defs abbreviated for brevity, relying on the logic already existing or adding them all)
         {
-            type: "function",
+          type: "function",
+          function: {
             name: "stop_gesture",
             description: "Stop current gesture (graceful transition).",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 ms: { type: "number", description: "Transition time in milliseconds (optional)." }
+              }
             }
-            }
+          }
         },
         {
-            type: "function",
+          type: "function",
+          function: {
             name: "make_facial_expression",
             description: "Trigger a facial expression using an emoji template.",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 emoji: { type: "string", description: "Single face emoji or emoji name to play." },
                 duration: { type: "number", description: "Duration in seconds (optional)." }
-            },
-            required: ["emoji"]
+              },
+              required: ["emoji"]
             }
+          }
         },
         {
-            type: "function",
+          type: "function",
+          function: {
             name: "speak_break",
             description: "Insert a pause/break into the speech/animation queue.",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 duration_ms: { type: "number", description: "Break length in milliseconds." }
-            },
-            required: ["duration_ms"]
+              },
+              required: ["duration_ms"]
             }
+          }
         },
         {
-            type: "function",
+          type: "function",
+          function: {
             name: "look_at",
             description: "Make the avatar look at a screen position (x,y) for t milliseconds.",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 x: { type: "number", description: "Normalized screen X position (0..1) or pixel value depending on your UI." },
                 y: { type: "number", description: "Normalized screen Y position (0..1) or pixel value depending on your UI." },
                 t: { type: "number", description: "Duration in milliseconds (optional)." }
-            },
-            required: ["x", "y"]
+              },
+              required: ["x", "y"]
             }
+          }
         },
         {
-            type: "function",
+          type: "function",
+          function: {
             name: "look_at_camera",
             description: "Make the avatar look at the camera for t milliseconds.",
             parameters: {
-            type: "object",
-            properties: {
+              type: "object",
+              properties: {
                 t: { type: "number", description: "Duration in milliseconds." }
-            },
-            required: ["t"]
+              },
+              required: ["t"]
             }
+          }
         }
-        // ... more can be added
       ];
   }
 }

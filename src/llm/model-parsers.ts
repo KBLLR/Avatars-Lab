@@ -529,6 +529,70 @@ export const MODEL_PARSERS: ModelParserConfig[] = [
     notes: "Phi models are generally good at following JSON format"
   },
   {
+    pattern: /ministral.*3|ministral-3/i,
+    name: "Ministral3",
+    stripMarkdown: true,
+    stripPreamble: true,
+    lenientStructure: true,
+    preprocess: (raw) => {
+      let cleaned = raw;
+      
+      // Ministral3 may use [INST][/INST] tokens
+      cleaned = cleaned.replace(/\[INST\][\s\S]*?\[\/INST\]/gi, "");
+      cleaned = cleaned.replace(/\[\/INST\]/gi, "");
+      
+      // Remove thinking/reasoning blocks if present
+      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, "");
+      cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "");
+      
+      // Find JSON start
+      const trimmed = cleaned.trim();
+      if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        const jsonPatterns = [
+          /\{\s*"thoughts_summary"/,
+          /\{\s*"plan"/,
+          /\{\s*"sections"/,
+          /\{\s*"analysis"/,
+        ];
+        
+        let jsonStart = -1;
+        for (const pattern of jsonPatterns) {
+          const match = cleaned.match(pattern);
+          if (match && match.index !== undefined) {
+            jsonStart = match.index;
+            break;
+          }
+        }
+        
+        if (jsonStart < 0) {
+          jsonStart = cleaned.indexOf("{");
+        }
+        
+        if (jsonStart > 0) {
+          cleaned = cleaned.slice(jsonStart);
+        }
+      }
+      
+      // Extract largest valid JSON object
+      const allObjects = findAllJsonObjects(cleaned);
+      if (allObjects.length > 0) {
+        const directorJson = allObjects.find(obj =>
+          obj.includes('"thoughts_summary"') ||
+          obj.includes('"plan"') ||
+          obj.includes('"sections"')
+        );
+        if (directorJson) {
+          cleaned = directorJson;
+        } else {
+          cleaned = allObjects.reduce((a, b) => a.length > b.length ? a : b);
+        }
+      }
+      
+      return cleaned;
+    },
+    notes: "Ministral3 model with [INST] format, generally produces clean JSON with possible preamble"
+  },
+  {
     pattern: /mistral/i,
     name: "Mistral",
     stripMarkdown: true,

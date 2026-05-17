@@ -793,6 +793,24 @@ const init = async () => {
     updateState,
     updateStatus: (message) => updateStatus(els, message)
   });
+  const stopSpeech = () => {
+    audioController.stopAnalysisVoice();
+    const current = getState();
+    if (current.duoManager) {
+      current.duoManager.stopAll();
+      return;
+    }
+    if (current.head) {
+      try {
+        current.head.stop();
+      } catch {
+        // TalkingHead can throw if not fully initialized.
+      }
+      if (typeof (current.head as any).stopBackgroundAudio === "function") {
+        (current.head as any).stopBackgroundAudio();
+      }
+    }
+  };
   analysisController = createAnalysisController({
     els,
     config,
@@ -880,6 +898,7 @@ const init = async () => {
     analyzePerformance,
     performSong,
     stopPerformance,
+    stopSpeech,
     bindControls: () =>
       bindControlsModule({
         els,

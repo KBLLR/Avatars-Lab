@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getConfig, assertNoOpenAIKey } from "./lib/config.mjs";
+import { getConfig } from "./lib/config.mjs";
 import { fetchJson, fetchWithTimeout } from "./lib/http.mjs";
 import { parseWav } from "./lib/wav.mjs";
 import { wordOverlapScore } from "./lib/text.mjs";
@@ -15,7 +15,6 @@ const fail = (message) => {
 };
 
 const main = async () => {
-  assertNoOpenAIKey();
   const config = getConfig();
   const startedAt = Date.now();
 

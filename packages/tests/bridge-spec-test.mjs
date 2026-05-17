@@ -1,5 +1,4 @@
 import { fetchJson } from "./lib/http.mjs";
-import { assertNoOpenAIKey } from "./lib/config.mjs";
 
 const bridgeBaseUrl = process.env.HEADTTS_BRIDGE_URL || "http://127.0.0.1:6677";
 
@@ -8,7 +7,6 @@ const fail = (message) => {
 };
 
 const main = async () => {
-  assertNoOpenAIKey();
 
   const payload = {
     input: "Avatar labs bridge smoke test.",

@@ -726,6 +726,13 @@
           </div>
         </div>
 
+        <!-- Pipeline Status -->
+        <div class="pipeline-status" id="pipelineStatus" style="display: flex; gap: 8px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+          <span id="vadStatus" style="color: var(--muted);"><span class="status-dot" id="vadDot"></span>VAD: Off</span>
+          <span id="sttStatus" style="color: var(--muted);"><span class="status-dot" id="sttDot"></span>STT: Idle</span>
+          <span id="ttsStatus" style="color: var(--muted);"><span class="status-dot" id="ttsDot"></span>TTS: Idle</span>
+        </div>
+
         <div class="voice-indicator">
           <label>Level</label>
           <div class="level-bar">
@@ -735,6 +742,12 @@
 
         <div class="chat-input-container">
           <textarea class="chat-input" id="chatInput" placeholder="Type a message or hold mic to speak..." rows="1"></textarea>
+          <button id="sendBtn" title="Send message" style="padding: 12px 16px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
           <button id="recordBtn" class="primary" disabled title="Hold to talk">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -784,6 +797,37 @@
           </div>
         </div>
 
+        <!-- Prompt Library -->
+        <div class="card">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span class="card-title">Prompts</span>
+            <span class="card-toggle">&#9660;</span>
+          </div>
+          <div class="card-body">
+            <div class="card-body-inner">
+              <div>
+                <label>Personality</label>
+                <select id="promptPersonality"></select>
+              </div>
+              <div>
+                <label>Tool Usage</label>
+                <select id="promptTool"></select>
+              </div>
+              <div>
+                <label>Memory</label>
+                <select id="promptMemory"></select>
+              </div>
+              <div class="row">
+                <button id="promptApplyBtn" class="primary">Apply</button>
+                <button id="promptResetBtn">Reset</button>
+              </div>
+              <p style="font-size: 10px; color: var(--muted);">
+                Applying prompts resets the conversation history.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- Voice Settings -->
         <div class="card">
           <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -810,7 +854,10 @@
                 </div>
               </div>
               <div>
-                <label>TTS Voice</label>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <label>TTS Voice</label>
+                  <button id="refreshVoicesBtn" type="button" style="font-size: 10px; padding: 4px 6px;">Refresh</button>
+                </div>
                 <select id="voiceSelect">
                   <option value="default">Default</option>
                 </select>
@@ -818,13 +865,22 @@
               <!-- Voice Cloning (Chatterbox only) -->
               <div id="voiceCloningSection" style="display: none; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
                 <label>Voice Cloning</label>
-                <p style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Upload reference audio (5+ seconds) to clone a voice</p>
-                <input type="file" id="voiceRefInput" accept="audio/*" style="display: none;" />
+                <p style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Upload reference audio (5+ seconds, WAV/MP3/FLAC) to clone a voice</p>
+                <input type="file" id="voiceRefInput" accept=".wav,.mp3,.flac,audio/*" style="display: none;" />
                 <div class="row">
                   <button id="selectVoiceRefBtn" style="font-size: 11px;">Select Audio</button>
                   <button id="clearVoiceRefBtn" style="font-size: 11px;" disabled>Clear</button>
                 </div>
                 <div id="voiceRefStatus" style="font-size: 10px; color: var(--muted); margin-top: 6px;"></div>
+                <!-- Save Voice Reference -->
+                <div id="voiceSaveSection" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+                  <label>Save as Speaker Name</label>
+                  <div style="display: flex; gap: 6px; margin-top: 4px;">
+                    <input type="text" id="voiceSpeakerName" placeholder="e.g., kai, luna" style="flex: 1; font-size: 11px;" />
+                    <button id="saveVoiceRefBtn" style="font-size: 11px;" class="primary">Save</button>
+                  </div>
+                  <p style="font-size: 10px; color: var(--muted); margin-top: 4px;">Saves to public/voices/chatterbox/{name}.{wav/mp3/flac}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -944,11 +1000,30 @@
           </div>
           <div class="card-body">
             <div class="card-body-inner">
+              <!-- Service Health Grid -->
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px;">
+                <div class="chip" id="llmServiceChip" style="display: flex; align-items: center; gap: 6px;">
+                  <span class="status-dot" id="llmServiceDot"></span>
+                  <span>LLM</span>
+                </div>
+                <div class="chip" id="audioServiceChip" style="display: flex; align-items: center; gap: 6px;">
+                  <span class="status-dot" id="audioServiceDot"></span>
+                  <span>Audio</span>
+                </div>
+                <div class="chip" id="sttServiceChip" style="display: flex; align-items: center; gap: 6px;">
+                  <span class="status-dot" id="sttServiceDot"></span>
+                  <span>STT</span>
+                </div>
+                <div class="chip" id="ttsServiceChip" style="display: flex; align-items: center; gap: 6px;">
+                  <span class="status-dot" id="ttsServiceDot"></span>
+                  <span>TTS</span>
+                </div>
+              </div>
               <div class="row">
                 <button id="llmRuntimeRefresh">Ping Services</button>
                 <button id="llmRuntimeLoad" class="primary">Load Model</button>
               </div>
-              <div id="llmRuntimeStatus" style="font-size: 11px; color: var(--muted);">
+              <div id="llmRuntimeStatus" style="font-size: 11px; color: var(--muted); margin-top: 8px;">
                 Services not checked
               </div>
             </div>

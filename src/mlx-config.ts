@@ -53,15 +53,17 @@ const getMlxConfig = () => {
   // TTS backend selection (kokoro or chatterbox)
   const ttsBackend = overrides.ttsBackend || (import.meta.env.VITE_MLX_DEFAULT_TTS_BACKEND as TtsBackend) || "kokoro";
 
-  const llmBaseUrl = import.meta.env.VITE_MLX_LLM_BASE_URL;
+  const llmBaseUrl =
+    import.meta.env.VITE_MLX_LLM_BASE_URL || "http://127.0.0.1:8090";
 
   return {
     llmBaseUrl,
-    audioBaseUrl: import.meta.env.VITE_MLX_AUDIO_BASE_URL,
+    audioBaseUrl:
+      import.meta.env.VITE_MLX_AUDIO_BASE_URL || "http://127.0.0.1:8090",
     vlmBaseUrl:
       import.meta.env.VITE_MLX_VLM_BASE_URL ||
       import.meta.env.VITE_MLX_VLM_URL ||
-      "http://127.0.0.1:8082",
+      "http://127.0.0.1:8090",
     dataLakeUrl:
       import.meta.env.VITE_DATA_LAKE_URL ||
       import.meta.env.VITE_MLX_DATA_LAKE_URL ||
@@ -70,7 +72,11 @@ const getMlxConfig = () => {
     mfluxBaseUrl:
       import.meta.env.VITE_MLX_MFLUX_BASE_URL ||
       import.meta.env.VITE_MLX_LLM_BASE_URL ||
-      "http://127.0.0.1:8080",
+      "http://127.0.0.1:8090",
+    // MCP server for tools
+    mcpBaseUrl:
+      import.meta.env.VITE_MCP_BASE_URL ||
+      "http://127.0.0.1:8765",
     llmModel,
     vlmModel,
     sttModel,

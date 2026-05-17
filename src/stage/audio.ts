@@ -14,6 +14,7 @@ export interface AudioControllerDeps {
 export interface AudioController {
   ensureAudioContext: (contextLabel: string) => Promise<boolean>;
   enqueueAnalysisVoice: (text: string) => void;
+  stopAnalysisVoice: () => void;
 }
 
 export const createAudioController = ({
@@ -23,6 +24,9 @@ export const createAudioController = ({
   updateState,
   updateStatus
 }: AudioControllerDeps): AudioController => {
+  let analysisSource: AudioBufferSourceNode | null = null;
+  let stopToken = 0;
+
   const ensureAudioContext = async (contextLabel: string) => {
     const state = getState();
     if (!state.head) return false;
@@ -40,6 +44,7 @@ export const createAudioController = ({
   };
 
   const playAnalysisVoice = async (text: string) => {
+    const currentToken = stopToken;
     if (!config.audioBaseUrl || !config.ttsModel) {
       els.analysisHint.textContent = "Voiceover disabled (missing TTS model).";
       return;
@@ -54,6 +59,7 @@ export const createAudioController = ({
       els.analysisHint.textContent = "Click Analyze again to enable voiceover.";
       return;
     }
+    if (currentToken !== stopToken) return;
 
     const response = await fetch(`${config.audioBaseUrl}/v1/audio/speech`, {
       method: "POST",
@@ -71,15 +77,22 @@ export const createAudioController = ({
       const detail = await response.text();
       throw new Error(`TTS error (${response.status}): ${detail}`);
     }
+    if (currentToken !== stopToken) return;
 
     const buffer = await response.arrayBuffer();
+    if (currentToken !== stopToken) return;
     const audioBuffer = await state.head.audioCtx.decodeAudioData(buffer.slice(0));
+    if (currentToken !== stopToken) return;
     const source = state.head.audioCtx.createBufferSource();
+    analysisSource = source;
     source.buffer = audioBuffer;
     source.connect(state.head.audioCtx.destination);
     els.analysisHint.textContent = "Voiceover playing...";
     await new Promise<void>((resolve) => {
-      source.onended = () => resolve();
+      source.onended = () => {
+        if (analysisSource === source) analysisSource = null;
+        resolve();
+      };
       source.start(0);
     });
   };
@@ -96,8 +109,23 @@ export const createAudioController = ({
     updateState({ analysisVoiceQueue: nextQueue });
   };
 
+  const stopAnalysisVoice = () => {
+    stopToken += 1;
+    if (analysisSource) {
+      try {
+        analysisSource.stop();
+      } catch {
+        // Ignore stop errors for already-finished sources.
+      }
+      analysisSource.disconnect();
+      analysisSource = null;
+    }
+    updateState({ analysisVoiceQueue: Promise.resolve() });
+  };
+
   return {
     ensureAudioContext,
-    enqueueAnalysisVoice
+    enqueueAnalysisVoice,
+    stopAnalysisVoice
   };
 };

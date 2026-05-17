@@ -1,5 +1,5 @@
 import http from "node:http";
-import { getConfig, assertNoOpenAIKey } from "../tests/lib/config.mjs";
+import { getConfig } from "../tests/lib/config.mjs";
 import { parseWav } from "../tests/lib/wav.mjs";
 
 const config = getConfig();
@@ -71,7 +71,6 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === "/v1/synthesize" && req.method === "POST") {
     try {
-      assertNoOpenAIKey();
       if (!audioBaseUrl) {
         throw new Error("MLX_AUDIO_BASE_URL missing.");
       }

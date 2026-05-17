@@ -4,9 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Avatar Labs</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         --bg: #fafafa;
@@ -43,7 +46,11 @@
       }
 
       body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
         background: var(--bg);
         color: var(--fg);
         line-height: 1.6;
@@ -105,7 +112,7 @@
       }
 
       .section-label::after {
-        content: '';
+        content: "";
         flex: 1;
         height: 1px;
         background: var(--border);
@@ -283,52 +290,23 @@
         <div class="logo">HTDI Labs</div>
         <h1>Avatar Labs</h1>
         <p class="tagline">
-          Local-first validation harnesses for TalkingHead, HeadAudio, and MLX services.
-          Experiments in realtime conversation, viseme callbacks, and generative composition.
+          Local-first validation harnesses for TalkingHead, HeadAudio, and MLX
+          services. Experiments in realtime conversation, viseme callbacks, and
+          generative composition.
         </p>
       </header>
 
       <nav class="nav-section">
         <div class="section-label">Harnesses</div>
         <div class="nav-grid">
-          <a href="/head-audio.html" class="nav-item">
-            <div class="nav-item-header">
-              <span class="nav-item-title">HeadAudio Viseme</span>
-              <span class="nav-item-arrow">&rarr;</span>
-            </div>
-            <p class="nav-item-desc">Deterministic viseme callbacks from fixed audio files.</p>
-            <span class="nav-item-tag">Testing</span>
-          </a>
-          <a href="/mlx-conversation.html" class="nav-item">
-            <div class="nav-item-header">
-              <span class="nav-item-title">MLX Realtime</span>
-              <span class="nav-item-arrow">&rarr;</span>
-            </div>
-            <p class="nav-item-desc">Mic &rarr; STT &rarr; LLM &rarr; TTS with gestures and moods.</p>
-            <span class="nav-item-tag">Experiment</span>
-          </a>
-          <a href="/e2e.html" class="nav-item">
-            <div class="nav-item-header">
-              <span class="nav-item-title">TalkingHead E2E</span>
-              <span class="nav-item-arrow">&rarr;</span>
-            </div>
-            <p class="nav-item-desc">Streaming playback with local GLB avatar rendering.</p>
-            <span class="nav-item-tag">Testing</span>
-          </a>
-          <a href="/stage.html" class="nav-item">
-            <div class="nav-item-header">
-              <span class="nav-item-title">Stage</span>
-              <span class="nav-item-arrow">&rarr;</span>
-            </div>
-            <p class="nav-item-desc">Upload songs, generate transcripts, perform with HeadAudio.</p>
-            <span class="nav-item-tag">Music Video</span>
-          </a>
           <a href="/engine-lab.html" class="nav-item">
             <div class="nav-item-header">
               <span class="nav-item-title">Performance Engine Lab</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">New multi-layer engine with director plans and timeline playback.</p>
+            <p class="nav-item-desc">
+              New multi-layer engine with director plans and timeline playback.
+            </p>
             <span class="nav-item-tag new">New</span>
           </a>
           <a href="/multi-modal.html" class="nav-item">
@@ -336,15 +314,83 @@
               <span class="nav-item-title">Multi-Modal</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">Combined audio, visual, and text input processing.</p>
+            <p class="nav-item-desc">
+              Combined audio, visual, and text input processing.
+            </p>
             <span class="nav-item-tag">Experiment</span>
+          </a>
+          <a href="/global-nye.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Global NYE</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              World clock countdown with avatar greetings in multiple timezones.
+            </p>
+            <span class="nav-item-tag">Seasonal</span>
           </a>
           <a href="/composition-layer.html" class="nav-item">
             <div class="nav-item-header">
               <span class="nav-item-title">Composition Layer</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">AI poster generator with mflux, typography presets, and WebGL effects.</p>
+            <p class="nav-item-desc">
+              AI poster generator with mflux, typography presets, and WebGL
+              effects.
+            </p>
+            <span class="nav-item-tag new">New</span>
+          </a>
+          <a href="/talking-poster.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Talking Poster</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              3D avatar poster with MLX TTS and Oculus lip-sync.
+            </p>
+            <span class="nav-item-tag new">New</span>
+          </a>
+          <a href="/face-morph-demo.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Face Morph Targets</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              Head-only avatar with MediaPipe tracking, expressions, and MLX
+              TTS.
+            </p>
+            <span class="nav-item-tag new">New</span>
+          </a>
+          <a href="/viseme-lab.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Viseme Lab</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              TTS lip-sync with real phoneme timestamps from MLX Kokoro API.
+            </p>
+            <span class="nav-item-tag new">New</span>
+          </a>
+          <a href="/said-demo.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">SAiD Demo</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              Speech Audio-driven Diffusion for 31 ARKit blendshape
+              coefficients.
+            </p>
+            <span class="nav-item-tag new">New</span>
+          </a>
+          <a href="/said-conversation.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">SAiD Conversation</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              Full pipeline: Whisper STT, Ministral LLM, Kokoro TTS, SAiD
+              animation.
+            </p>
             <span class="nav-item-tag new">New</span>
           </a>
         </div>
@@ -358,15 +404,31 @@
               <span class="nav-item-title">Dance Studio</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">Create and preview Mixamo-compatible dance choreographies.</p>
+            <p class="nav-item-desc">
+              Create and preview Mixamo-compatible dance choreographies.
+            </p>
             <span class="nav-item-tag new">New</span>
           </a>
-          <a href="/gestures-lab.html" class="nav-item">
+          <a href="/gesture-capture-lab.html" class="nav-item">
             <div class="nav-item-header">
-              <span class="nav-item-title">Gestures Lab</span>
+              <span class="nav-item-title">Gesture Capture Lab</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">Author gesture clips with built-in poses, emojis, and morph targets.</p>
+            <p class="nav-item-desc">
+              Record and export facial gesture animations with MediaPipe
+              tracking.
+            </p>
+            <span class="nav-item-tag new">New</span>
+          </a>
+          <a href="/model-viewer-studio.html" class="nav-item">
+            <div class="nav-item-header">
+              <span class="nav-item-title">Model Viewer Studio</span>
+              <span class="nav-item-arrow">&rarr;</span>
+            </div>
+            <p class="nav-item-desc">
+              Visual editor for scene, camera, effects, annotations, and
+              animations.
+            </p>
             <span class="nav-item-tag new">New</span>
           </a>
         </div>
@@ -380,14 +442,18 @@
               <span class="nav-item-title">Lab Info</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">What this lab validates and repository links.</p>
+            <p class="nav-item-desc">
+              What this lab validates and repository links.
+            </p>
           </a>
           <a href="/settings.html" class="nav-item">
             <div class="nav-item-header">
               <span class="nav-item-title">Settings</span>
               <span class="nav-item-arrow">&rarr;</span>
             </div>
-            <p class="nav-item-desc">MLX endpoints, registry models, and HeadTTS options.</p>
+            <p class="nav-item-desc">
+              MLX endpoints, registry models, and HeadTTS options.
+            </p>
           </a>
         </div>
       </nav>
@@ -399,24 +465,24 @@
             <span class="feature-number">01</span>
             <h3 class="feature-title">Local-First</h3>
             <p class="feature-desc">
-              All services run locally on Apple Silicon. MLX-optimized models for
-              fast inference without cloud dependencies.
+              All services run locally on Apple Silicon. MLX-optimized models
+              for fast inference without cloud dependencies.
             </p>
           </div>
           <div class="feature">
             <span class="feature-number">02</span>
             <h3 class="feature-title">Realtime Processing</h3>
             <p class="feature-desc">
-              Sub-100ms latency for speech-to-text, LLM responses, and text-to-speech
-              synthesis with streaming playback.
+              Sub-100ms latency for speech-to-text, LLM responses, and
+              text-to-speech synthesis with streaming playback.
             </p>
           </div>
           <div class="feature">
             <span class="feature-number">03</span>
             <h3 class="feature-title">Generative Media</h3>
             <p class="feature-desc">
-              mflux image generation, procedural textures, and AI-driven composition
-              for creative visual outputs.
+              mflux image generation, procedural textures, and AI-driven
+              composition for creative visual outputs.
             </p>
           </div>
         </div>

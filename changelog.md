@@ -123,7 +123,7 @@ All notable changes to this project will be documented in this file.
   - Audio service client (TTS/STT)
 
 ### Changed
-- Migrated from OpenAI cloud to local MLX services
+- Migrated from cloud LLMs to local MLX services
 - TalkingHead configuration for local-only operation
 
 ---

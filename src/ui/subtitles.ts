@@ -366,6 +366,17 @@ export class SubtitleRenderer {
     this.applyStyles();
   }
 
+  show(text: string, duration: number, preset?: SubtitlePreset): void {
+      if (preset) this.setPreset(preset);
+      
+      // Create artificial word timing for the whole text
+      const words = text.split(" ");
+      const wdurations = words.map(() => duration / words.length); // Split duration equally
+      const wtimes = words.map((_, i) => i * (duration / words.length));
+      
+      this.start({ words, wtimes, wdurations }, duration / 1000);
+  }
+
   seek(timeMs: number): void {
     if (!this.state.wordTimings) return;
 

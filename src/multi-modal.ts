@@ -97,6 +97,284 @@ stateManager.subscribe((nextState) => {
 const updateState = (partial: Partial<StageState>) => stateManager.update(partial);
 let avatarManifest: AvatarManifestEntry[] = [];
 
+type VoiceBackend = "kokoro" | "chatterbox";
+
+type VoiceRegistryEntry = {
+  id: string;
+  name?: string;
+};
+
+type VoiceRegistryBackend = {
+  voices?: VoiceRegistryEntry[];
+};
+
+type VoiceRegistry = {
+  backends?: Record<string, VoiceRegistryBackend>;
+};
+
+type PromptPreset = {
+  id: string;
+  label: string;
+  prompt: string;
+  summary?: string;
+};
+
+type PromptLibrary = {
+  version: string;
+  defaults?: {
+    personality?: string;
+    tool_guide?: string;
+    memory_guide?: string;
+  };
+  personalities?: PromptPreset[];
+  tool_guides?: PromptPreset[];
+  memory_guides?: PromptPreset[];
+};
+
+type PromptSelection = {
+  personality: string;
+  tool: string;
+  memory: string;
+};
+
+let voiceRegistry: VoiceRegistry | null = null;
+let promptLibrary: PromptLibrary | null = null;
+
+const PROMPT_LIBRARY_PATH = "/prompts/avatar-prompt-library.json";
+const PROMPT_STORAGE_KEY = "avatarLabs.promptSelection";
+
+const loadVoiceRegistry = async (force = false): Promise<VoiceRegistry | null> => {
+  if (voiceRegistry && !force) return voiceRegistry;
+  try {
+    const response = await fetch("/voices/registry.json", { cache: "no-store" });
+    if (!response.ok) return voiceRegistry;
+    const payload = await response.json();
+    voiceRegistry = payload && typeof payload === "object" ? payload : null;
+    return voiceRegistry;
+  } catch {
+    return voiceRegistry;
+  }
+};
+
+const dedupePush = (list: string[], value?: string) => {
+  if (!value) return;
+  if (!list.includes(value)) list.push(value);
+};
+
+const getCurrentBackend = (): VoiceBackend => {
+  const overrides = readOverrides();
+  const backend = overrides.ttsBackend || config.ttsBackend || "kokoro";
+  return backend === "chatterbox" ? "chatterbox" : "kokoro";
+};
+
+const getAvatarVoiceId = (
+  avatarEntry: AvatarManifestEntry | undefined,
+  backend: VoiceBackend
+): string => {
+  if (!avatarEntry) return backend === "chatterbox" ? "default" : "";
+  if (backend === "kokoro") {
+    return avatarEntry.kokoro_voice || avatarEntry.voice_id || "";
+  }
+  return avatarEntry.chatterbox_voice || avatarEntry.id || "default";
+};
+
+const getSuggestedChatterboxVoice = (avatarEntry?: AvatarManifestEntry): string => {
+  if (!avatarEntry) return "";
+  const voice = avatarEntry.chatterbox_voice;
+  if (voice && voice !== "default") return voice;
+  return avatarEntry.id || "";
+};
+
+const extractChatterboxVoiceId = (path?: string): string => {
+  if (!path) return "";
+  const match = path.match(/\/voices\/chatterbox\/([^/]+)\.(wav|mp3|flac)$/);
+  return match ? match[1] : "";
+};
+
+const getVoiceFileExtension = (file: File | null): string => {
+  if (!file) return "wav";
+  const name = file.name || "";
+  const match = name.toLowerCase().match(/\.([a-z0-9]+)$/);
+  if (match) return match[1];
+  const type = file.type.toLowerCase();
+  if (type.includes("mpeg") || type.includes("mp3")) return "mp3";
+  if (type.includes("flac")) return "flac";
+  if (type.includes("wav")) return "wav";
+  return "wav";
+};
+
+const collectVoiceIds = async (
+  backend: VoiceBackend,
+  forceRegistry = false
+): Promise<string[]> => {
+  const voices: string[] = [];
+  const registry = await loadVoiceRegistry(forceRegistry);
+  const registryVoices = registry?.backends?.[backend]?.voices || [];
+
+  registryVoices.forEach((voice) => dedupePush(voices, voice.id));
+
+  avatarManifest.forEach((avatar) => {
+    dedupePush(voices, getAvatarVoiceId(avatar, backend));
+  });
+
+  if (backend === "chatterbox") {
+    const overrides = readOverrides();
+    const refPath = overrides.voiceRefPath || (config as any).voiceRefPath;
+    const refVoice = extractChatterboxVoiceId(refPath);
+    dedupePush(voices, refVoice);
+    dedupePush(voices, "default");
+  }
+
+  if (!voices.length) voices.push("default");
+  return voices;
+};
+
+const loadPromptLibrary = async (force = false): Promise<PromptLibrary | null> => {
+  if (promptLibrary && !force) return promptLibrary;
+  try {
+    const response = await fetch(PROMPT_LIBRARY_PATH, { cache: "no-store" });
+    if (!response.ok) return promptLibrary;
+    const payload = await response.json();
+    promptLibrary = payload && typeof payload === "object" ? payload : null;
+    return promptLibrary;
+  } catch {
+    return promptLibrary;
+  }
+};
+
+const readPromptSelection = (): PromptSelection | null => {
+  try {
+    const raw = localStorage.getItem(PROMPT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      personality: String(parsed.personality || ""),
+      tool: String(parsed.tool || ""),
+      memory: String(parsed.memory || "")
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writePromptSelection = (selection: PromptSelection) => {
+  localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(selection));
+};
+
+const populatePromptSelect = (
+  select: HTMLSelectElement | null,
+  items: PromptPreset[] | undefined,
+  selectedId?: string
+): string => {
+  if (!select || !items?.length) return "";
+  select.innerHTML = "";
+  items.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.label;
+    if (item.summary) option.title = item.summary;
+    select.appendChild(option);
+  });
+  const fallback = items[0]?.id || "";
+  const target = selectedId && items.some((item) => item.id === selectedId) ? selectedId : fallback;
+  if (target) select.value = target;
+  return target;
+};
+
+const buildSystemPrompt = (
+  library: PromptLibrary,
+  selection: PromptSelection
+): string => {
+  const personalities = library.personalities || [];
+  const toolGuides = library.tool_guides || [];
+  const memoryGuides = library.memory_guides || [];
+
+  const personality = personalities.find((item) => item.id === selection.personality);
+  const toolGuide = toolGuides.find((item) => item.id === selection.tool);
+  const memoryGuide = memoryGuides.find((item) => item.id === selection.memory);
+
+  const sections: string[] = [];
+  if (personality?.prompt) {
+    sections.push(`# Personality\n${personality.prompt}`);
+  }
+  if (toolGuide?.prompt) {
+    sections.push(`# Tool Usage\n${toolGuide.prompt}`);
+  }
+  if (memoryGuide?.prompt) {
+    sections.push(`# Memory\n${memoryGuide.prompt}`);
+  }
+  return sections.join("\n\n");
+};
+
+const resetChatLog = (chatLog: HTMLElement | null, message: string) => {
+  if (!chatLog) return;
+  chatLog.innerHTML = "";
+  const bubble = document.createElement("div");
+  bubble.className = "chat-message assistant";
+  bubble.innerHTML = `
+    <div class="chat-avatar">A</div>
+    <div class="chat-bubble">${escapeHtml(message)}</div>
+  `;
+  chatLog.appendChild(bubble);
+};
+
+const populateVoiceSelect = (voices: string[], selected?: string): string => {
+  if (!els?.voiceSelect) return "";
+  els.voiceSelect.innerHTML = "";
+  voices.forEach((voice) => {
+    const option = document.createElement("option");
+    option.value = voice;
+    option.textContent = voice;
+    els.voiceSelect.appendChild(option);
+  });
+  const finalSelection =
+    selected && voices.includes(selected) ? selected : voices[0] || "";
+  if (finalSelection) {
+    els.voiceSelect.value = finalSelection;
+  }
+  return finalSelection;
+};
+
+const refreshVoiceOptions = async (
+  backend: VoiceBackend,
+  options: { preferAvatar?: boolean; forceRegistry?: boolean } = {}
+): Promise<void> => {
+  if (!els?.voiceSelect || !els?.avatarSelect) return;
+  const voices = await collectVoiceIds(backend, options.forceRegistry);
+  const overrides = readOverrides();
+  const current = els.voiceSelect.value;
+  const avatarEntry = findAvatarEntry(avatarManifest, els.avatarSelect.value);
+
+  let targetVoice = options.preferAvatar
+    ? getAvatarVoiceId(avatarEntry, backend)
+    : overrides.ttsVoice || config.ttsVoice || current;
+
+  if (!targetVoice || !voices.includes(targetVoice)) {
+    targetVoice = current && voices.includes(current) ? current : voices[0];
+  }
+
+  const selection = populateVoiceSelect(voices, targetVoice);
+  if (selection) {
+    config.ttsVoice = selection;
+    setOverride("ttsVoice", selection);
+  }
+};
+
+const refreshAvatarManifest = async (): Promise<void> => {
+  if (!els?.avatarSelect) return;
+  const current = els.avatarSelect.value;
+  await loadAvatarList();
+  if (current) {
+    const hasAvatar = Array.from(els.avatarSelect.options).some(
+      (option) => option.value === current
+    );
+    if (hasAvatar) {
+      els.avatarSelect.value = current;
+    }
+  }
+};
+
 let stateUiBound = false;
 const bindStateUi = () => {
   if (stateUiBound) return;
@@ -138,10 +416,10 @@ const bindStateUi = () => {
         const label = lightPresets[nextState.lightPreset]?.label || nextState.lightPreset;
         setHud(
           els,
-          els.hudScene.textContent || "Idle",
-          els.hudCamera.textContent || "Upper",
+          els.hudScene?.textContent || "Idle",
+          els.hudCamera?.textContent || "Upper",
           label,
-          els.hudMode.textContent || "Awaiting"
+          els.hudMode?.textContent || "Awaiting"
         );
       }
     }
@@ -298,6 +576,7 @@ const loadAvatarList = async () => {
   if (baseUrl) {
     updateState({ avatarBaseUrl: baseUrl });
   }
+  await refreshVoiceOptions(getCurrentBackend(), { preferAvatar: true });
 };
 
 const loadAvatar = async () => {
@@ -314,31 +593,7 @@ const loadAvatar = async () => {
     state.audioFile ? state.audioFile.name : undefined,
     avatarEntry
   );
-  if (avatarEntry) {
-    const backend = (config as any).ttsBackend || "kokoro";
-    let targetVoiceId = avatarEntry.voice_id;
-
-    if (backend === "kokoro") {
-      targetVoiceId = avatarEntry.kokoro_voice || avatarEntry.voice_id;
-    } else if (backend === "chatterbox") {
-      targetVoiceId = avatarEntry.chatterbox_voice || "default";
-    }
-
-    if (targetVoiceId) {
-      const hasVoice = Array.from(els.voiceSelect.options).some(
-        (option) => option.value === targetVoiceId
-      );
-      if (!hasVoice) {
-        const option = document.createElement("option");
-        option.value = targetVoiceId;
-        option.textContent = targetVoiceId;
-        els.voiceSelect.appendChild(option);
-      }
-      els.voiceSelect.value = targetVoiceId;
-      config.ttsVoice = targetVoiceId;
-      setOverride("ttsVoice", targetVoiceId);
-    }
-  }
+  await refreshVoiceOptions(getCurrentBackend(), { preferAvatar: true });
   if (conversationManager && state.head) {
       conversationManager.setHead(state.head);
   }
@@ -390,6 +645,7 @@ const getConversationElements = () => ({
   pushModeBtn: document.getElementById("pushModeBtn") as HTMLButtonElement,
   vadModeBtn: document.getElementById("vadModeBtn") as HTMLButtonElement,
   recordBtn: document.getElementById("recordBtn") as HTMLButtonElement,
+  sendBtn: document.getElementById("sendBtn") as HTMLButtonElement,
   vadThreshold: document.getElementById("vadThreshold") as HTMLInputElement,
   vadSilence: document.getElementById("vadSilence") as HTMLInputElement,
   levelMeter: document.getElementById("levelMeter") as HTMLElement,
@@ -398,17 +654,115 @@ const getConversationElements = () => ({
   sessionDot: document.getElementById("sessionDot") as HTMLElement,
   sessionStatus: document.getElementById("sessionStatus") as HTMLElement,
   canvasStatus: document.getElementById("canvasStatus") as HTMLElement,
+  promptPersonality: document.getElementById("promptPersonality") as HTMLSelectElement,
+  promptTool: document.getElementById("promptTool") as HTMLSelectElement,
+  promptMemory: document.getElementById("promptMemory") as HTMLSelectElement,
+  promptApplyBtn: document.getElementById("promptApplyBtn") as HTMLButtonElement,
+  promptResetBtn: document.getElementById("promptResetBtn") as HTMLButtonElement,
+  // Pipeline status elements
+  vadStatus: document.getElementById("vadStatus") as HTMLElement,
+  vadDot: document.getElementById("vadDot") as HTMLElement,
+  sttStatus: document.getElementById("sttStatus") as HTMLElement,
+  sttDot: document.getElementById("sttDot") as HTMLElement,
+  ttsStatus: document.getElementById("ttsStatus") as HTMLElement,
+  ttsDot: document.getElementById("ttsDot") as HTMLElement,
+  // Service health elements
+  llmServiceDot: document.getElementById("llmServiceDot") as HTMLElement,
+  audioServiceDot: document.getElementById("audioServiceDot") as HTMLElement,
+  sttServiceDot: document.getElementById("sttServiceDot") as HTMLElement,
+  ttsServiceDot: document.getElementById("ttsServiceDot") as HTMLElement,
   // TTS backend elements
   kokoroBackendBtn: document.getElementById("kokoroBackendBtn") as HTMLButtonElement,
   chatterboxBackendBtn: document.getElementById("chatterboxBackendBtn") as HTMLButtonElement,
+  refreshVoicesBtn: document.getElementById("refreshVoicesBtn") as HTMLButtonElement,
   voiceCloningSection: document.getElementById("voiceCloningSection") as HTMLElement,
   voiceRefInput: document.getElementById("voiceRefInput") as HTMLInputElement,
   selectVoiceRefBtn: document.getElementById("selectVoiceRefBtn") as HTMLButtonElement,
   clearVoiceRefBtn: document.getElementById("clearVoiceRefBtn") as HTMLButtonElement,
   voiceRefStatus: document.getElementById("voiceRefStatus") as HTMLElement,
+  // Voice save elements
+  voiceSaveSection: document.getElementById("voiceSaveSection") as HTMLElement,
+  voiceSpeakerName: document.getElementById("voiceSpeakerName") as HTMLInputElement,
+  saveVoiceRefBtn: document.getElementById("saveVoiceRefBtn") as HTMLButtonElement,
 });
 
 let conversationManager: ConversationManager;
+
+const initPromptControls = async (cEls: ReturnType<typeof getConversationElements>) => {
+   if (!cEls.promptPersonality || !cEls.promptTool || !cEls.promptMemory) return;
+
+   const library = await loadPromptLibrary();
+   if (!library) return;
+
+   const defaults = library.defaults || {};
+   const saved = readPromptSelection();
+
+   const selection: PromptSelection = {
+     personality: saved?.personality || defaults.personality || "",
+     tool: saved?.tool || defaults.tool_guide || "",
+     memory: saved?.memory || defaults.memory_guide || ""
+   };
+
+   selection.personality = populatePromptSelect(
+     cEls.promptPersonality,
+     library.personalities,
+     selection.personality
+   );
+   selection.tool = populatePromptSelect(
+     cEls.promptTool,
+     library.tool_guides,
+     selection.tool
+   );
+   selection.memory = populatePromptSelect(
+     cEls.promptMemory,
+     library.memory_guides,
+     selection.memory
+   );
+
+   writePromptSelection(selection);
+
+   const applySelection = (resetChat: boolean) => {
+     if (!conversationManager) return;
+     if (conversationManager.isBusy()) {
+       updateStatus(els, "Please wait...");
+       return;
+     }
+     const currentSelection: PromptSelection = {
+       personality: cEls.promptPersonality.value,
+       tool: cEls.promptTool.value,
+       memory: cEls.promptMemory.value
+     };
+     const systemPrompt = buildSystemPrompt(library, currentSelection);
+     if (!systemPrompt) {
+       updateStatus(els, "Prompt library is missing text.");
+       return;
+     }
+     conversationManager.setSystemPrompt(systemPrompt, { resetHistory: true });
+     writePromptSelection(currentSelection);
+     if (resetChat) {
+       resetChatLog(cEls.chatLog, "Prompt updated. Start talking when ready.");
+     }
+     updateStatus(els, "Prompt updated");
+   };
+
+   applySelection(false);
+
+   cEls.promptApplyBtn?.addEventListener("click", () => {
+     applySelection(true);
+   });
+
+   cEls.promptResetBtn?.addEventListener("click", () => {
+     const resetSelection: PromptSelection = {
+       personality: defaults.personality || selection.personality,
+       tool: defaults.tool_guide || selection.tool,
+       memory: defaults.memory_guide || selection.memory
+     };
+     cEls.promptPersonality.value = resetSelection.personality;
+     cEls.promptTool.value = resetSelection.tool;
+     cEls.promptMemory.value = resetSelection.memory;
+     applySelection(true);
+   });
+};
 
 const initConversationControls = async () => {
    const cEls = getConversationElements();
@@ -458,6 +812,23 @@ const initConversationControls = async () => {
          } else if (text === "Ready" || text.startsWith("Error") || text === "Speaking...") {
            showTypingIndicator(false);
          }
+
+         // Update pipeline status indicators based on status text
+         if (text === "Transcribing...") {
+           setPipelineStatus(cEls.sttStatus, cEls.sttDot, "STT: Transcribing", "busy");
+         } else if (text === "Processing..." || text === "Thinking...") {
+           setPipelineStatus(cEls.sttStatus, cEls.sttDot, "STT: Done", "active");
+         } else if (text === "Synthesizing speech...") {
+           setPipelineStatus(cEls.ttsStatus, cEls.ttsDot, "TTS: Generating", "busy");
+         } else if (text === "Speaking...") {
+           setPipelineStatus(cEls.ttsStatus, cEls.ttsDot, "TTS: Speaking", "active");
+         } else if (text === "Ready" || text === "Listening...") {
+           setPipelineStatus(cEls.sttStatus, cEls.sttDot, "STT: Idle", "idle");
+           setPipelineStatus(cEls.ttsStatus, cEls.ttsDot, "TTS: Idle", "idle");
+         } else if (text.startsWith("Error")) {
+           setPipelineStatus(cEls.sttStatus, cEls.sttDot, "STT: Error", "error");
+           setPipelineStatus(cEls.ttsStatus, cEls.ttsDot, "TTS: Error", "error");
+         }
        },
        onLogMessage: (role, text) => {
            // Hide typing indicator when assistant responds
@@ -498,12 +869,60 @@ const initConversationControls = async () => {
            cEls.vadModeBtn.classList.toggle("primary", mode === "vad");
            cEls.recordBtn.textContent = mode === "push" ? (isRecording ? "Release to Send" : "Hold to Talk") : (isRecording ? "Listening..." : "Auto-VAD Active");
            cEls.recordBtn.disabled = mode === "vad"; // In VAD mode, button is just status
+
+           // Update VAD pipeline status
+           if (mode === "vad") {
+             setPipelineStatus(cEls.vadStatus, cEls.vadDot, isRecording ? "VAD: Recording" : "VAD: Listening", isRecording ? "busy" : "active");
+           } else {
+             setPipelineStatus(cEls.vadStatus, cEls.vadDot, isRecording ? "VAD: Recording" : "VAD: Off", isRecording ? "busy" : "idle");
+           }
        },
-       onAudioLevel: (rms) => {
+       onThinking: (text) => {
+            showTypingIndicator(true);
+            const bubble = document.createElement("div");
+            bubble.className = "chat-message tool thinking";
+            bubble.style.cssText = `
+              padding: 4px 12px;
+              margin-bottom: 4px;
+              border-radius: 8px;
+              background: rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+            `;
+            
+            const summary = text.slice(0, 60).replace(/\n/g, " ") + (text.length > 60 ? "..." : "");
+            
+            const escapeHtml = (text: string): string => {
+                const div = document.createElement("div");
+                div.textContent = text;
+                return div.innerHTML;
+            };
+
+            bubble.innerHTML = `
+              <div style="font-size: 0.85rem; color: #aaa;">
+                <details>
+                    <summary style="cursor: pointer; outline: none;">💭 Thinking: ${escapeHtml(summary)}</summary>
+                    <div style="
+                        margin-top: 8px; 
+                        padding-top: 8px; 
+                        border-top: 1px solid rgba(255,255,255,0.1); 
+                        white-space: pre-wrap; 
+                        font-family: monospace;
+                        font-size: 0.8em;
+                        color: #bbb;
+                    ">${escapeHtml(text)}</div>
+                </details>
+              </div>
+            `;
+            cEls.chatLog.appendChild(bubble);
+            cEls.chatLog.scrollTop = cEls.chatLog.scrollHeight;
+        },
+        onAudioLevel: (rms) => {
            const percent = Math.min(Math.max((rms * 200) * 100, 0), 100);
            cEls.levelMeter.style.width = `${percent}%`;
        }
    });
+
+   await initPromptControls(cEls);
 
    cEls.startSessionBtn.addEventListener("click", async () => {
        await conversationManager.startSession();
@@ -582,9 +1001,40 @@ const initConversationControls = async () => {
        }
    });
 
+   // Send button click handler
+   cEls.sendBtn.addEventListener("click", async () => {
+       const text = cEls.chatInput.value.trim();
+       if (!text) return;
+
+       // Check if session is active
+       if (!conversationManager.isSessionActive()) {
+           updateStatus(els, "Start a session first.");
+           return;
+       }
+
+       // Clear input immediately
+       cEls.chatInput.value = "";
+
+       // Log user message to chat
+       const userBubble = document.createElement("div");
+       userBubble.className = "chat-message user";
+       userBubble.innerHTML = `
+           <div class="chat-avatar">U</div>
+           <div class="chat-bubble">${escapeHtml(text)}</div>
+       `;
+       cEls.chatLog.appendChild(userBubble);
+       cEls.chatLog.scrollTop = cEls.chatLog.scrollHeight;
+
+       // Process via ConversationManager
+       try {
+           await conversationManager.handleUserText(text);
+       } catch (err: any) {
+           updateStatus(els, `Error: ${err.message}`);
+       }
+   });
+
    // TTS Backend toggle handlers
-   const overrides = readOverrides();
-   const currentBackend = overrides.ttsBackend || config.ttsBackend || "kokoro";
+   const currentBackend = getCurrentBackend();
 
    // Initialize button states based on saved preference
    if (currentBackend === "chatterbox") {
@@ -593,56 +1043,36 @@ const initConversationControls = async () => {
      cEls.voiceCloningSection.style.display = "block";
    }
 
-   cEls.kokoroBackendBtn.addEventListener("click", () => {
+   cEls.refreshVoicesBtn.addEventListener("click", async () => {
+     await refreshAvatarManifest();
+     await refreshVoiceOptions(getCurrentBackend(), { preferAvatar: true, forceRegistry: true });
+   });
+
+   await refreshVoiceOptions(currentBackend, { preferAvatar: true, forceRegistry: true });
+
+   cEls.kokoroBackendBtn.addEventListener("click", async () => {
      cEls.kokoroBackendBtn.classList.add("active");
      cEls.chatterboxBackendBtn.classList.remove("active");
      cEls.voiceCloningSection.style.display = "none";
       setOverride("ttsBackend", "kokoro");
       (config as any).ttsBackend = "kokoro";
 
-      // Switch voice for current avatar
-      const currentAvatarName = els.avatarSelect.value;
-      const avatarEntry = findAvatarEntry(avatarManifest, currentAvatarName);
-      if (avatarEntry) {
-        const targetVoiceId = avatarEntry.kokoro_voice || avatarEntry.voice_id;
-        if (targetVoiceId) {
-            els.voiceSelect.value = targetVoiceId;
-            config.ttsVoice = targetVoiceId;
-            setOverride("ttsVoice", targetVoiceId);
-        }
-      }
+      await refreshVoiceOptions("kokoro", { preferAvatar: true, forceRegistry: true });
    });
 
-   cEls.chatterboxBackendBtn.addEventListener("click", () => {
+   cEls.chatterboxBackendBtn.addEventListener("click", async () => {
      cEls.chatterboxBackendBtn.classList.add("active");
      cEls.kokoroBackendBtn.classList.remove("active");
      cEls.voiceCloningSection.style.display = "block";
       setOverride("ttsBackend", "chatterbox");
       (config as any).ttsBackend = "chatterbox";
 
-      // Switch voice for current avatar
-      const currentAvatarName = els.avatarSelect.value;
-      const avatarEntry = findAvatarEntry(avatarManifest, currentAvatarName);
-      if (avatarEntry) {
-        const targetVoiceId = avatarEntry.chatterbox_voice || "default";
-        if (targetVoiceId) {
-             // Ensure option exists if it's "default" or custom
-             const hasVoice = Array.from(els.voiceSelect.options).some(o => o.value === targetVoiceId);
-             if (!hasVoice) {
-                const opt = document.createElement("option");
-                opt.value = targetVoiceId;
-                opt.textContent = targetVoiceId;
-                els.voiceSelect.appendChild(opt);
-             }
-            els.voiceSelect.value = targetVoiceId;
-            config.ttsVoice = targetVoiceId;
-            setOverride("ttsVoice", targetVoiceId);
-        }
-      }
+      await refreshVoiceOptions("chatterbox", { preferAvatar: true, forceRegistry: true });
    });
 
    // Voice cloning handlers
    let voiceRefFile: File | null = null;
+   let voiceRefArrayBuffer: ArrayBuffer | null = null;
 
    cEls.selectVoiceRefBtn.addEventListener("click", () => {
      cEls.voiceRefInput.click();
@@ -653,20 +1083,118 @@ const initConversationControls = async () => {
      if (!files || files.length === 0) return;
 
      voiceRefFile = files[0];
+     voiceRefArrayBuffer = await voiceRefFile.arrayBuffer();
      cEls.voiceRefStatus.textContent = `Selected: ${voiceRefFile.name}`;
+     cEls.voiceRefStatus.style.color = "#5bf2d6";
      cEls.clearVoiceRefBtn.disabled = false;
 
-     // Store the file for voice cloning (we'd need to upload it to a temp location)
-     // For now, we just show it's selected - actual cloning happens on TTS call
-     cEls.voiceRefStatus.style.color = "#5bf2d6";
+     // Show save section and pre-fill with current avatar name
+     cEls.voiceSaveSection.style.display = "block";
+     const currentAvatar = findAvatarEntry(avatarManifest, els.avatarSelect.value);
+     const suggestedVoice = getSuggestedChatterboxVoice(currentAvatar);
+     cEls.voiceSpeakerName.value =
+       suggestedVoice ||
+       (els.avatarSelect.value || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
    });
 
    cEls.clearVoiceRefBtn.addEventListener("click", () => {
      voiceRefFile = null;
+     voiceRefArrayBuffer = null;
      cEls.voiceRefInput.value = "";
      cEls.voiceRefStatus.textContent = "";
      cEls.clearVoiceRefBtn.disabled = true;
+     cEls.voiceSaveSection.style.display = "none";
      setOverride("voiceRefPath", "");
+   });
+
+   // Save voice reference to public/voices/chatterbox/
+   cEls.saveVoiceRefBtn.addEventListener("click", async () => {
+     if (!voiceRefArrayBuffer) {
+       cEls.voiceRefStatus.textContent = "No audio file selected";
+       cEls.voiceRefStatus.style.color = "#ff6b6b";
+       return;
+     }
+
+     const speakerName = cEls.voiceSpeakerName.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+     if (!speakerName) {
+       cEls.voiceRefStatus.textContent = "Enter a speaker name";
+       cEls.voiceRefStatus.style.color = "#ff6b6b";
+       return;
+     }
+
+     try {
+       cEls.voiceRefStatus.textContent = "Saving...";
+       cEls.voiceRefStatus.style.color = "var(--muted)";
+
+       // Send to server endpoint to save the file
+       const extension = getVoiceFileExtension(voiceRefFile);
+       const formData = new FormData();
+       const contentType = voiceRefFile?.type || "audio/wav";
+       formData.append(
+         "file",
+         new Blob([voiceRefArrayBuffer], { type: contentType }),
+         `${speakerName}.${extension}`
+       );
+       formData.append("speaker", speakerName);
+
+       const response = await fetch("/api/voices/save", {
+         method: "POST",
+         body: formData
+       });
+
+       if (response.ok) {
+         const result = await response.json();
+         cEls.voiceRefStatus.textContent = `Saved: ${result.path}`;
+         cEls.voiceRefStatus.style.color = "#5bf2d6";
+
+         // Update voice select with new option
+         const voicePath = `/voices/chatterbox/${speakerName}.${extension}`;
+         const hasVoice = Array.from(els.voiceSelect.options).some(o => o.value === speakerName);
+         if (!hasVoice) {
+           const opt = document.createElement("option");
+           opt.value = speakerName;
+           opt.textContent = speakerName;
+           els.voiceSelect.appendChild(opt);
+         }
+         els.voiceSelect.value = speakerName;
+         config.ttsVoice = speakerName;
+         setOverride("ttsVoice", speakerName);
+         setOverride("voiceRefPath", voicePath);
+         (config as any).voiceRefPath = voicePath;
+
+         const avatarEntry = findAvatarEntry(avatarManifest, els.avatarSelect.value);
+         if (avatarEntry) {
+           avatarEntry.chatterbox_voice = speakerName;
+         }
+         await refreshVoiceOptions("chatterbox", { preferAvatar: true, forceRegistry: true });
+       } else {
+         // Fallback: download the file for manual placement
+         const blob = new Blob([voiceRefArrayBuffer], { type: contentType });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement("a");
+         a.href = url;
+         a.download = `${speakerName}.${extension}`;
+         a.click();
+         URL.revokeObjectURL(url);
+
+         cEls.voiceRefStatus.innerHTML = `Downloaded <strong>${speakerName}.${extension}</strong> - move to public/voices/chatterbox/`;
+         cEls.voiceRefStatus.style.color = "#ffb347";
+       }
+     } catch (err: any) {
+       // Fallback: download the file for manual placement
+       const contentType = voiceRefFile?.type || "audio/wav";
+       const blob = new Blob([voiceRefArrayBuffer], { type: contentType });
+       const url = URL.createObjectURL(blob);
+       const a = document.createElement("a");
+       a.href = url;
+       const extension = getVoiceFileExtension(voiceRefFile);
+       a.download = `${speakerName}.${extension}`;
+       a.click();
+       URL.revokeObjectURL(url);
+
+       cEls.voiceRefStatus.innerHTML = `Downloaded <strong>${speakerName}.${extension}</strong> - move to public/voices/chatterbox/`;
+       cEls.voiceRefStatus.style.color = "#ffb347";
+     }
    });
 };
 
@@ -728,6 +1256,18 @@ const checkServiceHealth = async (): Promise<ServiceHealth> => {
 const updateServiceHealthUI = (health: ServiceHealth) => {
   const cEls = getConversationElements();
 
+  // Update individual service dots
+  const setDot = (dot: HTMLElement | null, isActive: boolean) => {
+    if (!dot) return;
+    dot.classList.toggle("active", isActive);
+    dot.classList.toggle("error", !isActive);
+  };
+
+  setDot(cEls.llmServiceDot, health.llm);
+  setDot(cEls.audioServiceDot, health.audio);
+  setDot(cEls.sttServiceDot, health.stt);
+  setDot(cEls.ttsServiceDot, health.tts);
+
   const services: string[] = [];
   if (!health.llm) services.push("LLM");
   if (!health.audio) services.push("Audio");
@@ -740,11 +1280,31 @@ const updateServiceHealthUI = (health: ServiceHealth) => {
     cEls.canvasStatus.textContent = "All services online";
     cEls.canvasStatus.style.color = "#5bf2d6";
     cEls.startSessionBtn.disabled = false;
+    setRuntimeStatusText("All services online");
   } else {
     cEls.canvasStatus.textContent = `Offline: ${services.join(", ")}`;
     cEls.canvasStatus.style.color = "#ff6b6b";
     cEls.startSessionBtn.disabled = true;
     cEls.startSessionBtn.title = `Cannot start session: ${services.join(", ")} service(s) offline`;
+    setRuntimeStatusText(`Offline: ${services.join(", ")}`);
+  }
+};
+
+// Pipeline status helpers
+const setPipelineStatus = (
+  statusEl: HTMLElement | null,
+  dotEl: HTMLElement | null,
+  label: string,
+  state: "idle" | "active" | "busy" | "error"
+) => {
+  if (!statusEl || !dotEl) return;
+  statusEl.innerHTML = `<span class="status-dot" id="${dotEl.id}"></span>${label}`;
+  const newDot = statusEl.querySelector(".status-dot");
+  if (newDot) {
+    newDot.classList.remove("active", "warning", "error");
+    if (state === "active") newDot.classList.add("active");
+    else if (state === "busy") newDot.classList.add("warning");
+    else if (state === "error") newDot.classList.add("error");
   }
 };
 
@@ -1054,6 +1614,24 @@ const init = async () => {
     updateState,
     updateStatus: (message) => updateStatus(els, message)
   });
+  const stopSpeech = () => {
+    audioController.stopAnalysisVoice();
+    const current = state;
+    if (current.duoManager) {
+      current.duoManager.stopAll();
+      return;
+    }
+    if (current.head) {
+      try {
+        current.head.stop();
+      } catch {
+        // TalkingHead can throw if not fully initialized.
+      }
+      if (typeof (current.head as any).stopBackgroundAudio === "function") {
+        (current.head as any).stopBackgroundAudio();
+      }
+    }
+  };
   analysisController = createAnalysisController({
     els,
     config,
@@ -1133,6 +1711,7 @@ const init = async () => {
     analyzePerformance,
     performSong,
     stopPerformance,
+    stopSpeech,
     bindControls: () =>
       bindControlsModule({
         els,

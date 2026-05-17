@@ -1,7 +1,39 @@
 # Avatar Labs Agent Notes
 
+## Paradigm (House-Level)
+- House ID: `avatar-labs`
+- Role: Avatar Performance Lab (TalkingHead + HeadAudio + MLX)
+- Status/Type: active · ui
+- This house participates in the Core-X ecosystem by emitting and consuming **OpenResponses** events via the Event Bus. No local schema forks.
+
+## Sources of Truth (No Split Brain)
+- `/registries/houses.registry.json`
+- `/registries/agents.registry.json`
+- `/registries/services.registry.json`
+- `/registries/models.registry.json` (model-zoo)
+- Event Bus: `http://localhost:8085/events` (SSE) and `POST http://localhost:8085/emit`
+
+## Interfaces
+- base: http://localhost:5177
+- dev: /
+- stage: /stage.html
+- engine: /engine-lab.html
+- dance: /dance-studio.html
+- gestures: /gestures-lab.html
+- multi_modal: /multi-modal.html
+- mlx_conversation: /mlx-conversation.html
+- settings: /settings.html
+
+## Services
+- No registered services in registry for this house (see `/registries/houses.registry.json`).
+
+## Communication (OpenResponses)
+- Emit events using the canonical OpenResponses schema (no local copies).
+- Subscribe to the Event Bus SSE stream for activity.
+- Use `response.*` and `tool.*` events for agent activity and tool calls.
+
 ## Purpose
-- `avatar-labs` is a Vite-based house that validates TalkingHead + HeadAudio with local MLX services (no OpenAI cloud).
+- `avatar-labs` is a Vite-based house that validates TalkingHead + HeadAudio with local MLX services (no cloud inference).
 - Primary UI is `engine-lab.html` (Performance Engine Lab) with logic in `src/stage.ts`.
 - Legacy UI: `stage.html` (same logic, different layout)
 - Secondary UIs: `dance-studio.html`, `gestures-lab.html`, `multi-modal.html`
@@ -66,7 +98,7 @@ src/
 - Optional:
   - `VITE_AVATAR_MANIFEST_URL` (override avatar manifest location)
 - Avoid external APIs:
-  - `OPENAI_API_KEY` must be unset.
+  - External API keys must be unset.
 
 ## Assets
 - Avatars live in `public/avatars/` and are listed by `public/avatars/manifest.json`.
@@ -210,7 +242,7 @@ Avatars in `public/avatars/manifest.json` now include rich metadata:
 - **Symptom**: Network requests to `/internal/models/status` fail with CORS
 - **Cause**: `.env.local` not loaded or port missing from URL
 - **Fix**:
-  1. Verify `.env.local` has `VITE_MLX_LLM_BASE_URL=http://127.0.0.1:8080`
+  1. Verify `.env.local` has `VITE_MLX_LLM_BASE_URL=http://127.0.0.1:8090`
   2. Clear Vite cache: `rm -rf node_modules/.vite/deps`
   3. Restart dev server: `npm run dev`
 

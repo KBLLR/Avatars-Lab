@@ -11,9 +11,9 @@ import type {
   ImageSize
 } from './types';
 
-// Default configuration
+// Default configuration - uses Vite proxy for dev, configure for production
 const DEFAULT_CONFIG = {
-  baseUrl: 'http://127.0.0.1:8080',
+  baseUrl: '/api/mflux',  // Proxied to http://127.0.0.1:8084 via vite.config.mjs
   timeout: 120000,  // 2 minutes for image generation
   retries: 2
 };

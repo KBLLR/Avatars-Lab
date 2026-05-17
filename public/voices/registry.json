@@ -8,7 +8,7 @@
       "description": "Fast, high-quality multi-voice TTS",
       "sample_rate": 24000,
       "supports_voice_cloning": false,
-      "voices_path": "/model-zoo/mlx/models/voices",
+      "voices_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/models/tts/kokoro-82m/voices",
       "voice_format": "bin",
       "voices": [
         {
@@ -105,7 +105,7 @@
       "description": "Voice cloning capable TTS with MLX optimization",
       "sample_rate": 24000,
       "supports_voice_cloning": true,
-      "model_path": "/model-zoo/chatterbox",
+      "model_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/models/tts/chatterbox",
       "model_size_gb": 2.98,
       "voices": [
         {

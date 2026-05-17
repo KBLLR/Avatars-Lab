@@ -71,23 +71,18 @@ const findModelByCapability = (registry, capability, repoRoot) => {
     if (caps.includes(capability)) {
       const localPath = resolveLocalModelPath(repoRoot, entry);
       const localExists = localPath ? fs.existsSync(localPath) : false;
-      candidates.push({ modelId, localExists });
+      candidates.push({ localPath, localExists });
     }
   }
   const localMatch = candidates.find((candidate) => candidate.localExists);
-  if (localMatch) return localMatch.modelId;
-  return candidates[0]?.modelId || null;
+  if (localMatch) return localMatch.localPath;
+  return candidates[0]?.localPath || null;
 };
 
-const findModelById = (registry, modelId) => {
+const findModelById = (registry, modelId, repoRoot) => {
   if (!registry?.models) return null;
-  return registry.models[modelId] ? modelId : null;
-};
-
-const assertNoOpenAIKey = () => {
-  if (process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is set. Unset it to avoid outbound OpenAI calls.");
-  }
+  const entry = registry.models[modelId];
+  return resolveLocalModelPath(repoRoot, entry);
 };
 
 const getConfig = () => {
@@ -102,11 +97,13 @@ const getConfig = () => {
   const llmBaseUrl = resolveServiceUrl("llm", manifest);
   const audioBaseUrl = resolveServiceUrl("audio", manifest);
 
-  const defaultLlmModel = process.env.MLX_DEFAULT_LLM_MODEL || findModelByCapability(registry, "chat", repoRoot);
-  const defaultTtsModel = process.env.MLX_DEFAULT_TTS_MODEL || findModelByCapability(registry, "audio-generate", repoRoot);
+  const defaultLlmModel =
+    process.env.MLX_DEFAULT_LLM_MODEL || findModelByCapability(registry, "chat", repoRoot);
+  const defaultTtsModel =
+    process.env.MLX_DEFAULT_TTS_MODEL || findModelByCapability(registry, "audio-generate", repoRoot);
   const preferredStt =
-    findModelById(registry, "hf/mlx-community__whisper-small-mlx-q4") ||
-    findModelById(registry, "hf/mlx-community__whisper-large-v3-turbo-4bit");
+    findModelById(registry, "stt/whisper-small-mlx-q4", repoRoot) ||
+    findModelById(registry, "stt/whisper-large-v3-turbo", repoRoot);
   const defaultSttModel =
     process.env.MLX_DEFAULT_STT_MODEL ||
     preferredStt ||
@@ -127,7 +124,4 @@ const getConfig = () => {
   };
 };
 
-export {
-  getConfig,
-  assertNoOpenAIKey
-};
+export { getConfig };

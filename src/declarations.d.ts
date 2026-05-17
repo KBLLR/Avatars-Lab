@@ -35,4 +35,14 @@ interface Window {
     keys: Set<any>;
     errors: string[];
   };
+  __talkingHeadResult: {
+    ready: boolean;
+    skipped: boolean;
+    skipReason: string;
+    playbackStarted: boolean;
+    playbackEnded: boolean;
+    renderFrames: number;
+    lipsyncActive: boolean;
+    errors: string[];
+  };
 }

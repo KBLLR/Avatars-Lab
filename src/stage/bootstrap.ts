@@ -26,6 +26,7 @@ export interface BootstrapDeps {
   analyzePerformance: () => Promise<void>;
   performSong: () => Promise<void>;
   stopPerformance: () => void;
+  stopSpeech: () => void;
   bindControls: () => void;
   setHud: (scene: string, camera: string, lights: string, mode: string) => void;
   setChip: (chip: HTMLElement, label: string, value: string) => void;
@@ -57,6 +58,7 @@ export const bootstrapStage = async ({
   analyzePerformance,
   performSong,
   stopPerformance,
+  stopSpeech,
   bindControls,
   setHud,
   setChip,
@@ -161,6 +163,7 @@ export const bootstrapStage = async ({
 
   if (els.stopBtn) {
     els.stopBtn.addEventListener("click", () => {
+      stopSpeech();
       stopPerformance();
     });
   }
