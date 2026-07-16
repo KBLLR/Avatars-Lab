@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-13T02:03:26.107Z",
+  "generated_at": "2026-07-13T08:25:58.754Z",
   "registry_path": "/Users/davidcaballero/core-x-kbllr_0/model-zoo/registry.json",
   "models": [
     {
@@ -440,7 +440,154 @@
     {
       "id": "vision/qwen2.5-vl-7b-4bit",
       "type": "vlm",
-      "capabilities": [],
+      "capabilities": [
+        "ocr",
+        "vision",
+        "image-understanding",
+        "document-parse"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/qwen2.5-vl-7b-instruct-4bit",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "vision",
+        "document-parse",
+        "image-understanding",
+        "diagram-inspection"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/gemma-4-e4b-it-4bit",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "vision",
+        "document-parse",
+        "image-understanding",
+        "diagram-inspection"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/lfm2.5-vl-450m-8bit",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "vision",
+        "screenshot-triage",
+        "diagram-inspection",
+        "image-understanding"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/qwen3.6-27b-4bit",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "vision",
+        "document-parse",
+        "layout",
+        "table",
+        "diagram-inspection",
+        "evidence-validation"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/deepseek-ocr-bf16",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "document-parse",
+        "markdown",
+        "layout"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/deepseek-ocr-2",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "document-parse",
+        "markdown",
+        "layout"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/dots-ocr-bf16",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "document-parse",
+        "layout",
+        "table",
+        "formula"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/dots-mocr-bf16",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "document-parse",
+        "layout",
+        "table",
+        "diagram",
+        "svg"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/glm-ocr-bf16",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "document-parse",
+        "table",
+        "formula",
+        "information-extraction"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/falcon-ocr-bf16",
+      "type": "vlm",
+      "capabilities": [
+        "ocr",
+        "document-parse",
+        "table",
+        "formula",
+        "html"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "vision/granite-vision-3.2-2b-mlx",
+      "type": "vlm",
+      "capabilities": [
+        "vision",
+        "document-parse",
+        "image-understanding"
+      ],
       "description": null,
       "tags": []
     },
@@ -590,6 +737,43 @@
       "id": "text/qwen2.5-coder-32b-4bit",
       "type": "llm",
       "capabilities": [],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "text/gemma-4-31b-it-4bit",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming",
+        "reasoning",
+        "agentic_workflows",
+        "function_calling",
+        "structured_output",
+        "code_generation"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "text/qwen2.5-coder-7b-instruct-4bit",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming",
+        "code_reasoning"
+      ],
+      "description": null,
+      "tags": []
+    },
+    {
+      "id": "text/qwen2.5-coder-14b-instruct-4bit",
+      "type": "llm",
+      "capabilities": [
+        "chat",
+        "streaming",
+        "code_reasoning"
+      ],
       "description": null,
       "tags": []
     },
