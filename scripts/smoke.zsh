@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT_DIR"
 
-export AVATAR_LABS_DEV_PORT="${AVATAR_LABS_DEV_PORT:-5177}"
+export AVATAR_LABS_DEV_PORT="${AVATAR_LABS_DEV_PORT:-5185}"
 export AVATAR_LABS_BASE_URL="${AVATAR_LABS_BASE_URL:-http://127.0.0.1:${AVATAR_LABS_DEV_PORT}}"
 
 eval "$(node packages/tests/print-config.mjs --export-env)"

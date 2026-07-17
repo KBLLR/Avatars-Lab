@@ -1,4 +1,4 @@
-const port = process.env.AVATAR_LABS_DEV_PORT || 5177;
+const port = process.env.AVATAR_LABS_DEV_PORT || 5185;
 const baseURL = process.env.AVATAR_LABS_BASE_URL || `http://127.0.0.1:${port}`;
 
 export default {

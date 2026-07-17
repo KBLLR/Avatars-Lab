@@ -88,7 +88,7 @@ LLM_URL="http://${LLM_HOST}:${LLM_PORT}/health"
 AUDIO_URL="http://${AUDIO_HOST}:${AUDIO_PORT}/health"
 
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
-export CAMPUS_FRONTEND_URL="${CAMPUS_FRONTEND_URL:-http://127.0.0.1:5177}"
+export CAMPUS_FRONTEND_URL="${CAMPUS_FRONTEND_URL:-http://127.0.0.1:5185}"
 export HF_HOME="${HF_HOME:-$REPO_ROOT/model-zoo/hf_cache}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$REPO_ROOT/model-zoo/hf_cache/hub}"
 export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-$REPO_ROOT/model-zoo/hf_cache/hub}"

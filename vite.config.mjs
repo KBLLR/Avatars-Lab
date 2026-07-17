@@ -6,7 +6,9 @@ const root = process.cwd();
 export default defineConfig({
   server: {
     host: "127.0.0.1",
-    port: 5177,
+    // Canonical Avatar Labs dev port — fixed by operator decree (2026-07-17);
+    // core-x will launch/monitor the house on this port.
+    port: 5185,
     strictPort: true,
     proxy: {
       "/api/audio": {
@@ -49,7 +51,7 @@ export default defineConfig({
   },
   preview: {
     host: "127.0.0.1",
-    port: 5177,
+    port: 5185,
     strictPort: true,
   },
   assetsInclude: ["**/*.glb", "**/*.bin", "**/*.wav"],
