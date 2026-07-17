@@ -74,6 +74,7 @@ export default defineConfig({
       input: {
         main: resolve(root, "index.html"),
         headaudio: resolve(root, "head-audio.html"),
+        "gemma-avatar": resolve(root, "gemma-avatar.html"),
         e2e: resolve(root, "e2e.html"),
         conversation: resolve(root, "mlx-conversation.html"),
         stage: resolve(root, "stage.html"),
