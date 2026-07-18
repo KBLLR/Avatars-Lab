@@ -6,12 +6,7 @@
     <title>MonKnight Poster Generator v2.0</title>
 
     <!-- Extended Font Library -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Big+Shoulders+Display:wght@400;700;900&family=Bodoni+Moda:ital,wght@0,400;0,700;1,400&family=Climate+Crisis&family=Comic+Neue:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Courier+Prime&family=DM+Sans:wght@400;700;900&family=DM+Serif+Display:ital@0;1&family=Darker+Grotesque:wght@300;500;900&family=Epilogue:wght@100;400;900&family=Fraunces:ital,wght@0,400;0,900;1,400&family=IBM+Plex+Mono:wght@400;700&family=Inter:wght@100;400;700;900&family=JetBrains+Mono:wght@400;800&family=Josefin+Sans:wght@300;400;700&family=Libre+Barcode+39+Text&family=Major+Mono+Display&family=Manrope:wght@200;400;800&family=Noto+Sans+JP:wght@400;900&family=Orbitron:wght@400;900&family=Oswald:wght@300;700&family=Permanent+Marker&family=Playfair+Display:ital,wght@0,400;0,900;1,400;1,900&family=Poiret+One&family=Righteous&family=Rubik+Glitch&family=Rubik+Mono+One&family=Space+Grotesk:wght@300;700&family=Special+Elite&family=Syne:wght@400;800&family=Unbounded:wght@300;700;900&family=VT323&family=Work+Sans:wght@100;400;900&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
 
     <style>
       /* ===== CSS VARIABLES & THEME ===== */
@@ -5868,6 +5863,8 @@ void main() {
         preserveDrawingBuffer: true,
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
@@ -5918,7 +5915,9 @@ void main() {
 
       // Material
       const mat = new THREE.MeshStandardMaterial({
-        color: 0x111214,
+        color: 0xd8d8d8,
+        emissive: 0x263346,
+        emissiveIntensity: 0.55,
         map: ncaTex,
         metalness: 0.15,
         roughness: 0.45,
@@ -9504,5 +9503,6 @@ void main() {
       // Initialize
       updatePreview();
     </script>
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
   </body>
 </html>

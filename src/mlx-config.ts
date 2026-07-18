@@ -91,4 +91,5 @@ const getMlxConfig = () => {
 };
 
 export { getMlxConfig, setOverride, readOverrides };
+export type MlxConfig = ReturnType<typeof getMlxConfig>;
 export type { TtsBackend, MlxOverrides };

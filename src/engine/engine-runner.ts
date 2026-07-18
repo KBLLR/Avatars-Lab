@@ -95,26 +95,6 @@ export class EngineRunner {
   // ─────────────────────────────────────────────────────────────
 
   private init(): void {
-    // Create engine
-    const engineConfig: EngineConfig = {
-      head: this.head,
-      effectsManager: undefined, // Will be set if available
-    };
-
-    this.engine = new EngineStateMachine(engineConfig);
-
-    // Subscribe to engine events
-    this.engine.on("stateChange", (event) => {
-      this.emit({ type: "stateChange", state: this.getState() });
-    });
-
-    this.engine.on("timeUpdate", (event) => {
-      if (this.editor && event.time_ms !== undefined) {
-        this.editor.setPlayhead(event.time_ms);
-      }
-      this.emit({ type: "timeUpdate", state: this.getState() });
-    });
-
     // Create timeline editor if container provided
     if (this.config.showEditor && this.config.timelineContainer) {
       this.initEditor();
@@ -127,6 +107,28 @@ export class EngineRunner {
     }
 
     console.log("[EngineRunner] Initialized");
+  }
+
+  private createEngine(timeline: Timeline): EngineStateMachine {
+    const engineConfig: EngineConfig = {
+      timeline,
+      head: this.head,
+      effectsManager: undefined,
+    };
+    const engine = new EngineStateMachine(engineConfig);
+    engine.on((event) => {
+      if (event.type === "stateChange") {
+        this.emit({ type: "stateChange", state: this.getState() });
+      }
+      if (event.type === "timeUpdate") {
+        if (this.editor && event.time_ms !== undefined) {
+          this.editor.setPlayhead(event.time_ms);
+        }
+        this.emit({ type: "timeUpdate", state: this.getState() });
+      }
+    });
+    void engine.initialize();
+    return engine;
   }
 
   private initEditor(): void {
@@ -201,9 +203,8 @@ export class EngineRunner {
     this.timeline = timeline;
 
     // Load into engine
-    if (this.engine) {
-      this.engine.loadTimeline(timeline);
-    }
+    if (this.engine) this.engine.setTimeline(timeline);
+    else this.engine = this.createEngine(timeline);
 
     // Load into editor
     if (this.editor) {
@@ -312,7 +313,7 @@ export class EngineRunner {
    * Toggle play/pause
    */
   togglePlay(): void {
-    if (this.engine?.getState().state === "playing") {
+    if (this.engine?.getState() === "playing") {
       this.pause();
     } else {
       this.play();
@@ -336,7 +337,7 @@ export class EngineRunner {
    * Get current playback time
    */
   getCurrentTime(): number {
-    return this.engine?.getState().time_ms || 0;
+    return this.engine?.getCurrentTime() || 0;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -361,15 +362,16 @@ export class EngineRunner {
       return;
     }
 
-    const state = this.engine.getState();
+    const engineState = this.engine.getState();
+    const currentTime = this.engine.getCurrentTime();
 
-    if (state.state !== "playing") {
+    if (engineState !== "playing") {
       this.stopPlaybackLoop();
       return;
     }
 
     // Check if playback ended
-    if (state.time_ms >= this.timeline.duration_ms) {
+    if (currentTime >= this.timeline.duration_ms) {
       this.stop();
       this.emit({ type: "playbackEnd", state: this.getState() });
       return;
@@ -377,7 +379,7 @@ export class EngineRunner {
 
     // Update editor playhead
     if (this.editor) {
-      this.editor.setPlayhead(state.time_ms);
+      this.editor.setPlayhead(currentTime);
     }
 
     this.lastFrameTime = timestamp;
@@ -395,12 +397,12 @@ export class EngineRunner {
     const engineState = this.engine?.getState();
 
     return {
-      isPlaying: engineState?.state === "playing",
-      isPaused: engineState?.state === "paused",
-      currentTime_ms: engineState?.time_ms || 0,
+      isPlaying: engineState === "playing",
+      isPaused: engineState === "paused",
+      currentTime_ms: this.engine?.getCurrentTime() || 0,
       duration_ms: this.timeline?.duration_ms || 0,
       timeline: this.timeline,
-      engineState: engineState?.state || "idle",
+      engineState: engineState || "idle",
     };
   }
 

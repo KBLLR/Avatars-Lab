@@ -3,144 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Core-X Head — Streaming TTS + ARKit Visemes (bust mode)</title>
-    <style>
-      :root {
-        --bg: #0e1624;
-        --panel: #1a2a3e;
-        --ink: #f6f2ea;
-        --accent: #7fd4b2;
-        --warn: #e8a87c;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
-        background: var(--bg);
-        color: var(--ink);
-        display: grid;
-        grid-template-columns: minmax(320px, 1fr) 380px;
-        height: 100vh;
-        overflow: hidden;
-      }
-      #stage { position: relative; min-height: 100%; }
-      #stage canvas { display: block; width: 100%; height: 100%; }
-      aside {
-        padding: 20px;
-        overflow-y: auto;
-        display: grid;
-        gap: 12px;
-        align-content: start;
-        border-left: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      h1 { font-size: 18px; margin: 0; }
-      p.note { font-size: 12px; opacity: 0.7; margin: 0; line-height: 1.5; }
-      label { font-size: 12px; opacity: 0.8; display: grid; gap: 4px; }
-      textarea, input {
-        width: 100%;
-        background: var(--panel);
-        color: var(--ink);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        padding: 8px 10px;
-        font: inherit;
-        font-size: 13px;
-      }
-      textarea { min-height: 84px; resize: vertical; }
-      .row { display: flex; gap: 8px; }
-      button {
-        flex: 1;
-        padding: 10px 12px;
-        border: none;
-        border-radius: 8px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        background: var(--accent);
-        color: #08131c;
-      }
-      button.secondary { background: #33465e; color: var(--ink); }
-      button.stop { background: var(--warn); color: #221208; }
-      button:disabled { opacity: 0.45; cursor: not-allowed; }
-      .metrics {
-        background: var(--panel);
-        border-radius: 10px;
-        padding: 12px 14px;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px 14px;
-        font-size: 13px;
-      }
-      .metrics b { color: var(--accent); font-variant-numeric: tabular-nums; }
-      .metrics .wide { grid-column: 1 / -1; }
-      #status {
-        background: var(--panel);
-        border-radius: 10px;
-        padding: 10px 14px;
-        font-size: 13px;
-      }
-      #log {
-        background: #0a1420;
-        border-radius: 10px;
-        padding: 10px 12px;
-        font-family: "SF Mono", ui-monospace, monospace;
-        font-size: 11px;
-        line-height: 1.6;
-        max-height: 26vh;
-        overflow-y: auto;
-        white-space: pre-wrap;
-      }
-      .provenance { font-size: 10px; opacity: 0.45; line-height: 1.5; }
-    </style>
+    <title>Core-X Head / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/avatar-labs.css" />
   </head>
-  <body>
-    <div id="stage"></div>
-    <aside>
-      <h1>Core-X Head (bust mode)</h1>
-      <p class="note">
-        The same streaming pipeline as the Gemma Avatar reference, on a
-        Core-X ChatAvatar head: no skeleton, no Oculus viseme morphs — just
-        51 ARKit blendshapes. HeadAudio's Oculus viseme events are mapped to
-        ARKit morph combinations at runtime, exactly the contract core-x's
-        VoiceScene consumes. No Blender rigging required for speech.
-      </p>
-      <div id="status">Booting…</div>
-      <label>
-        Text
-        <textarea id="text">Hello operator. This is my own head, no bones attached. My mouth is ARKit blendshapes driven straight from the streaming audio.</textarea>
-      </label>
-      <label>
-        Voice (mlx-audio manifest name)
-        <input id="voice" value="lullabot" />
-      </label>
-      <label>
-        Head GLB URL (served by core-x ui dev server via proxy)
-        <input id="head-url" value="/corex-assets/avatars/heads/kbllr/kbllr.glb" />
-      </label>
-      <label>
-        Service URL
-        <input id="service" value="http://127.0.0.1:8093" />
-      </label>
-      <div class="row">
-        <button id="speak-stream">Speak (streaming)</button>
-        <button id="speak-blob" class="secondary">Speak (blob)</button>
-        <button id="stop" class="stop">Stop</button>
-      </div>
-      <div class="metrics">
-        <span>First audio</span><b id="m-ttfa">—</b>
-        <span>Request total</span><b id="m-total">—</b>
-        <span>Audio duration</span><b id="m-audio">—</b>
-        <span>Viseme events</span><b id="m-visemes">0</b>
-        <span class="wide">Player queue <b id="m-queue">0.0s</b></span>
-      </div>
-      <div id="log"></div>
-      <p class="provenance">
-        Head: operator's own ChatAvatar bake (kbllr), canonical copy in
-        core-x/ui/public/avatars/heads — consumed over HTTP, not duplicated.
-        Lip-sync: @met4citizen/headaudio visemes → ARKit map. Renderer:
-        three.js (no TalkingHead — busts have no rig).
-      </p>
-    </aside>
+  <body class="case-page">
+    <main class="runtime-shell">
+      <nav class="runtime-nav" aria-label="Case navigation">
+        <a class="runtime-nav__brand" href="/" title="Avatar Labs">AL</a>
+        <a class="runtime-nav__item" href="/gemma-avatar.html" title="Gemma Avatar">GEM</a>
+        <a class="runtime-nav__item" href="/corex-head.html" aria-current="page" title="Core-X Head">CXH</a>
+        <a class="runtime-nav__item" href="/stage.html" title="Stage Director">STG</a>
+        <a class="runtime-nav__item" href="/engine-lab.html" title="Performance Engine">ENG</a>
+      </nav>
+
+      <section id="stage" class="runtime-stage" aria-label="Core-X head stage">
+        <span class="runtime-stage__badge">WebGPU primary / WebGL2 fallback</span>
+      </section>
+
+      <aside class="control-panel">
+        <header class="control-panel__header">
+          <h1>Core-X Head</h1>
+          <p>Rig-less ChatAvatar head with HeadAudio-to-ARKit speech animation.</p>
+        </header>
+
+        <section class="control-panel__section control-stack">
+          <div id="status" class="runtime-status">booting</div>
+          <label>Text<textarea id="text">Hello operator. This is my own head, no bones attached. My mouth is ARKit blendshapes driven straight from the streaming audio.</textarea></label>
+          <label>Voice<input id="voice" value="lullabot" /></label>
+          <label>Head asset<input id="head-url" value="/corex-assets/avatars/heads/kbllr/kbllr.glb" /></label>
+          <label>Core-X Gateway<input id="service" value="http://127.0.0.1:8090" /></label>
+          <div class="command-row">
+            <button id="speak-stream" class="command-button">Stream</button>
+            <button id="speak-blob" class="command-button command-button--secondary">Blob</button>
+            <button id="stop" class="command-button command-button--stop" title="Stop playback">Stop</button>
+          </div>
+        </section>
+
+        <section class="control-panel__section metrics-grid" aria-label="Performance metrics">
+          <span>First audio</span><b id="m-ttfa">-</b>
+          <span>Request total</span><b id="m-total">-</b>
+          <span>Audio duration</span><b id="m-audio">-</b>
+          <span>Viseme events</span><b id="m-visemes">0</b>
+          <span>Player queue</span><b id="m-queue">0.0s</b>
+        </section>
+
+        <section class="control-panel__section"><pre id="log" class="runtime-log"></pre></section>
+        <footer class="control-panel__footer">Asset source: Core-X canonical head library. No binary duplication.</footer>
+      </aside>
+    </main>
     <script type="module" src="/src/corex-head.ts"></script>
   </body>
 </html>

@@ -3,6 +3,8 @@
  * Features: timeout, retry with exponential backoff, streaming, abort support
  */
 
+import { extractOpenResponseText } from "../runtime/openresponses-client";
+
 export interface LLMRequestOptions {
   baseUrl: string;
   prompt: string;
@@ -99,7 +101,7 @@ export async function requestLLM(options: LLMRequestOptions): Promise<LLMRespons
 
       onProgress?.(`Requesting LLM (attempt ${attempt + 1}/${retries + 1})...`);
 
-      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/responses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,12 +111,10 @@ export async function requestLLM(options: LLMRequestOptions): Promise<LLMRespons
         body: JSON.stringify({
           model,
           temperature,
-          max_tokens: maxTokens,
+          max_output_tokens: maxTokens,
           stream,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ]
+          instructions: systemPrompt,
+          input: prompt,
         })
       });
 
@@ -143,11 +143,11 @@ export async function requestLLM(options: LLMRequestOptions): Promise<LLMRespons
 
       // Handle regular JSON response
       const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content || "";
-      const finishReason = data?.choices?.[0]?.finish_reason;
+      const content = extractOpenResponseText(data);
+      const finishReason = data?.status;
       const usage = data?.usage ? {
-        promptTokens: data.usage.prompt_tokens || 0,
-        completionTokens: data.usage.completion_tokens || 0,
+        promptTokens: data.usage.input_tokens || 0,
+        completionTokens: data.usage.output_tokens || 0,
         totalTokens: data.usage.total_tokens || 0
       } : undefined;
 
@@ -245,7 +245,9 @@ async function parseStreamingResponse(
           try {
             const jsonStr = trimmed.slice(6);
             const payload = JSON.parse(jsonStr);
-            const delta = payload?.choices?.[0]?.delta?.content;
+            const delta = payload?.type === "response.output_text.delta"
+              ? payload.delta || payload.data?.delta
+              : "";
 
             if (delta) {
               accumulated += delta;
@@ -262,7 +264,9 @@ async function parseStreamingResponse(
     if (buffer.trim() && buffer.trim().startsWith("data: ") && buffer.trim() !== "data: [DONE]") {
       try {
         const payload = JSON.parse(buffer.trim().slice(6));
-        const delta = payload?.choices?.[0]?.delta?.content;
+        const delta = payload?.type === "response.output_text.delta"
+          ? payload.delta || payload.data?.delta
+          : "";
         if (delta) {
           accumulated += delta;
           onChunk(delta, accumulated);

@@ -9,7 +9,9 @@ Large binary assets (avatars, animations, audio) are **not included** in this re
 git clone https://github.com/KBLLR/Avatars-Lab.git
 cd Avatars-Lab
 
-# Download assets (choose one method below)
+# Restore the local avatar cache from the preserved source snapshot
+npm run assets:hydrate
+
 # Then run
 npm install
 npm run dev
@@ -78,30 +80,36 @@ Test audio files are needed for:
 
 Use any WAV/MP3 files or generate with TTS.
 
-## Asset Download Options
+## Asset Hydration
 
-### Option 1: Download from Asset Server (Recommended)
+`npm run dev` and `npm run build` call the hydrator automatically. It writes
+ignored GLB files plus `public/avatars/runtime-manifest.json`; the runtime
+manifest contains only models that passed the GLB signature check.
 
-If you have access to the HTDI asset server:
-
-```bash
-# From project root
-./scripts/download-assets.sh
-```
-
-### Option 2: Sync from S3/GCS
+### Option 1: Core-X local asset root
 
 ```bash
-# AWS S3
-aws s3 sync s3://htdi-assets/avatar-labs/avatars public/avatars/
-
-# Google Cloud Storage
-gsutil -m rsync -r gs://htdi-assets/avatar-labs/avatars public/avatars/
+AVATAR_LABS_ASSET_ROOT=/absolute/path/to/avatar-glbs npm run assets:hydrate
 ```
 
-### Option 3: Manual Download
+The asset root is checked first and can be a Warehouse-resolved local view. The
+house never commits or hardcodes that machine-local path.
 
-Contact the team for access to the asset archive.
+### Option 2: Preserved source snapshot
+
+```bash
+npm run assets:hydrate
+```
+
+The default hydrator restores the original full-body avatars from the reachable
+Git snapshot recorded in `scripts/hydrate-avatar-assets.mjs`. A shallow clone
+without that snapshot falls back to the tracked preview fixture instead of
+advertising broken avatar options.
+
+### Option 3: Manual assets
+
+Place compatible GLBs in `public/avatars/`, then run the hydrator to regenerate
+the runtime manifest.
 
 ### Option 4: Create Minimal Set
 
@@ -123,6 +131,7 @@ For development, you only need ONE avatar:
 public/
 ├── avatars/
 │   ├── manifest.json     # Lists available avatars (tracked)
+│   ├── runtime-manifest.json # Generated list of verified local assets (ignored)
 │   ├── .gitkeep          # Preserves empty dir (tracked)
 │   ├── *.glb             # Avatar models (NOT tracked)
 │   └── */                # Subdirs for complex avatars (NOT tracked)

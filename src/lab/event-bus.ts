@@ -152,10 +152,12 @@ export interface LabEvents {
 }
 
 // Type-safe event bus wrapper
-export interface TypedEventBus extends EventBus {
+export interface TypedEventBus {
   on<K extends keyof LabEvents>(event: K, handler: EventHandler<LabEvents[K]>): () => void;
+  off<K extends keyof LabEvents>(event: K, handler: EventHandler<LabEvents[K]>): void;
   emit<K extends keyof LabEvents>(event: K, data: LabEvents[K]): void;
   once<K extends keyof LabEvents>(event: K, handler: EventHandler<LabEvents[K]>): () => void;
+  clear(): void;
 }
 
 export const createTypedEventBus = (): TypedEventBus => {

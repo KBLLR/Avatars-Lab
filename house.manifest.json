@@ -1,0 +1,138 @@
+{
+  "house_id": "avatar-labs",
+  "name": "Avatar Labs",
+  "version": "1.0.0",
+  "status": "active",
+  "purpose": {
+    "domain": "audiovisual",
+    "mission": "Validate, author, and operate local-first realtime avatars across speech, animation, rendering, and presentation workflows.",
+    "target_users": [
+      "avatar directors",
+      "3D artists",
+      "Core-X operators"
+    ],
+    "key_outcomes": [
+      "Fast local voice-to-avatar response",
+      "Reusable WebGPU and compatibility rendering harnesses",
+      "Verified ARKit and Oculus-viseme animation contracts",
+      "Portable Core-X avatar integration evidence"
+    ]
+  },
+  "personality": {
+    "voice": "Avatar Labs is a precise realtime performance and validation house.",
+    "tone": "professional",
+    "theme": {
+      "primary_color": "#2d2824",
+      "secondary_color": "#d1d1d0",
+      "icon": "avatar-labs"
+    }
+  },
+  "agents": {
+    "roster": [
+      {
+        "agent_id": "avatar-labs:avatar-director",
+        "role_in_house": "lead",
+        "capabilities": [
+          "avatar-validation",
+          "animation",
+          "audio-response",
+          "rendering"
+        ]
+      }
+    ],
+    "default_agent": "avatar-labs:avatar-director",
+    "routing_rules": [
+      {
+        "pattern": "*",
+        "capability": "avatar-validation",
+        "agent_id": "avatar-labs:avatar-director"
+      }
+    ]
+  },
+  "capabilities": {
+    "domains": [
+      "avatar-validation",
+      "3d-rendering",
+      "speech-animation",
+      "performance-authoring"
+    ],
+    "input_types": [
+      "text",
+      "image",
+      "audio",
+      "file",
+      "voice"
+    ],
+    "output_types": [
+      "3d",
+      "audio",
+      "stream",
+      "structured",
+      "voice"
+    ],
+    "streaming": true,
+    "tool_calling": true
+  },
+  "dependencies": {
+    "services": [
+      "gateway",
+      "mlx-llm",
+      "mlx-audio",
+      "mlx-vision",
+      "mflux",
+      "said"
+    ],
+    "models": [],
+    "houses": [],
+    "mcp_servers": []
+  },
+  "skills": {
+    "house_skills": [],
+    "shared_skills": [
+      "core-ops",
+      "mlx-chat",
+      "semantic-streaming"
+    ]
+  },
+  "ui_modes": [
+    "chat",
+    "canvas",
+    "voice",
+    "multimodal"
+  ],
+  "surface": {
+    "base_url": "http://127.0.0.1:5185",
+    "health_url": "http://127.0.0.1:5185/",
+    "default_case": "launcher",
+    "cases": [
+      { "id": "launcher", "label": "Avatar Labs", "path": "/" },
+      { "id": "gemma-avatar", "label": "Gemma Avatar", "path": "/gemma-avatar.html" },
+      { "id": "corex-head", "label": "Core-X Head", "path": "/corex-head.html" },
+      { "id": "stage", "label": "Stage Director", "path": "/stage.html" },
+      { "id": "engine-lab", "label": "Performance Engine", "path": "/engine-lab.html" },
+      { "id": "dance-studio", "label": "Dance Studio", "path": "/dance-studio.html" },
+      { "id": "gestures-lab", "label": "Gestures Lab", "path": "/gestures-lab.html" },
+      { "id": "multi-modal", "label": "Multi-Modal", "path": "/multi-modal.html" },
+      { "id": "mlx-conversation", "label": "MLX Conversation", "path": "/mlx-conversation.html" },
+      { "id": "composition-layer", "label": "Composition Layer", "path": "/composition-layer.html" },
+      { "id": "head-audio", "label": "HeadAudio Probe", "path": "/head-audio.html" }
+    ]
+  },
+  "council_integration": {
+    "broadcast_events": [
+      "avatar-labs.status",
+      "task.complete",
+      "health.pong"
+    ],
+    "subscribe_events": [
+      "task.request",
+      "council.directive",
+      "health.ping"
+    ],
+    "voting_weight": 0.7
+  },
+  "health": {
+    "endpoint": "/",
+    "port": 5185
+  }
+}

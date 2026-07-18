@@ -40,11 +40,13 @@ import {
   WebGLRenderer,
   Box3,
 } from "three";
+import { WebGPURenderer } from "three/webgpu";
 import { GLTFLoader } from "three-stdlib";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import headWorkletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
+import { streamSpeech } from "./runtime/audio-stream";
 
 const els = {
   stage: document.getElementById("stage") as HTMLElement,
@@ -66,6 +68,8 @@ const els = {
 
 const result = {
   ready: false,
+  capability: "tts-arkit-viseme",
+  renderer: "pending",
   visemeEvents: 0,
   lastTtfaMs: 0,
   morphMeshes: 0,
@@ -158,55 +162,6 @@ function normalizeChatAvatarHead(headScene: Object3D) {
   });
 }
 
-/** Chunk-continuous linear resampler (source rate → context rate). */
-class LinearResampler {
-  private phase = 0;
-  private last = 0;
-  private readonly ratio: number;
-  constructor(srcRate: number, dstRate: number) {
-    this.ratio = srcRate / dstRate;
-  }
-  push(src: Float32Array): Float32Array {
-    if (src.length === 0) return src;
-    if (this.ratio === 1) return src;
-    const out: number[] = [];
-    let pos = this.phase;
-    while (pos < src.length) {
-      const i = Math.floor(pos);
-      const frac = pos - i;
-      const s0 = i >= 0 ? src[i] : this.last;
-      const s1 = i + 1 < src.length ? src[i + 1] : src[src.length - 1];
-      out.push(s0 + (s1 - s0) * frac);
-      pos += this.ratio;
-    }
-    this.phase = pos - src.length;
-    this.last = src[src.length - 1];
-    return Float32Array.from(out);
-  }
-}
-
-/** Int16LE byte stream → Float32, carrying odd bytes across reads. */
-class PcmDecoder {
-  private leftover: Uint8Array | null = null;
-  push(bytes: Uint8Array): Float32Array {
-    let data = bytes;
-    if (this.leftover) {
-      const merged = new Uint8Array(this.leftover.length + bytes.length);
-      merged.set(this.leftover);
-      merged.set(bytes, this.leftover.length);
-      data = merged;
-      this.leftover = null;
-    }
-    const even = data.length & ~1;
-    if (even < data.length) this.leftover = data.slice(even);
-    const aligned = data.slice(0, even);
-    const i16 = new Int16Array(aligned.buffer);
-    const out = new Float32Array(i16.length);
-    for (let i = 0; i < i16.length; i += 1) out[i] = i16[i] / 32768;
-    return out;
-  }
-}
-
 interface Stage {
   audioCtx: AudioContext;
   player: AudioWorkletNode;
@@ -265,7 +220,24 @@ function blinkLevel(): number {
 
 async function initStage(): Promise<Stage> {
   setStatus("Creating three.js stage…");
-  const renderer = new WebGLRenderer({ antialias: true });
+  const forceWebGl = new URLSearchParams(window.location.search).get("renderer") === "webgl";
+  let renderer: WebGLRenderer | WebGPURenderer;
+  if ("gpu" in navigator && !forceWebGl) {
+    try {
+      const webgpu = new WebGPURenderer({ antialias: true });
+      await webgpu.init();
+      renderer = webgpu;
+      result.renderer = "webgpu";
+      log("renderer: WebGPU initialized");
+    } catch (error) {
+      log(`renderer: WebGPU unavailable (${String(error)}); using WebGL2`);
+      renderer = new WebGLRenderer({ antialias: true });
+      result.renderer = "webgl-fallback";
+    }
+  } else {
+    renderer = new WebGLRenderer({ antialias: true });
+    result.renderer = forceWebGl ? "webgl-forced" : "webgl-fallback";
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(els.stage.clientWidth, els.stage.clientHeight);
   renderer.outputColorSpace = SRGBColorSpace;
@@ -275,12 +247,20 @@ async function initStage(): Promise<Stage> {
 
   const scene = new Scene();
   scene.background = new Color(0x101a2b);
-  const pmrem = new PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.add(new HemisphereLight(0xdfe8ff, 0x1a2233, 0.35));
-  const key = new DirectionalLight(0xffffff, 1.1);
+  const isWebGpu = result.renderer === "webgpu";
+  if (!isWebGpu && renderer instanceof WebGLRenderer) {
+    const pmrem = new PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  }
+  scene.add(new HemisphereLight(0xdfe8ff, 0x1a2233, isWebGpu ? 0.9 : 0.35));
+  const key = new DirectionalLight(0xffffff, isWebGpu ? 2.2 : 1.1);
   key.position.set(0.6, 1.4, 1.2);
   scene.add(key);
+  if (isWebGpu) {
+    const fill = new DirectionalLight(0xb8d5ff, 0.8);
+    fill.position.set(-1.4, 0.4, 0.8);
+    scene.add(fill);
+  }
 
   const camera = new PerspectiveCamera(28, els.stage.clientWidth / els.stage.clientHeight, 0.01, 50);
 
@@ -376,8 +356,8 @@ async function initStage(): Promise<Stage> {
   });
 
   result.ready = true;
-  setStatus("Ready. Type and speak.");
-  log(`stage ready — ctx ${audioCtx.sampleRate} Hz`);
+  setStatus(`Ready / ${result.renderer}`);
+  log(`stage ready — ${result.renderer}, ctx ${audioCtx.sampleRate} Hz`);
   const stageObj = { audioCtx, player, sink, headaudio, morphMeshes };
   (window as any).__corexHeadStage = stageObj; // debug/Playwright handle
   return stageObj;
@@ -417,49 +397,25 @@ async function speakStreaming() {
   try {
     await stage.audioCtx.resume();
     abort = new AbortController();
-    const t0 = performance.now();
-    const response = await fetch(`${els.service.value}/v1/audio/speech/stream`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: els.text.value,
-        voice: els.voice.value,
-        model: "qwen",
-        streaming_interval: 0.6,
-      }),
+    const stream = await streamSpeech({
+      baseUrl: els.service.value,
+      input: els.text.value,
+      voice: els.voice.value,
+      destinationSampleRate: stage.audioCtx.sampleRate,
       signal: abort.signal,
-    });
-    if (!response.ok || !response.body) {
-      throw new Error(`stream request failed (HTTP ${response.status})`);
-    }
-    const srcRate = Number(response.headers.get("X-Sample-Rate") || "24000");
-    const decoder = new PcmDecoder();
-    const resampler = new LinearResampler(srcRate, stage.audioCtx.sampleRate);
-    const reader = response.body.getReader();
-    let firstAudioAt = 0;
-    let srcSamples = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value || value.length === 0) continue;
-      if (!firstAudioAt) {
-        firstAudioAt = performance.now() - t0;
+      onFirstChunk: (firstAudioAt) => {
         result.lastTtfaMs = firstAudioAt;
         els.mTtfa.textContent = `${(firstAudioAt / 1000).toFixed(2)}s`;
         log(`streaming: first audio after ${(firstAudioAt / 1000).toFixed(2)}s`);
-      }
-      const f32 = decoder.push(value);
-      srcSamples += f32.length;
-      const resampled = resampler.push(f32);
-      stage.player.port.postMessage({ type: "chunk", samples: resampled }, [
-        resampled.buffer,
-      ]);
-    }
-    const total = (performance.now() - t0) / 1000;
-    els.mTotal.textContent = `${total.toFixed(2)}s`;
-    els.mAudio.textContent = `${(srcSamples / srcRate).toFixed(2)}s`;
+      },
+      onChunk: (samples) => {
+        stage!.player.port.postMessage({ type: "chunk", samples }, [samples.buffer]);
+      },
+    });
+    els.mTotal.textContent = `${(stream.totalMs / 1000).toFixed(2)}s`;
+    els.mAudio.textContent = `${(stream.sourceSamples / stream.sourceSampleRate).toFixed(2)}s`;
     log(
-      `streaming: done — ${total.toFixed(2)}s request for ${(srcSamples / srcRate).toFixed(2)}s of audio`,
+      `streaming: done — ${(stream.totalMs / 1000).toFixed(2)}s request for ${(stream.sourceSamples / stream.sourceSampleRate).toFixed(2)}s of audio`,
     );
   } catch (error) {
     if ((error as Error)?.name !== "AbortError") {

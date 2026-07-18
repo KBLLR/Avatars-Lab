@@ -3,6 +3,7 @@ import { getConfig } from "./lib/config.mjs";
 
 const cfg = getConfig();
 const lines = [
+  `VITE_COREX_GATEWAY_URL=${process.env.VITE_COREX_GATEWAY_URL || cfg.gatewayBaseUrl}`,
   `VITE_MLX_LLM_BASE_URL=${cfg.llmBaseUrl || ""}`,
   `VITE_MLX_AUDIO_BASE_URL=${cfg.audioBaseUrl || ""}`,
   `VITE_MLX_DEFAULT_LLM_MODEL=${cfg.defaultLlmModel || ""}`,

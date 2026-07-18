@@ -96,6 +96,11 @@ const getConfig = () => {
 
   const llmBaseUrl = resolveServiceUrl("llm", manifest);
   const audioBaseUrl = resolveServiceUrl("audio", manifest);
+  const gatewayBaseUrl = (
+    process.env.COREX_GATEWAY_URL ||
+    process.env.VITE_COREX_GATEWAY_URL ||
+    "http://127.0.0.1:8090"
+  ).replace(/\/$/, "");
 
   const defaultLlmModel =
     process.env.MLX_DEFAULT_LLM_MODEL || findModelByCapability(registry, "chat", repoRoot);
@@ -114,6 +119,7 @@ const getConfig = () => {
     repoRoot,
     manifestPath,
     registryPath,
+    gatewayBaseUrl,
     llmBaseUrl,
     audioBaseUrl,
     defaultLlmModel,

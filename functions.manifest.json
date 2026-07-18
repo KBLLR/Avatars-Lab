@@ -1,0 +1,33 @@
+{
+  "house_id": "avatar-labs",
+  "version": "1.0.0",
+  "description": "Avatar Labs local-first avatar validation and performance surface.",
+  "items": [
+    {
+      "id": "avatar-labs:avatar-director",
+      "type": "agent",
+      "status": "active",
+      "name": "AVARA Avatar Director",
+      "description": "Routes avatar validation, speech animation, rendering, and presentation work through verified Avatar Labs harnesses.",
+      "provider": "mlx-local",
+      "promptPath": "./agents/avatar-director.md",
+      "skills": [
+        "core-ops",
+        "semantic-streaming"
+      ],
+      "capabilities": [
+        "avatar-validation",
+        "animation",
+        "audio-response",
+        "rendering"
+      ],
+      "house_binding": "local",
+      "house_id": "avatar-labs"
+    }
+  ],
+  "metadata": {
+    "runtime": "openresponses",
+    "gateway": "http://127.0.0.1:8090",
+    "surface": "http://127.0.0.1:5185"
+  }
+}

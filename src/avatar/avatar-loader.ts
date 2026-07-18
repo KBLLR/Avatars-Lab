@@ -55,6 +55,9 @@ export const buildAvatarManifestCandidates = (): string[] => {
   const base = import.meta.env.BASE_URL || "/";
   const candidates = [
     override,
+    `${base}avatars/runtime-manifest.json`,
+    "avatars/runtime-manifest.json",
+    "/avatars/runtime-manifest.json",
     `${base}avatars/manifest.json`,
     "avatars/manifest.json",
     "/avatars/manifest.json"
@@ -73,6 +76,19 @@ export interface LoadAvatarListResult {
   avatars: AvatarManifestEntry[];
   baseUrl: string | null;
 }
+
+const isLoadableAvatar = async (avatar: AvatarManifestEntry, baseUrl: string): Promise<boolean> => {
+  try {
+    const response = await fetch(resolveAvatarUrl(avatar.file, baseUrl), {
+      method: "HEAD",
+      cache: "no-store"
+    });
+    const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+    return response.ok && !contentType.includes("text/html") && !contentType.includes("application/json");
+  } catch {
+    return false;
+  }
+};
 
 export const loadAvatarList = async (
   avatarSelect: HTMLSelectElement
@@ -100,7 +116,21 @@ export const loadAvatarList = async (
 
   const data: AvatarManifest = await response.json();
   const rawAvatars = Array.isArray(data.avatars) ? data.avatars : [];
-  const avatars = rawAvatars.map(normalizeAvatarEntry);
+  const candidates = rawAvatars.map(normalizeAvatarEntry);
+  const baseUrl = manifestUrl ? new URL(".", manifestUrl).toString() : null;
+  const isHydratedManifest = manifestUrl.endsWith("/runtime-manifest.json");
+  const availability = isHydratedManifest
+    ? candidates.map(() => true)
+    : baseUrl
+      ? await Promise.all(candidates.map((avatar) => isLoadableAvatar(avatar, baseUrl)))
+      : candidates.map(() => false);
+  const avatars = candidates.filter((_, index) => availability[index]);
+
+  if (!avatars.length) {
+    throw new Error(
+      "No loadable GLB avatars were found. Run `npm run assets:hydrate` or set AVATAR_LABS_ASSET_ROOT."
+    );
+  }
 
   avatarSelect.innerHTML = "";
   avatars.forEach((avatar) => {
@@ -115,8 +145,6 @@ export const loadAvatarList = async (
     const randomIndex = Math.floor(Math.random() * avatars.length);
     avatarSelect.value = avatars[randomIndex].file;
   }
-
-  const baseUrl = manifestUrl ? new URL(".", manifestUrl).toString() : null;
 
   return { avatars, baseUrl };
 };

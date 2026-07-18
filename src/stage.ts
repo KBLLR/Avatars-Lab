@@ -384,6 +384,7 @@ const initModelSelectors = async () => {
       embedModelSelect: els.embedModelSelect,
       llmRuntimeModelSelect: els.llmRuntimeModelSelect,
       sttChip: els.sttChip,
+      ttsChip: els.ttsChip,
       chatChip: els.chatChip,
       vlmChip: els.vlmChip,
       llmChip: els.llmChip,
@@ -795,7 +796,7 @@ const init = async () => {
   });
   const stopSpeech = () => {
     audioController.stopAnalysisVoice();
-    const current = getState();
+    const current = state;
     if (current.duoManager) {
       current.duoManager.stopAll();
       return;

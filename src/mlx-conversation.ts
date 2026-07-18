@@ -1,4 +1,5 @@
 import { TalkingHead } from "@met4citizen/talkinghead";
+import { requestOpenResponsesTurn } from "./runtime/openresponses-client";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
@@ -508,23 +509,12 @@ const resetHead = () => {
 };
 
 const callLLM = async (messages: Array<Record<string, any>>) => {
-  const response = await fetch(`${config.llmBaseUrl}/v1/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: config.llmModel,
-      messages,
-      tools: functionDefs,
-      tool_choice: "auto"
-    })
+  return requestOpenResponsesTurn({
+    baseUrl: config.llmBaseUrl,
+    model: config.llmModel,
+    messages,
+    tools: functionDefs,
   });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`LLM error (${response.status}): ${detail}`);
-  }
-
-  return response.json();
 };
 
 const speakResponse = async (text: string) => {
@@ -884,8 +874,8 @@ const init = async () => {
     updateStatus("Failed to load avatars. Check /public/avatars.");
   }
 
-  loadAvatar(true).catch(() => {
-    updateStatus("Avatar preview requires a user gesture.");
+  loadAvatar(true).catch((error) => {
+    updateStatus(error instanceof Error ? error.message : "Failed to load avatar preview.");
   });
 
   updateModeUI();

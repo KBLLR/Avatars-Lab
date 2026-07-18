@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { getConfig } from "./lib/config.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const houseRoot = path.resolve(__dirname, "../..");
 const cfg = getConfig();
 
 const registryPath = cfg.registryPath;
@@ -35,7 +36,7 @@ const payload = {
   voices
 };
 
-const outDir = path.join(repoRoot, "houses", "avatar-labs", "public", "models");
+const outDir = path.join(houseRoot, "public", "models");
 fs.mkdirSync(outDir, { recursive: true });
 const outPath = path.join(outDir, "registry.json");
 fs.writeFileSync(outPath, JSON.stringify(payload, null, 2) + "\n", "utf-8");

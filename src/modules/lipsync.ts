@@ -10,35 +10,31 @@ let headRef: any = null;
 
 export const initLipsync = async (head: any) => {
   headRef = head;
-  try {
-    const absoluteWorkerUrl = new URL(workerUrl, window.location.href).href;
-    headTTS = new HeadTTS({
-        defaultVoice: "af_bella", // Default Kokoro voice
-        defaultLanguage: "en-us",
-        workerModule: absoluteWorkerUrl
-    });
-    console.log("HeadTTS initialized with worker:", absoluteWorkerUrl);
-    // Connect explicitly to ensure WebGPU/WASM is ready
-    await headTTS.connect(); 
-    console.log("HeadTTS connected");
-  } catch (e) {
-    console.error("Failed to initialize HeadTTS:", e);
-  }
+};
+
+const ensureHeadTTS = async () => {
+  if (headTTS) return headTTS;
+  const absoluteWorkerUrl = new URL(workerUrl, window.location.href).href;
+  headTTS = new HeadTTS({
+    defaultVoice: "af_bella",
+    defaultLanguage: "en-us",
+    dictionaryURL: null,
+    workerModule: absoluteWorkerUrl
+  });
+  await headTTS.connect();
+  return headTTS;
 };
 
 export const speakWithLipsync = async (text: string) => {
-  if (!headTTS) {
-    console.warn("HeadTTS not initialized");
-    return;
-  }
   if (!headRef) {
       console.warn("Head reference missing");
       return;
   }
 
   try {
+      const tts = await ensureHeadTTS();
       console.log("Generating lipsync audio for:", text);
-      const audio = await headTTS.speak(text); 
+      const audio = await tts.speak(text);
       // audio returned is likely an AudioBuffer or similar, or it handles playing internally? 
       // Wait, standard TalkingHead integration usually requires passing audio + subtitles/visemes to TalkingHead.speakAudio?
       // Or HeadTTS might have a way to output audio.

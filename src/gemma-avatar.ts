@@ -2,7 +2,7 @@
  * Gemma Avatar reference case (2026-07-17).
  *
  * Local re-creation of the architecture in hf.co/spaces/victor/gemma-avatar,
- * with the cloud backend swapped for the local mlx-audio service:
+ * with the cloud backend narrowed to the local Core-X audio lane:
  *
  *   text → POST /v1/audio/speech/stream (chunked PCM16, Qwen3-TTS voice clone)
  *        → main-thread Int16→Float32 + linear resample to the ctx rate
@@ -11,7 +11,9 @@
  *        → HeadAudio taps the speech gain node, classifies MFCC frames into
  *          Oculus visemes (~50 ms) and writes TalkingHead morph targets.
  *
- * The "Speak (blob)" button reproduces the current core-x path (full WAV,
+ * This is deliberately a TTS/viseme latency reference, not the hosted
+ * microphone, STT, LLM, tool-call, and barge-in conversation pipeline.
+ * The "Blob" button reproduces the full-WAV path,
  * then play) through the same graph, so first-audio latency is directly
  * comparable. This page is intentionally one self-contained case: the
  * reusable modules get extracted during the Avatar Labs modernization.
@@ -22,6 +24,8 @@ import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import headWorkletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import avatarUrl from "../fixtures/avatars/brunette.glb?url";
+import { streamSpeech } from "./runtime/audio-stream";
+import { corexClient } from "./runtime/corex-client";
 
 const els = {
   avatar: document.getElementById("avatar") as HTMLElement,
@@ -43,6 +47,8 @@ const els = {
 
 const result = {
   ready: false,
+  capability: "tts-viseme-reference",
+  renderer: "talkinghead-webgl",
   visemeEvents: 0,
   lastTtfaMs: 0,
   errors: [] as string[],
@@ -64,55 +70,6 @@ const fail = (error: unknown): never => {
   log(`ERROR ${message}`);
   throw error instanceof Error ? error : new Error(message);
 };
-
-/** Chunk-continuous linear resampler (source rate → context rate). */
-class LinearResampler {
-  private phase = 0;
-  private last = 0;
-  private readonly ratio: number;
-  constructor(srcRate: number, dstRate: number) {
-    this.ratio = srcRate / dstRate;
-  }
-  push(src: Float32Array): Float32Array {
-    if (src.length === 0) return src;
-    if (this.ratio === 1) return src;
-    const out: number[] = [];
-    let pos = this.phase;
-    while (pos < src.length) {
-      const i = Math.floor(pos);
-      const frac = pos - i;
-      const s0 = i >= 0 ? src[i] : this.last;
-      const s1 = i + 1 < src.length ? src[i + 1] : src[src.length - 1];
-      out.push(s0 + (s1 - s0) * frac);
-      pos += this.ratio;
-    }
-    this.phase = pos - src.length;
-    this.last = src[src.length - 1];
-    return Float32Array.from(out);
-  }
-}
-
-/** Int16LE byte stream → Float32, carrying odd bytes across reads. */
-class PcmDecoder {
-  private leftover: Uint8Array | null = null;
-  push(bytes: Uint8Array): Float32Array {
-    let data = bytes;
-    if (this.leftover) {
-      const merged = new Uint8Array(this.leftover.length + bytes.length);
-      merged.set(this.leftover);
-      merged.set(bytes, this.leftover.length);
-      data = merged;
-      this.leftover = null;
-    }
-    const even = data.length & ~1;
-    if (even < data.length) this.leftover = data.slice(even);
-    const aligned = data.slice(0, even);
-    const i16 = new Int16Array(aligned.buffer);
-    const out = new Float32Array(i16.length);
-    for (let i = 0; i < i16.length; i += 1) out[i] = i16[i] / 32768;
-    return out;
-  }
-}
 
 interface Stage {
   head: any;
@@ -244,49 +201,25 @@ async function speakStreaming() {
   try {
     await stage.head.audioCtx.resume();
     abort = new AbortController();
-    const t0 = performance.now();
-    const response = await fetch(`${els.service.value}/v1/audio/speech/stream`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: els.text.value,
-        voice: els.voice.value,
-        model: "qwen",
-        streaming_interval: 0.6,
-      }),
+    const stream = await streamSpeech({
+      baseUrl: els.service.value,
+      input: els.text.value,
+      voice: els.voice.value,
+      destinationSampleRate: stage.ctxRate,
       signal: abort.signal,
-    });
-    if (!response.ok || !response.body) {
-      fail(`stream request failed (HTTP ${response.status})`);
-    }
-    const srcRate = Number(response.headers.get("X-Sample-Rate") || "24000");
-    const decoder = new PcmDecoder();
-    const resampler = new LinearResampler(srcRate, stage.ctxRate);
-    const reader = response.body!.getReader();
-    let firstAudioAt = 0;
-    let srcSamples = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value || value.length === 0) continue;
-      if (!firstAudioAt) {
-        firstAudioAt = performance.now() - t0;
+      onFirstChunk: (firstAudioAt) => {
         result.lastTtfaMs = firstAudioAt;
         els.mTtfa.textContent = `${(firstAudioAt / 1000).toFixed(2)}s`;
         log(`streaming: first audio after ${(firstAudioAt / 1000).toFixed(2)}s`);
-      }
-      const f32 = decoder.push(value);
-      srcSamples += f32.length;
-      const resampled = resampler.push(f32);
-      stage.player.port.postMessage({ type: "chunk", samples: resampled }, [
-        resampled.buffer,
-      ]);
-    }
-    const total = (performance.now() - t0) / 1000;
-    els.mTotal.textContent = `${total.toFixed(2)}s`;
-    els.mAudio.textContent = `${(srcSamples / srcRate).toFixed(2)}s`;
+      },
+      onChunk: (samples) => {
+        stage!.player.port.postMessage({ type: "chunk", samples }, [samples.buffer]);
+      },
+    });
+    els.mTotal.textContent = `${(stream.totalMs / 1000).toFixed(2)}s`;
+    els.mAudio.textContent = `${(stream.sourceSamples / stream.sourceSampleRate).toFixed(2)}s`;
     log(
-      `streaming: done — ${total.toFixed(2)}s request for ${(srcSamples / srcRate).toFixed(2)}s of audio`,
+      `streaming: done — ${(stream.totalMs / 1000).toFixed(2)}s request for ${(stream.sourceSamples / stream.sourceSampleRate).toFixed(2)}s of audio`,
     );
   } catch (error) {
     if ((error as Error)?.name !== "AbortError") {
@@ -347,12 +280,7 @@ async function speakBlob() {
 
 async function loadVoiceOptions() {
   try {
-    const response = await fetch(`${els.service.value}/v1/audio/voices`);
-    if (!response.ok) return;
-    const data = await response.json();
-    const names: string[] = (data?.voices ?? [])
-      .map((voice: any) => (typeof voice === "string" ? voice : voice?.name))
-      .filter(Boolean);
+    const names = (await corexClient.voices()).map((voice) => voice.name);
     els.voiceOptions.innerHTML = names
       .map((name) => `<option value="${name}"></option>`)
       .join("");

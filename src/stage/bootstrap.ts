@@ -92,11 +92,17 @@ export const bootstrapStage = async ({
 
   resetHead();
   loadAvatar()
-    .then(initHeadAudio)
-    .then(() => {
-      initLipsync(getState().head);
+    .then(async () => {
+      try {
+        await initHeadAudio();
+        initLipsync(getState().head);
+      } catch {
+        updateStatus("Avatar ready. Audio will unlock on first interaction.");
+      }
     })
-    .catch(() => updateStatus("Avatar preview requires a user gesture."));
+    .catch((error) =>
+      updateStatus(error instanceof Error ? error.message : "Failed to load avatar preview.")
+    );
 
   if (els.avatarSelect) {
     els.avatarSelect.addEventListener("change", () => {

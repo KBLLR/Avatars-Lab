@@ -8,6 +8,7 @@ export default {
   use: {
     baseURL,
     headless: true,
+    channel: process.env.PLAYWRIGHT_CHANNEL || "chrome",
     launchOptions: {
       args: ["--autoplay-policy=no-user-gesture-required"]
     }

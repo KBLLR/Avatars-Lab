@@ -5,6 +5,7 @@ import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import audioProcessorUrl from "./audio-processor.js?url"; // Import local worklet
 import { getMlxConfig, MlxConfig } from "../mlx-config";
 import { parseHarmonyFormat, getModelParser } from "../llm/model-parsers";
+import { requestOpenResponsesTurn } from "../runtime/openresponses-client";
 
 export type ConversationMode = "push" | "vad";
 
@@ -314,23 +315,12 @@ export class ConversationManager {
 
   private async callLLM(messages: Array<Record<string, any>>) {
     this.refreshConfig();
-    const response = await fetch(`${this.config.llmBaseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: this.config.llmModel,
-        messages,
-        tools: this.functionDefs,
-        tool_choice: "auto"
-      })
+    return requestOpenResponsesTurn({
+      baseUrl: this.config.llmBaseUrl,
+      model: this.config.llmModel,
+      messages,
+      tools: this.functionDefs,
     });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`LLM error (${response.status}): ${detail}`);
-    }
-
-    return response.json();
   }
 
   private async speakResponse(text: string) {
