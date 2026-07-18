@@ -32,6 +32,25 @@ test("all legacy cases expose the shared workbench shell", async ({ browser }) =
   }
 });
 
+test("Stage Director adopts Gateway audio defaults without Vite model variables", async ({ page }) => {
+  await page.route("**/v1/models", (route) => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      object: "list",
+      data: [
+        { id: "text/test-director", _service: "mlx-llm", loaded: true },
+        { id: "stt/test-whisper", _service: "mlx-audio", _audio_lane: "stt", loaded: true, is_default: true },
+        { id: "tts/test-voice", _service: "mlx-audio", _audio_lane: "tts", loaded: true, is_default: true }
+      ]
+    })
+  }));
+
+  await page.goto("/stage.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#sttModelSelect")).toHaveValue("stt/test-whisper");
+  await expect(page.locator("#ttsModelSelect")).toHaveValue("tts/test-voice");
+  await expect(page.locator("#sttChip")).toContainText("stt/test-whisper");
+});
+
 for (const route of avatarRoutes) {
   test(`${route.path} loads a real full-body avatar`, async ({ page }) => {
     const errors = [];

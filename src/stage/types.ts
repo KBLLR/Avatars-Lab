@@ -12,6 +12,8 @@ export interface RegistryModel {
   description?: string | null;
   type?: string | null;
   tags?: string[];
+  isDefault?: boolean;
+  loaded?: boolean;
 }
 
 export interface ModelRuntimeStatus {

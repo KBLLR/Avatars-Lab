@@ -14,6 +14,8 @@ Open `http://127.0.0.1:5185`.
 
 The launcher shows eleven real harnesses and live renderer/Gateway state. Core-X topology
 owns Gateway and MLX services; the house launcher no longer starts or kills them.
+Stage Director discovers current LLM, STT, and TTS defaults from Gateway `/v1/models`.
+`VITE_MLX_DEFAULT_*` values are optional operator overrides, not startup requirements.
 
 Asset hydration restores the sixteen preserved full-body GLBs into the ignored
 `public/avatars/` runtime cache and writes `runtime-manifest.json`. Set

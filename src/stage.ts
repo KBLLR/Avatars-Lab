@@ -455,7 +455,7 @@ const transcribeAudio = async () => {
     return;
   }
   if (!config.audioBaseUrl || !config.sttModel) {
-    updateStatus(els, "Missing VITE_MLX_AUDIO_BASE_URL or VITE_MLX_DEFAULT_STT_MODEL.");
+    updateStatus(els, "No STT model is available through the Core-X Gateway.");
     return;
   }
 

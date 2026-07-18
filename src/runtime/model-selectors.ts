@@ -29,13 +29,22 @@ export interface InitModelSelectorsResult {
 
 export type SetChipFn = (chip: HTMLElement, label: string, value: string) => void;
 
+const resolveDefault = (models: RegistryModel[], requested?: string): string =>
+  models.find((model) => model.id === requested)?.id ||
+  models.find((model) => model.isDefault && model.loaded)?.id ||
+  models.find((model) => model.isDefault)?.id ||
+  models.find((model) => model.loaded)?.id ||
+  models[0]?.id ||
+  requested ||
+  "";
+
 export const initModelSelectors = async (
   els: ModelSelectorElements,
   config: MlxConfig,
   overrides: MlxOverrides,
   setChip: SetChipFn
 ): Promise<InitModelSelectorsResult> => {
-  const registry = await loadModelRegistry();
+  const registry = await loadModelRegistry(config.llmBaseUrl);
 
   const llmModels = filterModels(registry, "chat");
   const vlmModels = dedupeModels([
@@ -69,12 +78,18 @@ export const initModelSelectors = async (
     ...registry.filter((model) => (model.type || "").toLowerCase() === "embedding")
   ]);
 
-  const llmDefault = overrides.llmModel || config.llmModel || "";
-  const vlmDefault = overrides.vlmModel || config.vlmModel || "";
-  const directorDefault = overrides.directorModel || config.directorModel || directorModelFallback;
-  const sttDefault = overrides.sttModel || config.sttModel || "";
-  const ttsDefault = overrides.ttsModel || config.ttsModel || "";
-  const embedDefault = overrides.embedModel || config.embedModel || "";
+  const llmDefault = resolveDefault(llmModels, overrides.llmModel || config.llmModel);
+  const vlmDefault = resolveDefault(
+    vlmModels.length ? vlmModels : llmModels,
+    overrides.vlmModel || config.vlmModel
+  );
+  const directorDefault = resolveDefault(
+    llmModels,
+    overrides.directorModel || config.directorModel || directorModelFallback
+  );
+  const sttDefault = resolveDefault(sttModels, overrides.sttModel || config.sttModel);
+  const ttsDefault = resolveDefault(ttsModels, overrides.ttsModel || config.ttsModel);
+  const embedDefault = resolveDefault(embedModels, overrides.embedModel || config.embedModel);
 
   populateModelSelect(els.llmModelSelect, llmModels, llmDefault);
   populateModelSelect(els.vlmModelSelect, vlmModels.length ? vlmModels : llmModels, vlmDefault);
