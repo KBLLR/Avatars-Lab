@@ -402,7 +402,10 @@ export const STAGE_ACTIONS_COMPACT = [
   "set_background(type: solid|gradient|transparent, color?: hex, colors?: [hex, hex])",
   "play_background_audio(url: string, volume?: 0-1)",
   "stop_background_audio()",
-  "set_view(view: full|mid|upper|head, cameraDistance?: number, cameraX?: number, cameraY?: number)"
+  "set_view(view: full|mid|upper|head, cameraDistance?: number, cameraX?: number, cameraY?: number)",
+  "stage_particles(preset: dust|sparks|rain|embers|none, intensity?: 0-1)",
+  "stage_physics(preset: confetti|none, intensity?: 0-1)",
+  "stage_shader(preset: clean|aurora|pulse|monochrome, intensity?: 0-1)"
 ];
 
 export const CAMERA_ACTIONS_COMPACT = [
@@ -425,6 +428,7 @@ export const CAMERA_MOVEMENT_ACTIONS = [
 export const POSTPROCESSING_ACTIONS = [
   "post_bloom(intensity: 0.0-3.0, duration_ms: number)",
   "post_vignette(darkness: 0.0-2.0, duration_ms: number)",
+  "post_color_grade(preset: natural|teal-orange|bleach|neon|monochrome, intensity: 0-1)",
   "post_reset(duration_ms: number)"
 ] as const;
 

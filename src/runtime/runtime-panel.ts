@@ -66,6 +66,34 @@ export const fetchModelRuntimeStatus = async (llmBaseUrl: string): Promise<Model
       config: diagnostics.config || null
     };
   } catch {
+    // Current Gateway deployments may intentionally omit model-management
+    // internals. The public model catalog still provides truthful availability.
+  }
+
+  try {
+    const normalized = llmBaseUrl.replace(/\/$/, "");
+    const modelsUrl = normalized.endsWith("/v1") ? `${normalized}/models` : `${normalized}/v1/models`;
+    const response = await fetch(modelsUrl, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const models = Array.isArray(payload?.data) ? payload.data : [];
+    const textModels = models.filter((model: Record<string, unknown>) =>
+      model._service === "mlx-llm" || (typeof model.id === "string" && model.id.startsWith("text/"))
+    );
+    const selected =
+      textModels.find((model: Record<string, unknown>) => model.loaded === true && model.is_default === true) ||
+      textModels.find((model: Record<string, unknown>) => model.loaded === true) ||
+      textModels.find((model: Record<string, unknown>) => model.is_default === true) ||
+      textModels[0];
+    return {
+      status: `gateway-catalog:${textModels.length}`,
+      loaded: Boolean(selected?.loaded),
+      model_id: typeof selected?.id === "string" ? selected.id : null,
+      model_type: "Gateway catalog",
+      queue: null,
+      config: null
+    };
+  } catch {
     return null;
   }
 };
@@ -86,9 +114,9 @@ export const updateRuntimePanel = (els: RuntimePanelElements, status: ModelRunti
   const modelId = status.model_id || status.model_path || "";
   const modelType = status.model_type || "-";
   const queueStats = status.queue?.queue_stats;
-  const activeRequests = queueStats?.active_requests ?? 0;
-  const queued = queueStats?.queue_size ?? 0;
-  const activeStreams = status.queue?.active_streams ?? 0;
+  const activeRequests = queueStats?.active_requests;
+  const queued = queueStats?.queue_size;
+  const activeStreams = status.queue?.active_streams;
   const configBits: string[] = [];
 
   if (status.config?.max_concurrency != null) {
@@ -107,10 +135,23 @@ export const updateRuntimePanel = (els: RuntimePanelElements, status: ModelRunti
   if (els.llmRuntimeLoaded) setRuntimeValue(els.llmRuntimeLoaded, loaded);
   if (els.llmRuntimeType) setRuntimeValue(els.llmRuntimeType, modelType);
   if (els.llmRuntimeModel) setRuntimeValue(els.llmRuntimeModel, trimModelId(modelId), modelId || null);
-  if (els.llmRuntimeQueue) setRuntimeValue(els.llmRuntimeQueue, `${activeRequests} active / ${queued} queued`);
-  if (els.llmRuntimeActive) setRuntimeValue(els.llmRuntimeActive, `${activeStreams} streams`);
+  if (els.llmRuntimeQueue) {
+    setRuntimeValue(
+      els.llmRuntimeQueue,
+      activeRequests == null || queued == null ? "-" : `${activeRequests} active / ${queued} queued`
+    );
+  }
+  if (els.llmRuntimeActive) {
+    setRuntimeValue(els.llmRuntimeActive, activeStreams == null ? "-" : `${activeStreams} streams`);
+  }
   if (els.llmRuntimeConfig) setRuntimeValue(els.llmRuntimeConfig, configBits.length ? configBits.join(" | ") : "-");
-  setRuntimeStatusText(els, "LLM status updated.");
+  const catalogCount = status.status?.startsWith("gateway-catalog:")
+    ? status.status.split(":")[1]
+    : null;
+  setRuntimeStatusText(
+    els,
+    catalogCount ? `Gateway catalog updated (${catalogCount} text model${catalogCount === "1" ? "" : "s"}).` : "LLM status updated."
+  );
 };
 
 export const refreshRuntimePanel = async (

@@ -46,6 +46,34 @@ It does not implement the reference Space's microphone, VAD, STT, LLM, tool-call
 or barge-in loop. Do not describe it as end-to-end parity until those capabilities
 exist and are tested.
 
+Performance Engine uses the generated `/performance-assets/catalog.json` view of
+reachable Rigging Portal and RPM/Project Anja FBX files. Do not reintroduce the stale
+`public/dance/library.json` URLs as runtime truth or copy the owning binaries here.
+
+Performance Director is the Performance Engine showrunner. It delegates specialist plans
+to the existing Stage, Camera, and PostFX directors through Gateway `/v1/responses`, then
+materializes validated, editable tracks. Generated projects must record director/model/
+brief/council provenance, reject unknown cast or animation IDs, and remain unchanged when
+the director pipeline fails instead of silently accepting a heuristic show.
+
+Director planning is an observable rehearsal, not hidden model reasoning. Surface only each
+director's short, speakable briefing summary; never request or display private chain-of-thought.
+Briefings may use local Gateway TTS while the room previews slow actor motion and changing
+camera coverage. Planning remains sequential so Stage, Camera, and PostFX can build on the
+showrunner's bounded plan.
+
+Attached scores are analyzed locally. Browser Web Audio supplies signal energy and beat/onset
+evidence; Audio Lab `/voice-snip/transcribe-file` and `/voice-snip/diarise` supply transcript
+and speaker turns through Gateway. Singer-to-actor assignments remain editable and compile to
+actor-scoped lipsync tracks. Treat singing diarisation as best-effort: the current model is
+speech-trained and overlapping singers require operator review. Do not claim source separation
+or production-grade singer identity until those stages exist and are verified.
+
+Stage atmosphere is project data, not decorative page state. Camera, motivated three-point
+lighting, procedural TSL backdrop, particles, and optional Rapier rigid-body effects compile
+through the same timeline/schedule/controller path as actor motion. Keep physics dynamically
+loaded and preserve WebGPU-to-WebGL2 compatibility.
+
 ## Development
 
 ```bash
@@ -62,6 +90,7 @@ npm run typecheck
 npm run test:modernization
 npm run test:launcher
 npm run test:gemma
+npm run test:performance
 npm run build
 ```
 

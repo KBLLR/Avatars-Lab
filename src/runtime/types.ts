@@ -35,7 +35,7 @@ export interface MlxConfig {
   llmBaseUrl?: string;
   audioBaseUrl?: string;
   vlmBaseUrl?: string;
-  dataLakeUrl?: string;
+  warehouseBaseUrl?: string;
   llmModel?: string;
   vlmModel?: string;
   sttModel?: string;

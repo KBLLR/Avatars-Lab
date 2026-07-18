@@ -255,6 +255,10 @@ body[data-avatar-labs-workbench="true"] #status {
     overflow: hidden !important;
   }
 
+  body[data-avatar-labs-case="stage"] .stage-column {
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
   body[data-avatar-labs-workbench="true"] .stage-hero,
   body[data-avatar-labs-workbench="true"] .lab-hero {
     min-width: 0;

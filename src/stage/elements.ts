@@ -110,6 +110,10 @@ let cachedElements: StageElements | null = null;
 
 export const getElements = (): StageElements => {
   if (cachedElements) return cachedElements;
+  const engineLab = document.body?.dataset.engineLab === "true";
+  const control = (stageId: string, panelId: string): HTMLButtonElement =>
+    (document.getElementById(engineLab ? panelId : stageId) ||
+      document.getElementById(engineLab ? stageId : panelId)) as HTMLButtonElement;
 
   cachedElements = {
     status: document.getElementById("status") as HTMLElement,
@@ -127,9 +131,9 @@ export const getElements = (): StageElements => {
     transcript: document.getElementById("transcript") as HTMLTextAreaElement,
     transcribeBtn: document.getElementById("transcribeBtn") as HTMLButtonElement,
     analyzeBtn: document.getElementById("analyzeBtn") as HTMLButtonElement,
-    playBtn: document.getElementById("playBtn") as HTMLButtonElement,
-    lipsyncBtn: document.getElementById("lipsyncBtn") as HTMLButtonElement,
-    stopBtn: document.getElementById("stopBtn") as HTMLButtonElement,
+    playBtn: control("stagePlayBtn", "playBtn"),
+    lipsyncBtn: control("stageLipsyncBtn", "lipsyncBtn"),
+    stopBtn: control("stageStopBtn", "stopBtn"),
     soloOnly: document.getElementById("soloOnly") as HTMLInputElement,
     llmModelSelect: document.getElementById("llmModelSelect") as HTMLSelectElement,
     vlmModelSelect: document.getElementById("vlmModelSelect") as HTMLSelectElement,

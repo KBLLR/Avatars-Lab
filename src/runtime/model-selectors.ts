@@ -38,6 +38,11 @@ const resolveDefault = (models: RegistryModel[], requested?: string): string =>
   requested ||
   "";
 
+const preferRoutableIds = (models: RegistryModel[], prefixes: string[]): RegistryModel[] => {
+  const routed = models.filter((model) => prefixes.some((prefix) => model.id.startsWith(prefix)));
+  return routed.length ? routed : models;
+};
+
 export const initModelSelectors = async (
   els: ModelSelectorElements,
   config: MlxConfig,
@@ -46,8 +51,8 @@ export const initModelSelectors = async (
 ): Promise<InitModelSelectorsResult> => {
   const registry = await loadModelRegistry(config.llmBaseUrl);
 
-  const llmModels = filterModels(registry, "chat");
-  const vlmModels = dedupeModels([
+  const llmModels = preferRoutableIds(filterModels(registry, "chat"), ["text/"]);
+  const vlmModels = preferRoutableIds(dedupeModels([
     ...filterModels(registry, "vision"),
     ...filterModels(registry, "vlm"),
     ...registry.filter((model) => {
@@ -66,17 +71,20 @@ export const initModelSelectors = async (
         id.includes("clip")
       );
     })
-  ]);
-  const sttModels = dedupeModels([
+  ]), ["vision/"]);
+  const sttModels = preferRoutableIds(dedupeModels([
     ...filterModels(registry, "audio-transcribe"),
     ...registry.filter((model) => isWhisperModel(model))
-  ]);
+  ]), ["stt/"]);
   const ttsCandidates = filterModels(registry, "audio-generate");
-  const ttsModels = ttsCandidates.filter((model) => isTtsModel(model));
-  const embedModels = dedupeModels([
+  const ttsModels = preferRoutableIds(
+    ttsCandidates.filter((model) => isTtsModel(model)),
+    ["tts/"]
+  );
+  const embedModels = preferRoutableIds(dedupeModels([
     ...filterModels(registry, "embedding"),
     ...registry.filter((model) => (model.type || "").toLowerCase() === "embedding")
-  ]);
+  ]), ["embeddings/"]);
 
   const llmDefault = resolveDefault(llmModels, overrides.llmModel || config.llmModel);
   const vlmDefault = resolveDefault(

@@ -6,3 +6,4 @@ export * from "./analysis";
 export * from "./controls";
 export * from "./audio";
 export * from "./bootstrap";
+export * from "./inspector";

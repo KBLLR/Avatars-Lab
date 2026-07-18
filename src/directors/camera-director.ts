@@ -46,7 +46,10 @@ CONSTRAINTS:
 - Keep EXACT section count (${sections.length}) and timing bounds
 - DO NOT change role, mood, or light - focus ONLY on camera
 - Match camera energy to section mood and role
-- Use camera changes sparingly - 1-2 per section max
+- Give every section purposeful coverage: establish geography, identify the active singer, then earn close-ups
+- Use 1-3 camera cues per section when musical energy supports them; never cut mechanically on every beat
+- Target the diarised singer when named in the section evidence
+- Preserve screen direction and avoid disorienting angle changes unless the brief asks for rupture
 - thoughts_summary: ≤40 words, speakable, NO chain-of-thought
 - IMPORTANT: You MUST output valid JSON only. Start your response immediately with "{".
 
@@ -78,6 +81,9 @@ CAMERA LANGUAGE GUIDE:
 - Ensemble sections → wider shots, full/mid
 - Climax → dramatic camera, tight close-ups
 - Resolution → pull back to wider shots
+- Low arousal → longer lens, longer takes, slow dolly or profile drift
+- Rising energy → shorten transitions, widen parallax, move from two-shot to singer close-up
+- Beat peaks → reserve punch, sweep, or handheld accents for structural moments
 
 ${this.buildSchemaInstruction().replace(/mood.*\|.*angry/g, 'camera: "full" | "mid" | "upper" | "head"')}
 

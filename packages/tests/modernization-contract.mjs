@@ -49,6 +49,11 @@ for (const item of functionsManifest.items) {
 assert.match(viteConfig, /configurePreviewServer/);
 assert.match(viteConfig, /rolldownOptions/);
 assert.match(viteConfig, /AVATAR_LABS_VITE_PORT/);
+assert.match(viteConfig, /AVATAR_LABS_COREX_PUBLIC_ROOT/);
+assert.match(viteConfig, /AVATAR_LABS_ANIMATION_ROOT/);
+assert.match(viteConfig, /AVATAR_LABS_RPM_ANIMATION_ROOT/);
+assert.match(viteConfig, /avatar-labs\.animation-catalog\.v1/);
+assert.match(viteConfig, /Content-Range/);
 assert.match(devScript, /COREX_GATEWAY_URL.*8090/);
 assert.match(devScript, /hydrate-avatar-assets\.mjs/);
 assert.match(assetHydrator, /AVATAR_LABS_ASSET_ROOT/);
@@ -67,6 +72,18 @@ for (const item of manifest.surface.cases) {
 assert.match(audioStream, /\/v1\/audio\/speech\/stream/);
 assert.doesNotMatch(sourceFiles, /\/v1\/chat\/completions/);
 assert.match(sourceFiles, /\/v1\/responses/);
+assert.ok(fs.existsSync(path.join(houseRoot, "src/performance-engine/schedule.worker.ts")));
+assert.match(read("engine-lab.html"), /performance-engine\.ts/);
+assert.match(read("src/performance-engine/types.ts"), /avatar-labs\.performance-project\.v1/);
+assert.match(read("src/performance-engine/director.ts"), /PerformanceShowDirector/);
+assert.equal(pkg.dependencies["@dimforge/rapier3d-compat"], "0.19.3");
+assert.match(read("src/performance-engine/music-analysis.ts"), /\/voice-snip\/transcribe-file/);
+assert.match(read("src/performance-engine/music-analysis.ts"), /\/voice-snip\/diarise/);
+assert.match(read("src/performance-engine/planning-rehearsal.ts"), /\/v1\/audio\/speech/);
+assert.match(read("src/performance-engine/stage-effects.ts"), /rapier3d-compat/);
+assert.match(read("src/performance-engine/stage-effects.ts"), /MeshBasicNodeMaterial/);
+assert.match(read("src/performance-engine/types.ts"), /TRACK_KINDS[\s\S]*"lipsync"/);
+assert.match(read("src/performance-engine/types.ts"), /TRACK_KINDS[\s\S]*"stagefx"/);
 
 console.log(
   `Avatar Labs modernization contract OK: ${manifest.surface.cases.length} routes, ` +

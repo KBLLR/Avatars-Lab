@@ -55,7 +55,7 @@
         border: 1px solid var(--border);
         background: #000;
         flex: 1;
-        min-height: 420px;
+        min-height: 0;
       }
 
       #avatar {
@@ -294,12 +294,12 @@
         align-items: center;
         gap: 8px;
         padding: 10px 16px;
-        border-radius: 12px;
+        border-radius: 8px;
         background: rgba(9, 9, 11, 0.85);
         border: 1px solid var(--border);
         backdrop-filter: blur(16px) saturate(1.2);
-        opacity: 0;
-        pointer-events: none;
+        opacity: 1;
+        pointer-events: auto;
         transition: opacity 0.2s, transform 0.2s;
         z-index: 5;
       }
@@ -389,24 +389,6 @@
         font-weight: 600;
       }
 
-      /* Canvas resize handle */
-      .stage-resize {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 6px;
-        cursor: ns-resize;
-        background: transparent;
-        transition: background 0.2s;
-        z-index: 6;
-      }
-
-      .stage-resize:hover,
-      .stage-resize.dragging {
-        background: linear-gradient(to top, var(--accent) 0%, transparent 100%);
-      }
-
       /* Hidden legacy elements */
       #stageHud,
       #hero {
@@ -414,15 +396,20 @@
       }
 
       #panel {
-        padding: 20px;
+        padding: 14px;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 12px;
-        display: grid;
-        gap: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         overflow-y: auto;
-        height: calc(100vh - 40px);
-        align-content: start;
+        height: 100%;
+        min-height: 0;
+      }
+
+      #panel > * {
+        flex: 0 0 auto;
       }
 
       h1 {
@@ -441,7 +428,8 @@
       }
 
       .status {
-        padding: 10px 12px;
+        position: relative;
+        padding: 10px 12px 10px 30px;
         border-radius: 8px;
         background: var(--hover);
         font-size: 13px;
@@ -449,8 +437,74 @@
         border: 1px solid var(--border);
       }
 
+      .status::before {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        width: 7px;
+        height: 7px;
+        background: var(--muted);
+        border-radius: 50%;
+        transform: translateY(-50%);
+        content: "";
+      }
+
+      .status[data-phase="ready"]::before,
+      .status[data-phase="performing"]::before {
+        background: var(--accent-2);
+      }
+
+      .status[data-phase="working"]::before,
+      .status[data-phase="analyzing"]::before {
+        background: var(--accent-3);
+      }
+
+      .stage-workflow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+
+      .stage-workflow li {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 8px;
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+      }
+
+      .stage-workflow b {
+        display: grid;
+        flex: 0 0 16px;
+        width: 16px;
+        height: 16px;
+        place-items: center;
+        font-size: 9px;
+        font-weight: 600;
+        border: 1px solid currentColor;
+        border-radius: 50%;
+      }
+
+      .stage-workflow li[data-state="current"] {
+        color: var(--fg);
+        background: var(--hover);
+        border-color: var(--fg);
+      }
+
+      .stage-workflow li[data-state="complete"] {
+        color: var(--accent-2);
+      }
+
       .card {
-        padding: 16px;
+        padding: 12px;
         border-radius: 8px;
         background: var(--bg);
         border: 1px solid var(--border);
@@ -460,15 +514,38 @@
       }
 
       .card-header {
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
         cursor: pointer;
-        margin: -16px -16px 0;
-        padding: 12px 16px;
+        margin: -12px -12px 0;
+        padding: 11px 12px;
         border-radius: 8px 8px 0 0;
+        color: inherit;
+        text-align: left;
+        background: transparent;
+        border: 0;
         transition: background 0.15s;
         user-select: none;
+      }
+
+      .card.collapsed .card-header {
+        margin-bottom: -12px;
+        border-radius: 8px;
+      }
+
+      .card-header-tail {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .card-meta {
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+        text-transform: uppercase;
       }
 
       .card-header:hover {
@@ -511,6 +588,10 @@
         grid-template-rows: 0fr;
         opacity: 0;
         pointer-events: none;
+      }
+
+      .card-body[hidden] {
+        display: none;
       }
 
       .card-body-inner {
@@ -833,6 +914,7 @@
         display: flex;
         flex-direction: column;
         gap: 0;
+        height: 100%;
         min-height: 0;
       }
 
@@ -919,11 +1001,6 @@
   <body>
     <div id="app">
       <div class="stage-column">
-        <div class="stage-hero">
-          <span class="eyebrow">Avatar Labs</span>
-          <h2 class="hero-title">Stage Director</h2>
-          <p class="hero-desc" id="stageHeroDesc">Upload a song to begin staging your AI performance.</p>
-        </div>
         <div id="stage">
           <div id="avatar"></div>
           <div id="spotlights"></div>
@@ -945,9 +1022,6 @@
 
           <!-- Lyrics Overlay -->
           <div id="heroLyrics"></div>
-
-          <!-- Resize Handle -->
-          <div class="stage-resize" id="stageResize"></div>
 
         <div id="analysisOverlay">
           <div id="analysisCard">
@@ -1001,14 +1075,19 @@
       </div>
 
       <div id="panel">
-        <h1>Stage Director <span>Avatar Labs</span></h1>
-        <div class="status" id="status">Upload a song to begin staging.</div>
+        <div class="status" id="status" role="status" aria-live="polite" data-phase="idle">Upload a song to begin staging.</div>
+        <ol class="stage-workflow" aria-label="Performance workflow">
+          <li data-stage-step="audio" data-state="current"><b>1</b><span>Audio</span></li>
+          <li data-stage-step="transcript" data-state="pending"><b>2</b><span>Transcript</span></li>
+          <li data-stage-step="plan" data-state="pending"><b>3</b><span>Plan</span></li>
+          <li data-stage-step="perform" data-state="pending"><b>4</b><span>Perform</span></li>
+        </ol>
 
-        <div class="card collapsed" id="cardAudio">
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Audio & Transcript</div>
-            <span class="card-toggle">▼</span>
-          </div>
+        <div class="card" id="cardAudio">
+          <button class="card-header" aria-expanded="true">
+            <span class="card-title">Audio & Transcript</span>
+            <span class="card-header-tail"><span class="card-meta" id="audioCardMeta">Required</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <div class="section">
@@ -1034,10 +1113,10 @@
         </div>
 
         <div class="card collapsed" id="cardDirector" data-collapse-mobile>
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Director Setup</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Director Setup</span>
+            <span class="card-header-tail"><span class="card-meta" id="directorCardMeta">Cinematic</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <label>Director Style</label>
@@ -1069,17 +1148,12 @@
         </div>
 
         <div class="card collapsed" id="cardControls">
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Performance Controls</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Performance Mode</span>
+            <span class="card-header-tail"><span class="card-meta" id="controlsCardMeta">Solo</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
-              <div class="row">
-                <button id="playBtn" class="primary" disabled>AI Perform</button>
-                <button id="lipsyncBtn" class="primary" disabled>Lipsync</button>
-                <button id="stopBtn" class="ghost">Stop</button>
-              </div>
               <div class="toggle">
                 <input id="soloOnly" type="checkbox" checked />
                 <label for="soloOnly">Solo-only lip sync</label>
@@ -1113,10 +1187,10 @@
         </div>
 
         <div class="card collapsed" id="cardLibrary" data-collapse-mobile>
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Performance Library</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Performance Library</span>
+            <span class="card-header-tail"><span class="card-meta">Warehouse</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <label>Title</label>
@@ -1127,7 +1201,7 @@
               />
               <div class="toggle">
                 <input id="dataPoolIncludeAudio" type="checkbox" checked />
-                <label for="dataPoolIncludeAudio">Include audio (base64)</label>
+                <label for="dataPoolIncludeAudio">Publish source audio</label>
               </div>
               <div class="row">
                 <button id="dataPoolSave" class="primary">Save</button>
@@ -1138,16 +1212,16 @@
               <div class="row">
                 <button id="dataPoolLoad">Load</button>
               </div>
-              <div class="runtime-status" id="dataPoolStatus">Data pool idle.</div>
+              <div class="runtime-status" id="dataPoolStatus">Connecting to Warehouse...</div>
             </div>
           </div>
         </div>
 
         <div class="card collapsed" id="cardModels" data-collapse-mobile>
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Model Routing</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Model Routing</span>
+            <span class="card-header-tail"><span class="card-meta">Gateway</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <label>Chat LLM Model</label>
@@ -1169,10 +1243,10 @@
         </div>
 
         <div class="card collapsed" id="cardRuntime" data-collapse-mobile>
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">LLM Runtime</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Runtime Diagnostics</span>
+            <span class="card-header-tail"><span class="card-meta">Local</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <div class="runtime-grid">
@@ -1201,17 +1275,7 @@
                   <div class="runtime-value" id="llmRuntimeConfig">-</div>
                 </div>
               </div>
-              <label>Load Model</label>
-              <select id="llmRuntimeModelSelect"></select>
-              <div class="toggle">
-                <input id="llmRuntimeForce" type="checkbox" />
-                <label for="llmRuntimeForce">Force load/unload</label>
-              </div>
-              <div class="runtime-actions">
-                <button id="llmRuntimeRefresh" class="ghost">Refresh</button>
-                <button id="llmRuntimeUnload">Unload</button>
-                <button id="llmRuntimeLoad" class="primary">Load</button>
-              </div>
+              <button id="llmRuntimeRefresh" class="ghost">Refresh diagnostics</button>
               <div class="runtime-status" id="llmRuntimeStatus">
                 Awaiting status.
               </div>
@@ -1220,10 +1284,10 @@
         </div>
 
         <div class="card collapsed" id="cardCamera" data-collapse-mobile>
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Camera Rig</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Camera Rig</span>
+            <span class="card-header-tail"><span class="card-meta" id="cameraCardMeta">Head</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <label>View</label>
@@ -1298,10 +1362,10 @@
         </div>
 
         <div class="card collapsed" id="cardLighting" data-collapse-mobile>
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Lighting</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Lighting</span>
+            <span class="card-header-tail"><span class="card-meta" id="lightingCardMeta">Spotlight</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <label>Preset</label>
@@ -1359,10 +1423,10 @@
         </div>
 
         <div class="card collapsed" id="cardPlan">
-          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <div class="card-title">Performance Plan</div>
-            <span class="card-toggle">▼</span>
-          </div>
+          <button class="card-header" aria-expanded="false">
+            <span class="card-title">Performance Plan</span>
+            <span class="card-header-tail"><span class="card-meta" id="planCardMeta">Pending</span><span class="card-toggle" aria-hidden="true">▼</span></span>
+          </button>
           <div class="card-body">
             <div class="card-body-inner">
               <div class="plan-toolbar">
@@ -1395,72 +1459,8 @@
     <script type="module" src="/src/stage.ts"></script>
     <script type="module" src="/src/cases/workbench-shell.ts"></script>
     <script>
-      // Stage resize functionality
+      // Sync compact HUD with renderer state.
       (function() {
-        const stage = document.getElementById('stage');
-        const resize = document.getElementById('stageResize');
-        if (!stage || !resize) return;
-
-        let startY, startHeight;
-
-        const onMouseMove = (e) => {
-          const delta = e.clientY - startY;
-          const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight + delta));
-          stage.style.height = newHeight + 'px';
-          stage.style.minHeight = newHeight + 'px';
-          stage.style.maxHeight = 'none';
-        };
-
-        const onMouseUp = () => {
-          resize.classList.remove('dragging');
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-        };
-
-        resize.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          startY = e.clientY;
-          startHeight = stage.offsetHeight;
-          resize.classList.add('dragging');
-          document.body.style.cursor = 'ns-resize';
-          document.body.style.userSelect = 'none';
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        });
-
-        // Double-click to reset
-        resize.addEventListener('dblclick', () => {
-          stage.style.height = '';
-          stage.style.minHeight = '';
-          stage.style.maxHeight = '';
-        });
-      })();
-
-      // Sync floating action bar with panel buttons
-      (function() {
-        const sync = (floatingId, panelId) => {
-          const floating = document.getElementById(floatingId);
-          const panel = document.getElementById(panelId);
-          if (!floating || !panel) return;
-
-          // Forward click events
-          floating.addEventListener('click', () => panel.click());
-
-          // Sync disabled state
-          const observer = new MutationObserver(() => {
-            floating.disabled = panel.disabled;
-            floating.className = panel.className;
-          });
-          observer.observe(panel, { attributes: true, attributeFilter: ['disabled', 'class'] });
-          floating.disabled = panel.disabled;
-        };
-
-        sync('stagePlayBtn', 'playBtn');
-        sync('stageLipsyncBtn', 'lipsyncBtn');
-        sync('stageStopBtn', 'stopBtn');
-
         // Sync mini HUD with main HUD
         const syncHud = () => {
           const hudScene = document.getElementById('hudScene');

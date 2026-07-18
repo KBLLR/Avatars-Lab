@@ -227,13 +227,13 @@ export const createAnalysisController = (deps: AnalysisDeps): AnalysisController
       return;
     }
     if (!config.llmBaseUrl) {
-      updateStatus(els, "Missing VITE_MLX_LLM_BASE_URL.");
+      updateStatus(els, "Core-X Gateway is not configured for director analysis.");
       return;
     }
 
     const model = els.directorModelSelect.value || config.directorModel || directorModelFallback;
     if (!model) {
-      updateStatus(els, "Missing VITE_MLX_DEFAULT_LLM_MODEL.");
+      updateStatus(els, "No director model is available through the Core-X Gateway.");
       return;
     }
 

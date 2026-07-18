@@ -64,10 +64,8 @@ const getMlxConfig = () => {
       import.meta.env.VITE_MLX_VLM_BASE_URL ||
       import.meta.env.VITE_MLX_VLM_URL ||
       "http://127.0.0.1:8090",
-    dataLakeUrl:
-      import.meta.env.VITE_DATA_LAKE_URL ||
-      import.meta.env.VITE_MLX_DATA_LAKE_URL ||
-      "http://127.0.0.1:8012",
+    warehouseBaseUrl:
+      import.meta.env.VITE_WAREHOUSE_BASE_URL || "http://127.0.0.1:5202",
     // mflux uses the LLM service endpoint (same port 8080)
     mfluxBaseUrl:
       import.meta.env.VITE_MLX_MFLUX_BASE_URL ||

@@ -27,10 +27,11 @@ export class PostFXDirector extends BaseDirector {
 
     return `POST-PROCESSING DIRECTOR for avatar music video.
 
-TASK: Add visual polish using Bloom, Vignette, and other effects.
+TASK: Design restrained finishing cues: bloom, vignette, color grade, and procedural stage look.
 
 CONSTRAINTS:
 - Use effects sparingly - 1 per section max, or none.
+- Preserve skin tone and readable silhouettes; effects support the scene rather than conceal it.
 - Match effect to MOOD:
   - Happy/Love/High Energy -> Bloom
   - Sad/Fear/Noir -> Vignette

@@ -37,13 +37,15 @@ export class StageDirector extends BaseDirector {
 
     return `STAGE DIRECTOR for avatar music video.
 
-TASK: Design lighting and stage ambience that enhances the performance.
+TASK: Design a complete stage cue that enhances the performance: motivated lighting, environment, procedural backdrop, particles, and optional physics.
 
 CONSTRAINTS:
 - Keep EXACT section count (${sections.length}) and timing bounds
-- DO NOT change role or mood - focus ONLY on lighting
-- Match lighting energy to section mood
-- Use light transitions sparingly - 1 per section max
+- DO NOT change role or mood - focus on stagecraft
+- Match light direction, contrast, color, atmosphere, and practical effects to section emotion and energy
+- Use physically motivated key/fill/rim or silhouette logic; do not flood the stage with one flat color
+- Use stage particles and physics only when the musical evidence justifies them
+- Use at most one lighting, one environment, and one atmosphere action per section
 - thoughts_summary: ≤40 words, speakable, NO chain-of-thought
 
 LIGHT PRESETS: ${LIGHT_PRESETS.join(", ")}
@@ -53,13 +55,17 @@ LIGHT PRESETS: ${LIGHT_PRESETS.join(", ")}
 - frost: cool, ethereal, blue-white
 - crimson: intense, passionate, red
 
-- crimson: intense, passionate, red
-
 ENVIRONMENT PRESETS: studio, outdoor, neon-city, void, transparent, sunset-gradient
 - Use 'set_environment(preset: "name")' to change background.
 - "void" or "transparent" for minimal looks.
 - "neon-city" for cyberpunk/energetic.
 - "sunset-gradient" for warm/moody.
+
+LIGHTING GRAMMAR:
+- low arousal / intimate: soft key, restrained fill, slow transitions
+- tension / fear: negative fill, edge separation, practical backlight
+- high arousal / climax: moving key direction, saturated accents, beat-reactive intensity
+- preserve faces unless silhouette is an intentional story beat
 
 STAGE ACTIONS:
 ${STAGE_ACTIONS_COMPACT.join("\n")}

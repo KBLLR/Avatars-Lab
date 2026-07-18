@@ -14,6 +14,8 @@ export interface PerformanceAudio {
   name: string;
   type: string;
   size: number;
+  warehouseId?: string;
+  // Legacy records may still contain embedded audio.
   dataBase64?: string;
 }
 
@@ -33,6 +35,7 @@ export interface PerformanceRecord {
 }
 
 export interface PerformanceListItem {
+  id?: string;
   path: string;
   name: string;
   modified?: number | null;

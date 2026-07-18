@@ -121,6 +121,26 @@ export function parseDirectorResponse(
     }
   }
 
+  // Harmony extraction is balanced and may already produce valid JSON. Parse
+  // that exact payload before applying generic key-repair regexes, which can
+  // otherwise modify valid colons inside string values.
+  if (modelConfig?.useHarmonyParser) {
+    const harmonyJson = extractJsonFromHarmony(raw);
+    if (harmonyJson) {
+      try {
+        const parsed = JSON.parse(harmonyJson);
+        const normalized = normalizeDirectorResponse(
+          parsed,
+          durationMs,
+          modelConfig.lenientStructure
+        );
+        if (normalized) return normalized;
+      } catch {
+        // Continue through model-specific cleanup for malformed Harmony output.
+      }
+    }
+  }
+
   // Apply model-specific preprocessing
   let cleaned = preprocessForModel(raw, modelId);
 

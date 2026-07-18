@@ -39,6 +39,7 @@ import {
   cameraViews,
   stageFunctionDefs,
   createStateManager,
+  initStageInspector,
   type StageState
 } from "./stage/index";
 import {
@@ -104,6 +105,7 @@ import {
 // Elements are lazily loaded via getElements() from stage module
 let els: ReturnType<typeof getElements>;
 let avatarManifest: AvatarManifestEntry[] = [];
+let stageInspector: ReturnType<typeof initStageInspector> | null = null;
 
 const config = getMlxConfig();
 const engineLabEnabled = document.body?.dataset.engineLab === "true";
@@ -133,6 +135,7 @@ const bindStateUi = () => {
         ? "Awaiting approval"
         : "Pending analysis";
     }
+    stageInspector?.sync(nextState, changed);
     if (changed.directorNotes !== undefined) {
       if (nextState.directorNotes) {
         els.directorNotes.textContent = nextState.directorNotes;
@@ -459,14 +462,23 @@ const transcribeAudio = async () => {
     return;
   }
 
-  const { text, wordTimings } = await transcribeAudioFile(
-    state.audioFile,
-    {
-      audioBaseUrl: config.audioBaseUrl,
-      sttModel: config.sttModel
-    },
-    (msg) => updateStatus(els, msg)
-  );
+  els.transcribeBtn.disabled = true;
+  els.transcribeBtn.textContent = "Transcribing...";
+  let text: string;
+  let wordTimings: WordTiming | null;
+  try {
+    ({ text, wordTimings } = await transcribeAudioFile(
+      state.audioFile,
+      {
+        audioBaseUrl: config.audioBaseUrl,
+        sttModel: config.sttModel
+      },
+      (msg) => updateStatus(els, msg)
+    ));
+  } finally {
+    els.transcribeBtn.textContent = "Transcribe";
+    stageInspector?.sync(state);
+  }
 
   updateState({
     transcriptText: text,
@@ -786,7 +798,9 @@ const handleFile = async (file: File) => {
 const init = async () => {
   // Initialize elements from the DOM
   els = getElements();
+  stageInspector = initStageInspector(els, { enabled: !engineLabEnabled });
   bindStateUi();
+  stageInspector.sync(state);
   const audioController = createAudioController({
     els,
     config,

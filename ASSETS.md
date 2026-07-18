@@ -80,6 +80,46 @@ Test audio files are needed for:
 
 Use any WAV/MP3 files or generate with TTS.
 
+### Performance Engine ecosystem assets
+
+`engine-lab.html` does not copy Core-X heads, HDR environments, or the curated
+Rigging Portal FBX library into this repository. During local development and
+preview, Vite exposes those owning directories through read-only routes with
+byte-range support:
+
+- `/corex-assets`: `core-x/ui/public` heads and HDRIs
+- `/performance-assets/animations`: Rigging Portal's 17 curated FBX files
+- `/performance-assets/rpm`: Project Anja's 22 locally available RPM-retargeted FBX files
+- `/performance-assets/catalog.json`: generated metadata for reachable files only
+
+The default paths assume the Core-X monorepo layout. Override them for a
+standalone house checkout:
+
+```bash
+AVATAR_LABS_COREX_PUBLIC_ROOT=/absolute/path/to/core-x/ui/public \
+AVATAR_LABS_ANIMATION_ROOT=/absolute/path/to/rigging-portal/public/animation-library/fbx \
+AVATAR_LABS_RPM_ANIMATION_ROOT=/absolute/path/to/project-anja/public/assets/animations/mixamo \
+npm run dev
+```
+
+Missing files return JSON `404` responses rather than the Vite HTML fallback. The
+historical `public/dance/library.json` describes a larger upstream collection, but its
+absent URLs are not advertised by Performance Engine. Rigged-body motion requires matching
+named bones; Mixamo/RPM prefixes are normalized during playback, while rig-less Core-X
+heads use morph expressions and TSL looks instead.
+
+Attached score audio stays local unless the operator explicitly publishes it to Warehouse.
+Performance projects store only editable analysis evidence: energy envelope, beat/onset times,
+semantic sections, diarised speaker turns, and singer-to-actor assignments. They never persist
+Audio Lab's temporary server-side upload path. Audio Lab-generated WAV/MP3 files, transcript
+scratch files, and diarisation intermediates belong in its ignored `data-pool/voice-snip/`
+runtime area, not this house repository.
+
+Rapier is a code dependency, not an asset source. Its WebAssembly payload is emitted as a
+dynamically loaded build chunk and is requested only when the Confetti physics stage effect is
+active. Procedural backdrops and particle textures are generated at runtime; do not add copied
+shader previews or generated particle media to source control.
+
 ## Asset Hydration
 
 `npm run dev` and `npm run build` call the hydrator automatically. It writes

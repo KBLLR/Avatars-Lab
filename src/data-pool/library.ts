@@ -5,8 +5,7 @@ import type { PlanSection } from "../directors/types";
 import type { PerformanceRecord } from "./types";
 import {
   createPerformanceStore,
-  decodeBase64ToFile,
-  encodeFileToBase64
+  decodeBase64ToFile
 } from "./store";
 import { resetAnalysisThoughts } from "../ui/index";
 
@@ -28,8 +27,6 @@ export interface PerformanceLibraryDeps {
 interface PerformanceLibrary {
   refresh: () => Promise<void>;
 }
-
-const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 const slugify = (value: string): string =>
   value
@@ -71,7 +68,7 @@ const applyModelValue = (
 };
 
 export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): PerformanceLibrary => {
-  const store = createPerformanceStore({ baseUrl: deps.config.dataLakeUrl });
+  const store = createPerformanceStore({ baseUrl: deps.config.warehouseBaseUrl });
 
   const setLibraryStatus = (text: string) => {
     if (deps.els.dataPoolStatus) deps.els.dataPoolStatus.textContent = text;
@@ -93,8 +90,8 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         }
         items.forEach((item) => {
           const option = document.createElement("option");
-          option.value = item.path;
-          option.textContent = item.path.split("/").slice(-2).join("/");
+          option.value = item.id || item.path;
+          option.textContent = item.name;
           deps.els.dataPoolSelect.appendChild(option);
         });
       }
@@ -124,13 +121,6 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         type: state.audioFile.type || "audio/mpeg",
         size: state.audioFile.size
       };
-      if (deps.els.dataPoolIncludeAudio && deps.els.dataPoolIncludeAudio.checked) {
-        if (state.audioFile.size > MAX_AUDIO_BYTES) {
-          setLibraryStatus("Audio too large to embed. Save without audio.");
-        } else {
-          audio.dataBase64 = await encodeFileToBase64(state.audioFile);
-        }
-      }
     }
 
     const record: PerformanceRecord = {
@@ -160,9 +150,10 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
 
     try {
       setLibraryStatus("Saving performance...");
-      await store.save(record, { fileName });
-      setLibraryStatus("Performance saved.");
-      deps.updateStatus("Performance saved to data pool.");
+      const includeAudio = Boolean(deps.els.dataPoolIncludeAudio?.checked && state.audioFile);
+      await store.save(record, { fileName, audioFile: includeAudio ? state.audioFile : null });
+      setLibraryStatus("Performance published to Warehouse.");
+      deps.updateStatus("Performance published to Warehouse.");
       await refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save performance.";
@@ -249,12 +240,18 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         deps.config.ttsVoice = record.models.ttsVoice;
       }
 
-      if (record.audio?.dataBase64 && record.audio.name) {
-        const file = decodeBase64ToFile(
-          record.audio.dataBase64,
-          record.audio.name,
-          record.audio.type || "audio/mpeg"
-        );
+      if ((record.audio?.warehouseId || record.audio?.dataBase64) && record.audio.name) {
+        const file = record.audio.warehouseId
+          ? await store.loadAudio(
+              record.audio.warehouseId,
+              record.audio.name,
+              record.audio.type || "audio/mpeg"
+            )
+          : decodeBase64ToFile(
+              record.audio.dataBase64!,
+              record.audio.name,
+              record.audio.type || "audio/mpeg"
+            );
         deps.updateState({ audioFile: file });
         deps.setChip(deps.els.audioChip, "Audio", file.name);
         deps.updateHero(undefined, file.name, "Loaded Performance");
@@ -273,7 +270,7 @@ export const initPerformanceLibrary = (deps: PerformanceLibraryDeps): Performanc
         if (deps.els.heroLyrics) deps.els.heroLyrics.textContent = "Performance loaded. Load audio to perform.";
       }
 
-      deps.updateStatus("Performance loaded from data pool.");
+      deps.updateStatus("Performance loaded from Warehouse.");
       setLibraryStatus("Performance loaded.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load performance.";

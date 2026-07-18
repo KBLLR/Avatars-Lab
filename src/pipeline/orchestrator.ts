@@ -5,6 +5,7 @@
  */
 
 import { PerformanceDirector } from "../directors/performance-director";
+import type { PerformanceDirectorContext } from "../directors/performance-director";
 import { StageDirector, StageDirectorContext } from "../directors/stage-director";
 import { CameraDirector, CameraDirectorContext } from "../directors/camera-director";
 import { PostFXDirector } from "../directors/postfx-director";
@@ -55,6 +56,7 @@ export interface PipelineInput {
   defaultLightPreset?: string;
   defaultCameraView?: string;
   enabledDirectors?: DirectorStage[];
+  performanceContext?: PerformanceDirectorContext;
 }
 
 export interface PipelineResult {
@@ -62,6 +64,7 @@ export interface PipelineResult {
   performanceResult?: DirectorResult;
   stageResult?: DirectorResult;
   cameraResult?: DirectorResult;
+  postFxResult?: DirectorResult;
   totalDurationMs: number;
   usedFallback: boolean;
 }
@@ -136,7 +139,8 @@ export class DirectorOrchestrator {
       durationMs,
       defaultLightPreset = "neon",
       defaultCameraView = "upper",
-      enabledDirectors = ["performance", "stage", "camera", "postfx"]
+      enabledDirectors = ["performance", "stage", "camera", "postfx"],
+      performanceContext,
     } = input;
     const { onProgress, onChunk, onThoughts, onStageComplete, onFallback } = callbacks || {};
 
@@ -165,7 +169,7 @@ export class DirectorOrchestrator {
         performanceResult = await this.performanceDirector.analyze(
           sections,
           durationMs,
-          undefined,
+          performanceContext,
           analyzeOptions
         );
       }
@@ -331,12 +335,14 @@ export class DirectorOrchestrator {
       mergedPlan.performanceNotes = this.formatNotes(performanceResult);
       mergedPlan.stageNotes = stageResult ? this.formatNotes(stageResult) : undefined;
       mergedPlan.cameraNotes = cameraResult ? this.formatNotes(cameraResult) : undefined;
+      mergedPlan.postFxNotes = postFxResult ? this.formatNotes(postFxResult) : undefined;
 
       return {
         plan: mergedPlan,
         performanceResult,
         stageResult,
         cameraResult,
+        postFxResult,
         totalDurationMs: Date.now() - startTime,
         usedFallback
       };
