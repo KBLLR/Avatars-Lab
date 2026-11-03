@@ -48,12 +48,15 @@ public/animations/
 *.flac
 
 # Large binary assets
+*.mp4
+*.mov
 *.glb
 *.gltf
 *.fbx
 *.bin
 *.hdr
 *.exr
+public/motion-proof/
 
 # Large image assets
 *.psd

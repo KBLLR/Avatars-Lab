@@ -9,6 +9,8 @@ import { CAMERA_ACTIONS_COMPACT, CAMERA_MOVEMENT_ACTIONS, InputSection, Director
 export interface CameraDirectorContext {
   performancePlan: DirectorPlan;
   stagePlan?: DirectorPlan | null;
+  brief?: string;
+  cast?: Array<{ id: string; label: string }>;
 }
 
 export class CameraDirector extends BaseDirector {
@@ -21,7 +23,7 @@ export class CameraDirector extends BaseDirector {
     durationMs: number,
     context?: CameraDirectorContext
   ): string {
-    const { performancePlan, stagePlan } = context || {};
+    const { performancePlan, stagePlan, brief, cast } = context || {};
 
     // Build compact sections with performance + stage context
     const compactSections = sections.map((section, index) => {
@@ -31,25 +33,31 @@ export class CameraDirector extends BaseDirector {
         i: index + 1,
         s: section.start_ms,
         e: section.end_ms,
-        t: section.text.slice(0, 120),
+        evidence: section.text.slice(0, 520),
         role: perfSection?.role || "solo",
         mood: perfSection?.mood || "neutral",
-        light: stgSection?.light || "neon"
+        light: stgSection?.light || "neon",
+        performanceStory: perfSection?.notes || "",
       };
     });
 
     return `CAMERA DIRECTOR for avatar music video.
 
-TASK: Design camera movement that enhances the emotional impact of the performance.
+TASK: Direct the story through camera placement, subject selection, movement, lens, and editorial rhythm. Camera is the primary narrative system, not decoration.
 
 CONSTRAINTS:
 - Keep EXACT section count (${sections.length}) and timing bounds
 - DO NOT change role, mood, or light - focus ONLY on camera
 - Match camera energy to section mood and role
+- Treat the OPERATOR STORY BRIEF as canon. Build a legible beginning, development, turn, climax, and resolution across the complete show
 - Give every section purposeful coverage: establish geography, identify the active singer, then earn close-ups
-- Use 1-3 camera cues per section when musical energy supports them; never cut mechanically on every beat
+- Put a concise story purpose in every section's notes: what changes, who owns the moment, and why the shot reveals it
+- Use 1-3 camera actions per section at distinct time_ms values. Quiet passages can hold one composed shot; turns and climaxes should develop through 2-3 motivated shots
 - Target the diarised singer when named in the section evidence
+- Use exact actor IDs from CAST when the singer target is known
 - Preserve screen direction and avoid disorienting angle changes unless the brief asks for rupture
+- Let camera distance express relationship: shared wides establish bonds or conflict; singles assign point of view; close-ups must be earned by a lyric, decision, reveal, or emotional turn
+- Carry visual information between sections. Do not reset to generic coverage at every boundary
 - thoughts_summary: ≤40 words, speakable, NO chain-of-thought
 - IMPORTANT: You MUST output valid JSON only. Start your response immediately with "{".
 
@@ -93,16 +101,20 @@ ${this.buildStylePrompt()}
 SEED: ${this.seed}
 DURATION: ${Math.round(durationMs)}ms
 
+OPERATOR STORY BRIEF:
+${brief || "Follow the emotional and vocal evidence in the score."}
+
+CAST:
+${JSON.stringify(cast || [], null, 1)}
+
 PERFORMANCE + STAGE CONTEXT:
 ${JSON.stringify(compactSections, null, 1)}`;
   }
 
-  /**
-   * Override max tokens - camera director needs less
-   */
+  /** Camera plans may emit several purposeful cues per section. */
   protected estimateMaxTokens(sectionCount: number): number {
-    const baseTokens = 800;
-    const perSectionTokens = 150;
-    return Math.min(baseTokens + sectionCount * perSectionTokens, 4000);
+    const baseTokens = 1200;
+    const perSectionTokens = 260;
+    return Math.min(baseTokens + sectionCount * perSectionTokens, 5000);
   }
 }

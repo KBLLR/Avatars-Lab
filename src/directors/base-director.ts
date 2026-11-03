@@ -77,9 +77,9 @@ export abstract class BaseDirector {
     this.model = options.model;
     this.style = options.style || "cinematic";
     this.seed = options.seed || new Date().toISOString();
-    this.timeoutMs = options.timeoutMs || 45000;
-    this.maxTokens = options.maxTokens || 1500;
-    this.retries = options.retries || 2;
+    this.timeoutMs = options.timeoutMs ?? 45000;
+    this.maxTokens = options.maxTokens ?? 1500;
+    this.retries = options.retries ?? 2;
     this.streaming = options.streaming ?? true;
   }
 
@@ -146,11 +146,12 @@ export abstract class BaseDirector {
       });
       let thoughtsEmitted = false;
 
-      const response = await requestLLM({
+      const tokenBudget = this.estimateMaxTokens(sections.length);
+      let response = await requestLLM({
         baseUrl: this.baseUrl,
         model: this.model,
         prompt,
-        maxTokens: this.estimateMaxTokens(sections.length),
+        maxTokens: tokenBudget,
         temperature: 0.4,
         timeoutMs: this.timeoutMs,
         retries: this.retries,
@@ -193,20 +194,54 @@ export abstract class BaseDirector {
       });
 
       // Parse the response with model-aware parsing
-      const rawContent = this.streaming ? validator.getBuffer() : response.content;
+      let rawContent = this.streaming ? validator.getBuffer() : response.content;
       const parseContext: ParseContext = {
         modelId: this.model,
         debug: import.meta.env.DEV
       };
 
-      // Debug: Log raw response for troubleshooting
-      if (import.meta.env.DEV) {
-        console.log(`[${this.getStageName()}] Raw LLM response (${rawContent.length} chars):`);
-        console.log(`[${this.getStageName()}] First 500 chars: ${rawContent.slice(0, 500)}`);
-        console.log(`[${this.getStageName()}] Last 300 chars: ${rawContent.slice(-300)}`);
+      const logResponse = (content: string, attempt: number): void => {
+        if (!import.meta.env.DEV) return;
+        const status = [response.finishReason, response.incompleteReason].filter(Boolean).join(" / ") || "unknown";
+        console.log(`[${this.getStageName()}] Raw LLM response attempt ${attempt} (${content.length} chars, ${status}):`);
+        console.log(`[${this.getStageName()}] First 500 chars: ${content.slice(0, 500)}`);
+        console.log(`[${this.getStageName()}] Last 300 chars: ${content.slice(-300)}`);
+      };
+
+      let parseAttempts = 1;
+      logResponse(rawContent, parseAttempts);
+      let parsed = parseDirectorResponse(rawContent, durationMs, parseContext);
+      const firstResponseIncomplete = response.finishReason === "incomplete" || Boolean(response.incompleteReason);
+
+      if ((!parsed || firstResponseIncomplete) && !signal?.aborted) {
+        const retryBudget = Math.min(8096, Math.max(tokenBudget + 1000, tokenBudget * 2));
+        const cutoff = firstResponseIncomplete || response.incompleteReason === "max_output_tokens";
+        onProgress?.({
+          stage: this.stage,
+          status: "running",
+          message: `${this.getStageName()} response ${cutoff ? "was cut off" : "was malformed"}; retrying with ${retryBudget} output tokens...`
+        });
+        response = await requestLLM({
+          baseUrl: this.baseUrl,
+          model: this.model,
+          prompt: `${prompt}\n\nRETRY REQUIREMENT: The previous response was incomplete or malformed. Return a complete, compact JSON object. Keep every required section, shorten notes, and include only essential actions.`,
+          maxTokens: retryBudget,
+          temperature: 0.2,
+          timeoutMs: this.timeoutMs,
+          retries: 0,
+          stream: false,
+          signal,
+          onProgress: (message) => {
+            onProgress?.({ stage: this.stage, status: "running", message });
+          }
+        });
+        rawContent = response.content;
+        parseAttempts += 1;
+        logResponse(rawContent, parseAttempts);
+        parsed = parseDirectorResponse(rawContent, durationMs, parseContext);
       }
 
-      const parsed = parseDirectorResponse(rawContent, durationMs, parseContext);
+      if (response.finishReason === "incomplete" || response.incompleteReason) parsed = null;
 
       const baseMeta: DirectorResultMeta = {
         model: this.model,
@@ -214,6 +249,7 @@ export abstract class BaseDirector {
         seed: this.seed,
         timestamp: new Date().toISOString(),
         sectionCount: 0,
+        parseAttempts,
         parseSuccess: false
       };
 
@@ -221,13 +257,13 @@ export abstract class BaseDirector {
         onProgress?.({
           stage: this.stage,
           status: "failed",
-          message: `${this.getStageName()}: Invalid JSON response`
+          message: `${this.getStageName()}: Invalid JSON response after ${parseAttempts} attempts`
         });
 
         return {
           plan: null,
           response: null,
-          error: new Error("Failed to parse director response as valid JSON"),
+          error: new Error(`Failed to parse director response as valid JSON after ${parseAttempts} attempts`),
           durationMs: Date.now() - startTime,
           meta: baseMeta
         };

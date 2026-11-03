@@ -43,22 +43,21 @@ const resolveServiceUrl = (name, manifest) => {
   if (process.env[envKey]) return process.env[envKey];
   if (process.env[legacyEnvKey]) return process.env[legacyEnvKey];
 
-  const entry = manifest?.services?.[name];
-  if (entry?.host && entry?.port) {
-    return `http://${entry.host}:${entry.port}`;
+  const candidateKeys = [name, `mlx_${name}`, name.replace(/^mlx_/, "")];
+  for (const key of candidateKeys) {
+    const entry = manifest?.services?.[key];
+    if (entry?.host && entry?.port) {
+      return `http://${entry.host}:${entry.port}`;
+    }
   }
   return null;
 };
 
 const resolveLocalModelPath = (repoRoot, entry) => {
   if (!entry) return null;
-  const relPath = entry.path;
+  const relPath = entry.path || entry.local?.path || entry.local?.snapshot_path;
   if (relPath) {
-    return path.join(repoRoot, "model-zoo", relPath);
-  }
-  const snapshotPath = entry.local?.snapshot_path;
-  if (snapshotPath) {
-    return path.join(repoRoot, snapshotPath);
+    return path.join(repoRoot, "model-zoo", relPath.replace(/^model-zoo\//, "").replace(/^models\//, "models/"));
   }
   return null;
 };
@@ -71,12 +70,12 @@ const findModelByCapability = (registry, capability, repoRoot) => {
     if (caps.includes(capability)) {
       const localPath = resolveLocalModelPath(repoRoot, entry);
       const localExists = localPath ? fs.existsSync(localPath) : false;
-      candidates.push({ localPath, localExists });
+      candidates.push({ modelId, localPath, localExists });
     }
   }
   const localMatch = candidates.find((candidate) => candidate.localExists);
-  if (localMatch) return localMatch.localPath;
-  return candidates[0]?.localPath || null;
+  if (localMatch) return localMatch.localPath || localMatch.modelId;
+  return candidates[0]?.modelId || null;
 };
 
 const findModelById = (registry, modelId, repoRoot) => {

@@ -82,12 +82,10 @@ PERFORMANCE CONTEXT:
 ${JSON.stringify(compactSections, null, 1)}`;
   }
 
-  /**
-   * Override max tokens - stage director needs less
-   */
+  /** Stage plans include lighting, environment, and atmosphere cues per section. */
   protected estimateMaxTokens(sectionCount: number): number {
-    const baseTokens = 400;
-    const perSectionTokens = 60;
-    return Math.min(baseTokens + sectionCount * perSectionTokens, 2500);
+    const baseTokens = 1000;
+    const perSectionTokens = 260;
+    return Math.min(baseTokens + sectionCount * perSectionTokens, 4096);
   }
 }

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Mirror / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
+    <link rel="stylesheet" href="/src/styles/facial-workbench.css" />
+  </head>
+  <body>
+    <main class="facial-shell">
+      <section class="facial-stage" aria-label="Realtime facial mirror stage">
+        <div id="portraitStage" class="facial-stage__canvas"></div>
+        <output id="stageStatus" class="facial-stage__status">Booting portrait runtime</output>
+        <span class="facial-stage__provenance">Local MediaPipe / transient frames / no recording</span>
+        <video id="webcam" class="facial-video" autoplay muted playsinline hidden></video>
+      </section>
+      <aside class="facial-panel">
+        <p class="facial-panel__summary">Mirror live expressions and head pose onto a Core-X performer. Camera access is opt-in and frames stay inside this browser session.</p>
+        <section class="facial-section">
+          <h2>Performer</h2>
+          <label class="facial-field"><span>Core-X head</span><select id="headSelect"></select></label>
+          <label class="facial-field"><span>Expression influence <b id="influenceValue">85%</b></span><input id="influence" type="range" min="0" max="1" value="0.85" step="0.05" /></label>
+          <dl class="facial-metrics">
+            <div class="facial-metric"><dt>Renderer</dt><dd id="rendererMetric">pending</dd></div>
+            <div class="facial-metric"><dt>Pedestal</dt><dd id="pedestalMetric">pending</dd></div>
+          </dl>
+        </section>
+        <section class="facial-section">
+          <h2>Realtime Capture</h2>
+          <div class="facial-actions">
+            <button id="startButton" class="facial-command facial-command--primary" type="button" disabled><i data-lucide="Video"></i>Start camera</button>
+            <button id="stopButton" class="facial-command facial-command--stop" type="button" disabled><i data-lucide="VideoOff"></i>Stop</button>
+            <button id="resetButton" class="facial-command" type="button"><i data-lucide="RotateCcw"></i>Reset face</button>
+          </div>
+          <dl class="facial-metrics">
+            <div class="facial-metric"><dt>Model</dt><dd id="modelMetric">loading</dd></div>
+            <div class="facial-metric"><dt>Capture</dt><dd id="captureMetric">off</dd></div>
+            <div class="facial-metric"><dt>Faces</dt><dd id="facesMetric">0</dd></div>
+            <div class="facial-metric"><dt>Frame rate</dt><dd id="fpsMetric">0 fps</dd></div>
+          </dl>
+        </section>
+        <section class="facial-section">
+          <h2>Live Expression</h2>
+          <ol id="expressionList" class="facial-expression-list"></ol>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
+    <script type="module" src="/src/face-mirror.ts"></script>
+  </body>
+</html>

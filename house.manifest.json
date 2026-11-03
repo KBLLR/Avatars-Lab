@@ -1,7 +1,7 @@
 {
   "house_id": "avatar-labs",
   "name": "Avatar Labs",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "status": "active",
   "purpose": {
     "domain": "audiovisual",
@@ -74,14 +74,7 @@
     "tool_calling": true
   },
   "dependencies": {
-    "services": [
-      "gateway",
-      "mlx-llm",
-      "mlx-audio",
-      "mlx-vision",
-      "mflux",
-      "said"
-    ],
+    "services": [],
     "models": [],
     "houses": [],
     "mcp_servers": []
@@ -112,6 +105,8 @@
       { "id": "engine-lab", "label": "Performance Engine", "path": "/engine-lab.html" },
       { "id": "dance-studio", "label": "Dance Studio", "path": "/dance-studio.html" },
       { "id": "gestures-lab", "label": "Gestures Lab", "path": "/gestures-lab.html" },
+      { "id": "said-face", "label": "SAiD Face", "path": "/said-face.html" },
+      { "id": "face-mirror", "label": "Face Mirror", "path": "/face-mirror.html" },
       { "id": "multi-modal", "label": "Multi-Modal", "path": "/multi-modal.html" },
       { "id": "mlx-conversation", "label": "MLX Conversation", "path": "/mlx-conversation.html" },
       { "id": "composition-layer", "label": "Composition Layer", "path": "/composition-layer.html" },

@@ -14,7 +14,8 @@ export const TRACK_KINDS = [
 
 export type PerformanceTrackKind = (typeof TRACK_KINDS)[number];
 export type ActorAssetKind = "head" | "body";
-export type ShaderPresetId = "original" | "hologram" | "toon" | "chrome" | "xray";
+export type ShaderPresetId = "realismus" | "original" | "hologram" | "toon" | "chrome" | "xray";
+export type CameraAuthority = "director" | "operator";
 export type CameraPresetId =
   | "wide"
   | "two-shot"
@@ -77,7 +78,7 @@ export interface PerformanceTrack {
 export interface PerformanceEnvironment {
   id: string;
   label: string;
-  room: "cyclorama" | "black-box" | "broadcast" | "neon-grid";
+  room: "cyclorama" | "facial-lab" | "black-box" | "broadcast" | "neon-grid";
   hdriUrl?: string;
   exposure: number;
   backgroundIntensity: number;
@@ -124,6 +125,7 @@ export interface MusicAnalysis {
     signal: "web-audio";
     transcription?: string;
     diarisation?: string;
+    speakerReview?: "manual" | "mlx+manual";
   };
   warnings: string[];
 }
@@ -222,6 +224,9 @@ export interface ActorRuntimeCapabilities {
   morphTargets: number;
   embeddedAnimations: number;
   animationCompatible: boolean;
+  performanceMode: "portrait-head" | "full-body";
+  eyeContact: boolean;
+  pedestal: "studio-plinth" | "none";
 }
 
 export interface PerformanceEngineResult {
@@ -236,6 +241,13 @@ export interface PerformanceEngineResult {
   analysisReady?: boolean;
   speakers?: number;
   planningState?: "idle" | "running" | "complete" | "failed";
+  scoreState?: "detached" | "ready" | "playing" | "paused" | "error";
+  audioAttached?: boolean;
+  audioPlaying?: boolean;
+  audioMuted?: boolean;
+  audioVolume?: number;
+  cameraAuthority?: CameraAuthority;
+  cameraPosition?: { x: number; y: number; z: number };
 }
 
 export const createId = (prefix: string): string =>

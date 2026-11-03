@@ -5,6 +5,8 @@ const workbenchRoutes = [
   "/engine-lab.html",
   "/dance-studio.html",
   "/gestures-lab.html",
+  "/said-face.html",
+  "/face-mirror.html",
   "/multi-modal.html",
   "/mlx-conversation.html",
   "/composition-layer.html",

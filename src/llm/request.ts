@@ -24,6 +24,7 @@ export interface LLMRequestOptions {
 export interface LLMResponse {
   content: string;
   finishReason?: string;
+  incompleteReason?: string;
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -145,13 +146,16 @@ export async function requestLLM(options: LLMRequestOptions): Promise<LLMRespons
       const data = await response.json();
       const content = extractOpenResponseText(data);
       const finishReason = data?.status;
+      const incompleteReason = typeof data?.incomplete_details?.reason === "string"
+        ? data.incomplete_details.reason
+        : undefined;
       const usage = data?.usage ? {
         promptTokens: data.usage.input_tokens || 0,
         completionTokens: data.usage.output_tokens || 0,
         totalTokens: data.usage.total_tokens || 0
       } : undefined;
 
-      return { content, finishReason, usage };
+      return { content, finishReason, incompleteReason, usage };
 
     } catch (err) {
       // Clear timeout

@@ -2,6 +2,7 @@ import type { PerformanceRoom } from "./room";
 import { PerformanceScheduler } from "./scheduler";
 import type {
   CameraPresetId,
+  CameraAuthority,
   CompiledPerformanceEvent,
   CompiledSchedule,
   LightingPresetId,
@@ -21,7 +22,7 @@ export interface PerformanceControllerCallbacks {
 
 const CAMERA_PRESETS = new Set<CameraPresetId>(["wide", "two-shot", "portrait", "orbit", "profile", "low-angle", "overhead", "dutch"]);
 const LIGHTING_PRESETS = new Set<LightingPresetId>(["studio", "concert", "noir", "sunset", "chiaroscuro", "silhouette"]);
-const SHADER_PRESETS = new Set<ShaderPresetId>(["original", "hologram", "toon", "chrome", "xray"]);
+const SHADER_PRESETS = new Set<ShaderPresetId>(["realismus", "original", "hologram", "toon", "chrome", "xray"]);
 
 export class PerformanceController {
   readonly scheduler = new PerformanceScheduler();
@@ -33,6 +34,7 @@ export class PerformanceController {
   private audio: HTMLAudioElement | null = null;
   private compileGeneration = 0;
   private activeLipSyncActors = new Set<string>();
+  private cameraAuthority: CameraAuthority = "director";
 
   constructor(
     private room: PerformanceRoom,
@@ -53,6 +55,10 @@ export class PerformanceController {
 
   get compiledSchedule(): CompiledSchedule | null {
     return this.schedule;
+  }
+
+  get currentCameraAuthority(): CameraAuthority {
+    return this.cameraAuthority;
   }
 
   setAudio(audio: HTMLAudioElement | null): void {
@@ -85,18 +91,26 @@ export class PerformanceController {
   }
 
   async play(): Promise<void> {
-    if (!this.schedule) await this.compile();
-    if (this.currentTimeMs >= this.project.durationMs) await this.seek(0);
-    this.state = "playing";
-    this.callbacks.onState?.(this.state);
+    if (this.currentTimeMs >= this.project.durationMs) {
+      this.currentTimeMs = 0;
+      if (this.audio?.src) this.audio.currentTime = 0;
+    }
+    let audioStart: Promise<void> | null = null;
     if (this.audio?.src) {
       this.audio.currentTime = this.currentTimeMs / 1000;
-      try {
-        await this.audio.play();
-      } catch (error) {
-        this.reportError(`Audio playback was blocked: ${String(error)}`);
-      }
+      audioStart = this.audio.play();
     }
+    if (!this.schedule) await this.compile();
+    try {
+      await audioStart;
+    } catch (error) {
+      this.state = "paused";
+      this.callbacks.onState?.(this.state);
+      this.reportError(`Audio playback was blocked: ${String(error)}`);
+      return;
+    }
+    this.state = "playing";
+    this.callbacks.onState?.(this.state);
   }
 
   pause(): void {
@@ -120,6 +134,21 @@ export class PerformanceController {
     if (this.audio?.src) this.audio.currentTime = this.currentTimeMs / 1000;
     await this.syncAt(this.currentTimeMs);
     this.callbacks.onTime?.(this.currentTimeMs, this.state);
+  }
+
+  async setCameraAuthority(authority: CameraAuthority): Promise<void> {
+    const changed = this.cameraAuthority !== authority;
+    this.cameraAuthority = authority;
+    this.room.setCameraAuthority(authority);
+    if (!changed || authority === "operator") return;
+    const latestCamera = this.schedule?.events
+      .filter((event) => event.action === "camera:set" && event.timeMs <= this.currentTimeMs)
+      .at(-1);
+    if (latestCamera) {
+      await this.execute(latestCamera, this.currentTimeMs - latestCamera.timeMs, this.syncGeneration);
+    } else {
+      this.room.setCameraPreset("two-shot");
+    }
   }
 
   private tick(deltaMs: number): void {
@@ -160,7 +189,7 @@ export class PerformanceController {
     }
     this.activeLipSyncActors.clear();
     this.room.resetStageEffects();
-    this.room.setCameraPreset("two-shot");
+    if (this.cameraAuthority === "director") this.room.setCameraPreset("two-shot");
     this.room.setLightingPreset("studio");
     try {
       await this.room.setEnvironment(this.project.environment);
@@ -237,10 +266,12 @@ export class PerformanceController {
           loop: event.data.loop === true,
           speed: typeof event.data.speed === "number" ? event.data.speed : 1,
           offsetMs,
+          clipId: event.clipId,
+          blendSeconds: typeof event.data.blendSeconds === "number" ? event.data.blendSeconds : undefined,
         });
         if (generation !== this.syncGeneration) this.room.stopAnimation(event.actorId);
       } else if (event.action === "animation:stop" && event.actorId) {
-        this.room.stopAnimation(event.actorId);
+        this.room.stopAnimation(event.actorId, event.clipId);
       } else if (event.action === "shader:set" && event.actorId) {
         const preset = String(event.data.preset) as ShaderPresetId;
         if (SHADER_PRESETS.has(preset)) this.room.setActorShader(event.actorId, preset);
@@ -252,6 +283,7 @@ export class PerformanceController {
       } else if (event.action === "expression:reset" && event.actorId) {
         this.room.resetExpression(event.actorId);
       } else if (event.action === "camera:set") {
+        if (this.cameraAuthority === "operator") return;
         const preset = String(event.data.preset) as CameraPresetId;
         if (CAMERA_PRESETS.has(preset)) {
           this.room.setCameraCue({

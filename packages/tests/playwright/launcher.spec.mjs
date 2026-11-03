@@ -6,14 +6,14 @@ test("launcher exposes the canonical harness roster and runtime state", async ({
 
   await page.goto("/");
   await expect(page.locator(".wordmark")).toContainText("Avatar Labs");
-  await expect(page.locator(".case-tile")).toHaveCount(10);
+  await expect(page.locator(".case-tile")).toHaveCount(12);
   await expect(page.locator('[data-case-id="gemma-avatar"]')).toBeVisible();
   await expect(page.locator('[data-case-id="corex-head"]')).toBeVisible();
-  await expect(page.locator("#case-count")).toHaveText("10 harnesses");
+  await expect(page.locator("#case-count")).toHaveText("12 harnesses");
   await page.waitForFunction(() => window.__avatarLabsLauncherResult?.ready === true);
 
   const result = await page.evaluate(() => window.__avatarLabsLauncherResult);
-  expect(result.cases).toBe(10);
+  expect(result.cases).toBe(12);
   expect(["webgpu", "webgl-fallback"]).toContain(result.renderer);
   expect(errors).toEqual([]);
 });

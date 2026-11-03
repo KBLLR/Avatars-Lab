@@ -211,10 +211,12 @@ export class DirectorOrchestrator {
             : Promise.resolve(undefined),
           // Camera Director
           enabledDirectors.includes("camera")
-            ? this.cameraDirector.analyze(sections, durationMs, {
-                performancePlan: performanceResult.plan,
-                stagePlan: null
-              } as CameraDirectorContext, {
+              ? this.cameraDirector.analyze(sections, durationMs, {
+                  performancePlan: performanceResult.plan,
+                  stagePlan: null,
+                  brief: performanceContext?.brief,
+                  cast: performanceContext?.cast?.map(({ id, label }) => ({ id, label })),
+                } as CameraDirectorContext, {
                 signal,
                 onProgress,
                 onChunk,
@@ -277,7 +279,9 @@ export class DirectorOrchestrator {
           try {
             const cameraContext: CameraDirectorContext = {
               performancePlan: performanceResult.plan,
-              stagePlan: stageResult?.plan || null
+              stagePlan: stageResult?.plan || null,
+              brief: performanceContext?.brief,
+              cast: performanceContext?.cast?.map(({ id, label }) => ({ id, label })),
             };
 
             cameraResult = await this.cameraDirector.analyze(

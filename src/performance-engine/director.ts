@@ -76,7 +76,12 @@ const createClip = (
   data: Record<string, unknown>,
 ): PerformanceClip => ({ id: createId("clip"), label, startMs, durationMs, data });
 
-const buildSections = (brief: string, durationMs: number, analysis?: MusicAnalysis): InputSection[] => {
+const buildSections = (
+  brief: string,
+  durationMs: number,
+  analysis?: MusicAnalysis,
+  project?: PerformanceProject,
+): InputSection[] => {
   if (analysis?.segments.length) {
     const count = Math.max(4, Math.min(8, Math.ceil(durationMs / 30_000), analysis.segments.length));
     return Array.from({ length: count }, (_, index) => {
@@ -85,6 +90,11 @@ const buildSections = (brief: string, durationMs: number, analysis?: MusicAnalys
       const segments = analysis.segments.filter((segment) => segment.endMs > startMs && segment.startMs < endMs);
       const lyrics = segments.map((segment) => segment.text).filter(Boolean).join(" ").slice(0, 620);
       const speakers = [...new Set(segments.map((segment) => segment.speakerId).filter(Boolean))];
+      const singerTargets = speakers.flatMap((speakerId) => {
+        const actorId = analysis.speakers.find((speaker) => speaker.id === speakerId)?.actorId;
+        const actor = project?.actors.find((candidate) => candidate.id === actorId);
+        return actorId ? [`${speakerId} -> ${actor?.label || actorId} (${actorId})`] : [];
+      });
       const energy = segments.reduce((sum, segment) => sum + segment.energy, 0) / Math.max(1, segments.length);
       const arousal = segments.reduce((sum, segment) => sum + segment.arousal, 0) / Math.max(1, segments.length);
       const valence = segments.reduce((sum, segment) => sum + segment.valence, 0) / Math.max(1, segments.length);
@@ -97,8 +107,9 @@ const buildSections = (brief: string, durationMs: number, analysis?: MusicAnalys
           `Lyrics: ${lyrics || "Instrumental passage"}.`,
           `Music evidence: energy ${energy.toFixed(2)}, arousal ${arousal.toFixed(2)}, valence ${valence.toFixed(2)}, ${beats} detected onsets${analysis.tempoBpm ? `, estimated ${analysis.tempoBpm} BPM` : ""}.`,
           speakers.length ? `Diarised singers: ${speakers.join(", ")}.` : "No distinct singer identity detected.",
+          singerTargets.length ? `Singer targets: ${singerTargets.join(", ")}.` : "",
           `Operator brief: ${brief}`,
-        ].join(" "),
+        ].filter(Boolean).join(" "),
       };
     });
   }
@@ -204,20 +215,59 @@ const cameraCue = (
   section: PlanSection,
   actorCount: number,
   analysis: MusicAnalysis | undefined,
+  action?: PlanAction,
+  shotIndex = 0,
 ): Record<string, unknown> => {
   const evidence = analysisForSection(analysis, section);
-  const action = (section.actions || []).find((candidate) => candidate.action.startsWith("camera_"));
   const speakerActorId = analysis?.speakers.find((speaker) => speaker.id === evidence.speakerId)?.actorId;
+  const view = action?.action === "set_view" ? String(action.args?.view || "") : "";
+  const preset = view === "full"
+    ? actorCount > 1 ? "two-shot" : "wide"
+    : view === "head" || view === "upper" || action?.action === "camera_punch"
+      ? "portrait"
+      : action?.action === "camera_orbit" ? "orbit"
+        : action?.action === "camera_sweep" ? "profile"
+          : cameraPreset(section, actorCount);
   return {
-    preset: cameraPreset(section, actorCount),
-    movement: action?.action.replace("camera_", "") || (evidence.arousal > 0.72 ? "orbit" : "dolly"),
-    amount: Number(action?.args?.angle ?? action?.args?.distance ?? (evidence.arousal > 0.72 ? 28 : -0.45)),
+    preset,
+    movement: action?.action === "set_view"
+      ? "cut"
+      : action?.action.replace("camera_", "") || (evidence.arousal > 0.72 ? "orbit" : "dolly"),
+    amount: Number(action?.args?.angle ?? action?.args?.distance ?? action?.args?.endAngle ?? (evidence.arousal > 0.72 ? 28 : -0.45)),
     transitionMs: Math.max(360, Math.min(2_800, Number(action?.args?.duration_ms) || (1_800 - evidence.arousal * 1_100))),
     targetActorId: speakerActorId,
     handheld: action?.action === "camera_shake" ? Number(action.args?.intensity) || 0.2 : evidence.arousal > 0.86 ? 0.08 : 0,
     lensMm: section.camera === "head" ? 85 : section.camera === "upper" ? 65 : section.camera === "mid" ? 50 : 35,
     energy: evidence.energy,
+    storyPurpose: section.notes || section.label,
+    shotIndex,
   };
+};
+
+const cameraClipsForSection = (
+  section: PlanSection,
+  actorCount: number,
+  analysis: MusicAnalysis | undefined,
+): PerformanceClip[] => {
+  const cameraActions = (section.actions || []).filter((action) =>
+    action.action.startsWith("camera_") || action.action === "set_view",
+  ).slice(0, 3);
+  const actions: Array<PlanAction | undefined> = cameraActions.length ? cameraActions : [undefined];
+  const requestedStarts = actions.map((action) => Math.max(section.start_ms, Math.min(section.end_ms - 1, action?.time_ms ?? section.start_ms)));
+  const distinctStarts = new Set(requestedStarts).size === requestedStarts.length;
+  const starts = distinctStarts
+    ? requestedStarts
+    : actions.map((_, index) => Math.round(section.start_ms + (section.end_ms - section.start_ms) * index / actions.length));
+  return actions.map((action, index) => {
+    const startMs = starts[index];
+    const endMs = starts[index + 1] ?? section.end_ms;
+    return createClip(
+      actions.length > 1 ? `${section.label} / Shot ${index + 1}` : section.label,
+      startMs,
+      Math.max(1, endMs - startMs),
+      cameraCue(section, actorCount, analysis, action, index),
+    );
+  });
 };
 
 const lightingPreset = (section: PlanSection): "studio" | "concert" | "noir" | "sunset" => ({
@@ -227,14 +277,6 @@ const lightingPreset = (section: PlanSection): "studio" | "concert" | "noir" | "
   frost: "studio",
   crimson: "concert",
 } as const)[section.light || "frost"];
-
-const shaderPreset = (section: PlanSection): ShaderPresetId => {
-  if (section.effects === "bloom") return "hologram";
-  if (section.effects === "vignette") return "chrome";
-  if (section.mood === "fear") return "xray";
-  if (section.mood === "happy" || section.mood === "love") return "toon";
-  return "original";
-};
 
 const stageEffectCue = (section: PlanSection, analysis?: MusicAnalysis): Record<string, unknown> => {
   const evidence = analysisForSection(analysis, section);
@@ -293,9 +335,8 @@ const buildDirectedProject = (
   next.tracks.push(createTrack("environment", "Stage / Environment", undefined, sections.map((section) =>
     createClip(project.environment.label, section.start_ms, section.end_ms - section.start_ms, { environmentId: project.environment.id }),
   )));
-  next.tracks.push(createTrack("camera", "Camera Director", undefined, sections.map((section) =>
-    createClip(section.label, section.start_ms, section.end_ms - section.start_ms,
-      cameraCue(section, project.actors.length, input.musicAnalysis)),
+  next.tracks.push(createTrack("camera", "Camera Director", undefined, sections.flatMap((section) =>
+    cameraClipsForSection(section, project.actors.length, input.musicAnalysis),
   )));
   next.tracks.push(createTrack("lighting", "Stage Director / Lighting", undefined, sections.map((section) =>
     createClip(section.label, section.start_ms, section.end_ms - section.start_ms, {
@@ -310,11 +351,10 @@ const buildDirectedProject = (
   )));
 
   for (const actor of next.actors) {
-    next.tracks.push(createTrack("shader", `${actor.label} / PostFX Look`, actor.id, sections.map((section) =>
-      createClip(section.label, section.start_ms, section.end_ms - section.start_ms, {
-        preset: shaderPreset(section),
-      }),
-    )));
+    actor.shader = "realismus";
+    next.tracks.push(createTrack("shader", `${actor.label} / Material`, actor.id, [
+      createClip("Realismus", 0, project.durationMs, { preset: "realismus" satisfies ShaderPresetId }),
+    ]));
     next.tracks.push(createTrack("expression", `${actor.label} / Performance`, actor.id, sections.map((section) =>
       createClip(section.mood || "neutral", section.start_ms, section.end_ms - section.start_ms, expressionValues(section)),
     )));
@@ -397,13 +437,14 @@ export class PerformanceShowDirector {
     const enabledDirectors = input.enabledDirectors?.length
       ? [...new Set(["performance" as const, ...input.enabledDirectors])]
       : SHOW_DIRECTOR_STAGES;
-    const sections = buildSections(brief, input.project.durationMs, input.musicAnalysis);
+    const sections = buildSections(brief, input.project.durationMs, input.musicAnalysis, input.project);
     const briefings: DirectorBriefing[] = [];
     this.orchestrator = createOrchestrator({
       baseUrl: input.baseUrl,
       model: input.model,
       style: input.style,
       seed: `${input.project.id}:${Date.now()}`,
+      timeoutMs: 120_000,
       retries: 1,
       streaming: false,
       enableChunking: false,
@@ -421,8 +462,11 @@ export class PerformanceShowDirector {
           cast: input.project.actors.map((actor) => ({
             id: actor.id,
             label: actor.label,
+            kind: actor.asset.kind,
             body: actor.asset.body,
             animationCompatible: input.capabilities.get(actor.id)?.animationCompatible === true,
+            performanceMode: input.capabilities.get(actor.id)?.performanceMode ||
+              (actor.asset.kind === "head" ? "portrait-head" : "full-body"),
           })),
           animations: input.catalog.animations.map((animation) => ({
             id: animation.id,

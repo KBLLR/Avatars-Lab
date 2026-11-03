@@ -3,6 +3,16 @@ import { basename, extname, relative, resolve, sep } from "node:path";
 import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 
 const root = process.cwd();
+const findRepoRoot = (dir) => {
+  let curr = dir;
+  while (curr && curr !== "/") {
+    if (existsSync(resolve(curr, ".git")) || existsSync(resolve(curr, "core-x"))) return curr;
+    curr = resolve(curr, "..");
+  }
+  return resolve(dir, "../..");
+};
+const repoRoot = findRepoRoot(root);
+
 const avatarLabsPort = Number(
   process.env.AVATAR_LABS_VITE_PORT || process.env.AVATAR_LABS_DEV_PORT || 5185,
 );
@@ -11,15 +21,20 @@ const corexGatewayUrl = (
 ).replace(/\/$/, "");
 
 const COREX_PUBLIC = resolve(
-  process.env.AVATAR_LABS_COREX_PUBLIC_ROOT || resolve(root, "../../core-x/ui/public"),
+  process.env.AVATAR_LABS_COREX_PUBLIC_ROOT || resolve(repoRoot, "core-x/ui/public"),
 );
 const PERFORMANCE_ANIMATION_ROOT = resolve(
   process.env.AVATAR_LABS_ANIMATION_ROOT ||
-    resolve(root, "../../houses/rigging-portal/public/animation-library/fbx"),
+    resolve(repoRoot, "houses/rigging-portal/public/animation-library/fbx"),
 );
 const RPM_ANIMATION_ROOT = resolve(
   process.env.AVATAR_LABS_RPM_ANIMATION_ROOT ||
-    resolve(root, "../../houses/project-anja/frontend/anjadesk/public/assets/animations/mixamo"),
+    resolve(repoRoot, "houses/project-anja/frontend/anjadesk/public/assets/animations/mixamo"),
+);
+const MEDIAPIPE_WASM_ROOT = resolve(root, "node_modules/@mediapipe/tasks-vision/wasm");
+const MEDIAPIPE_MODEL_ROOT = resolve(
+  process.env.AVATAR_LABS_MEDIAPIPE_MODEL_ROOT ||
+    resolve(repoRoot, "warehouse/var/cache/objects/avatar-labs/intake-2026-05-05/public/mediapipe"),
 );
 
 const contentTypes = {
@@ -31,8 +46,11 @@ const contentTypes = {
   ".hdr": "image/vnd.radiance",
   ".jpeg": "image/jpeg",
   ".jpg": "image/jpeg",
+  ".js": "text/javascript; charset=utf-8",
   ".ktx2": "image/ktx2",
   ".png": "image/png",
+  ".task": "application/octet-stream",
+  ".wasm": "application/wasm",
   ".webp": "image/webp",
 };
 
@@ -197,11 +215,42 @@ const registerAnimationCatalog = (middlewares) => {
   });
 };
 
+const registerHealthCheck = (middlewares) => {
+  middlewares.use("/health", (_req, res) => {
+    const catalog = buildAnimationCatalog();
+    const manifestExists = existsSync(resolve(root, "public/avatars/runtime-manifest.json"));
+    const brunetteExists = existsSync(resolve(root, "public/avatars/brunette.glb"));
+    const northernSoulExists = existsSync(resolve(PERFORMANCE_ANIMATION_ROOT, "dance_mixamo_northern_soul_01.fbx"));
+
+    const assetsReady = manifestExists && brunetteExists && northernSoulExists;
+    const ok = assetsReady && catalog.animations.length > 0;
+
+    const payload = {
+      status: ok ? "healthy" : "degraded",
+      house_id: "avatar-labs",
+      version: "0.2.0",
+      deployment: "houses/avatar-labs-v0.2.0",
+      assets: {
+        runtime_manifest: manifestExists,
+        character_brunette: brunetteExists,
+        animation_northern_soul: northernSoulExists,
+        animation_catalog_count: catalog.animations.length,
+      },
+      ready: ok,
+    };
+    res.statusCode = ok ? 200 : 503;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
+    res.end(JSON.stringify(payload));
+  });
+};
+
 // Large canonical binaries stay in their owning surfaces. Avatar Labs exposes
 // read-only local bridges in dev/preview rather than copying them into this repo.
 const ecosystemAssetsPlugin = () => ({
   name: "ecosystem-assets",
   configureServer(server) {
+    registerHealthCheck(server.middlewares);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -210,8 +259,11 @@ const ecosystemAssetsPlugin = () => ({
       PERFORMANCE_ANIMATION_ROOT,
     );
     registerStaticRoot(server.middlewares, "/performance-assets/rpm", RPM_ANIMATION_ROOT);
+    registerStaticRoot(server.middlewares, "/facial-assets/mediapipe/wasm", MEDIAPIPE_WASM_ROOT);
+    registerStaticRoot(server.middlewares, "/facial-assets/mediapipe", MEDIAPIPE_MODEL_ROOT);
   },
   configurePreviewServer(server) {
+    registerHealthCheck(server.middlewares);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -220,6 +272,8 @@ const ecosystemAssetsPlugin = () => ({
       PERFORMANCE_ANIMATION_ROOT,
     );
     registerStaticRoot(server.middlewares, "/performance-assets/rpm", RPM_ANIMATION_ROOT);
+    registerStaticRoot(server.middlewares, "/facial-assets/mediapipe/wasm", MEDIAPIPE_WASM_ROOT);
+    registerStaticRoot(server.middlewares, "/facial-assets/mediapipe", MEDIAPIPE_MODEL_ROOT);
   },
 });
 
@@ -301,6 +355,9 @@ export default defineConfig({
         "engine-lab": resolve(root, "engine-lab.html"),
         "multi-modal": resolve(root, "multi-modal.html"),
         "gestures-lab": resolve(root, "gestures-lab.html"),
+        "mocap-lab": resolve(root, "mocap-lab.html"),
+        "said-face": resolve(root, "said-face.html"),
+        "face-mirror": resolve(root, "face-mirror.html"),
         "dance-studio": resolve(root, "dance-studio.html"),
         info: resolve(root, "info.html"),
         settings: resolve(root, "settings.html"),

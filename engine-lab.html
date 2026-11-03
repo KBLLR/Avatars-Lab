@@ -17,7 +17,23 @@
               <span id="rendererBadge">Renderer / initializing</span>
               <span id="schedulerBadge">Schedule / pending</span>
               <span id="warehouseBadge" data-state="pending">Warehouse / checking</span>
+              <span id="scoreBadge" data-state="offline">Score / none</span>
             </div>
+            <div class="camera-authority-control" role="group" aria-label="Camera control mode">
+              <button id="cameraModeDirector" type="button" data-active="true" title="Follow director camera cues"><i data-lucide="Video"></i>Director</button>
+              <button id="cameraModeOperator" type="button" data-active="false" title="Move the camera freely"><i data-lucide="Orbit"></i>Free</button>
+            </div>
+            <section id="performanceBroadcast" class="performance-broadcast" aria-live="polite" hidden>
+              <div class="performance-broadcast__brand" aria-label="Core-X">
+                <span class="performance-broadcast__mark" aria-hidden="true">CX</span>
+                <span>core-x</span>
+              </div>
+              <div class="performance-broadcast__credits">
+                <span>Now performing</span>
+                <strong id="performanceBroadcastTitle">Untitled Performance</strong>
+                <small id="performanceBroadcastCast">Cast pending</small>
+              </div>
+            </section>
             <div id="stageLoading" class="performance-loading">
               <span class="performance-loading-spinner" aria-hidden="true"></span>
               <strong>Preparing performance room</strong>
@@ -95,6 +111,7 @@
                   <button id="exportProjectButton" type="button"><i data-lucide="Download"></i>Export</button>
                   <button id="importProjectButton" type="button"><i data-lucide="Upload"></i>Import</button>
                 </div>
+                <button id="restoreProjectButton" class="wide-command secondary-command" type="button"><i data-lucide="FolderOpen"></i>Restore saved project</button>
                 <input id="importProjectInput" type="file" accept="application/json,.json" hidden />
                 <input id="audioInput" type="file" accept="audio/*" hidden />
                 <button id="audioButton" class="wide-command" type="button"><i data-lucide="AudioLines"></i><span id="audioButtonLabel">Attach score</span></button>
@@ -125,7 +142,15 @@
                 <button id="createShowButton" class="wide-command director-command" type="button"><i data-lucide="Clapperboard"></i>Create show</button>
                 <output id="directorStatus" class="director-status" aria-live="polite">Performance Director ready</output>
                 <output id="directorProvenance" class="director-provenance" hidden></output>
-                <div id="speakerAssignments" class="speaker-assignments" hidden></div>
+                <div id="speakerAssignments" class="speaker-assignments" hidden>
+                  <div class="speaker-review-header">
+                    <strong>Singer review</strong>
+                    <button id="addManualSingerButton" type="button"><i data-lucide="UserPlus"></i>Add singer</button>
+                  </div>
+                  <output id="speakerReviewStatus" class="speaker-review-status"></output>
+                  <div id="speakerAssignmentRows"></div>
+                  <div id="singerSegmentRows" class="singer-segment-rows"></div>
+                </div>
               </div>
             </details>
 
@@ -138,9 +163,10 @@
                   <button id="removeActorButton" type="button"><i data-lucide="Trash2"></i>Remove</button>
                 </div>
                 <label><span>Avatar asset</span><select id="actorAsset"></select></label>
-                <label><span>TSL look</span><select id="actorShader"><option value="original">Original</option><option value="hologram">Hologram</option><option value="toon">Toon</option><option value="chrome">Chrome</option><option value="xray">X-ray</option></select></label>
-                <div class="field-grid three-columns">
+                <label><span>Actor look</span><select id="actorShader"><option value="realismus">Realismus</option><option value="original">Authored original</option><option value="hologram">Hologram</option><option value="toon">Toon</option><option value="chrome">Chrome</option><option value="xray">X-ray</option></select></label>
+                <div class="field-grid four-columns actor-transform-grid">
                   <label><span>X</span><input id="actorX" type="number" min="-8" max="8" step="0.1" /></label>
+                  <label><span>Height</span><input id="actorY" type="number" min="-4" max="8" step="0.1" /></label>
                   <label><span>Depth</span><input id="actorZ" type="number" min="-8" max="8" step="0.1" /></label>
                   <label><span>Scale</span><input id="actorScale" type="number" min="0.1" max="5" step="0.05" /></label>
                 </div>

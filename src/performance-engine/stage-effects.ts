@@ -30,6 +30,22 @@ export interface StageEffectCue {
 
 type Rapier = typeof import("@dimforge/rapier3d-compat");
 
+let rapierInitialization: Promise<Rapier> | null = null;
+const loadRapier = (): Promise<Rapier> => {
+  if (!rapierInitialization) {
+    rapierInitialization = import("@dimforge/rapier3d-compat")
+      .then(async (rapier) => {
+        await rapier.init();
+        return rapier;
+      })
+      .catch((error) => {
+        rapierInitialization = null;
+        throw error;
+      });
+  }
+  return rapierInitialization;
+};
+
 const palettes: Record<string, [string, string]> = {
   neon: ["#07111d", "#d946ef"],
   noir: ["#030303", "#6b7280"],
@@ -68,6 +84,7 @@ export class StageEffectsController {
   private matrix = new Matrix4();
   private position = new Vector3();
   private rotation = new Quaternion();
+  private physicsFailureReported = false;
 
   constructor(private scene: Scene) {
     this.root.name = "AvatarLabsStageEffects";
@@ -82,8 +99,20 @@ export class StageEffectsController {
     this.pulseOnBeat = cue.pulseOnBeat === true;
     this.setBackdrop(cue.shader || "clean", cue.palette || "frost");
     this.setParticles(cue.particles || "none", cue.palette || "frost");
-    if (cue.physics === "confetti") await this.createConfetti(generation, cue.palette || "neon");
-    else this.clearPhysics();
+    if (cue.physics === "confetti") {
+      try {
+        await this.createConfetti(generation, cue.palette || "neon");
+      } catch (error) {
+        if (generation !== this.generation) return;
+        this.clearPhysics();
+        console.warn(
+          "[Stage Effects] Rapier physics unavailable; keeping shader and particle effects without confetti.",
+          error,
+        );
+      }
+    } else {
+      this.clearPhysics();
+    }
   }
 
   setMusicEnergy(value: number): void {
@@ -157,8 +186,7 @@ export class StageEffectsController {
 
   private async createConfetti(generation: number, palette: string): Promise<void> {
     this.clearPhysics();
-    const rapier = await import("@dimforge/rapier3d-compat");
-    await rapier.init();
+    const rapier = await loadRapier();
     if (generation !== this.generation) return;
     this.rapier = rapier;
     const world = new rapier.World({ x: 0, y: -7.5, z: 0 });
@@ -182,16 +210,27 @@ export class StageEffectsController {
     }
     this.physicsWorld = world;
     this.physicsMesh = mesh;
+    this.physicsFailureReported = false;
     this.physicsRoot.add(mesh);
   }
 
   private clearPhysics(): void {
     disposeGroup(this.physicsRoot);
     this.physicsBodies = [];
-    this.physicsWorld?.free();
+    const world = this.physicsWorld;
     this.physicsWorld = null;
     this.physicsMesh = null;
     this.rapier = null;
+    if (world) {
+      try {
+        world.free();
+      } catch (error) {
+        if (!this.physicsFailureReported) {
+          this.physicsFailureReported = true;
+          console.warn("[Stage Effects] Rapier world was already invalidated; physics state was discarded.", error);
+        }
+      }
+    }
   }
 
   update(deltaMs: number): void {
@@ -216,17 +255,25 @@ export class StageEffectsController {
       material.opacity = Math.min(0.9, 0.3 + this.intensity * 0.4 + this.musicEnergy * 0.18);
     }
     if (this.physicsWorld && this.physicsMesh) {
-      this.physicsWorld.timestep = delta;
-      this.physicsWorld.step();
-      this.physicsBodies.forEach((body, index) => {
-        const translation = body.translation();
-        const rotation = body.rotation();
-        this.position.set(translation.x, translation.y, translation.z);
-        this.rotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
-        this.matrix.compose(this.position, this.rotation, new Vector3(1, 1, 1));
-        this.physicsMesh!.setMatrixAt(index, this.matrix);
-      });
-      this.physicsMesh.instanceMatrix.needsUpdate = true;
+      try {
+        this.physicsWorld.timestep = delta;
+        this.physicsWorld.step();
+        this.physicsBodies.forEach((body, index) => {
+          const translation = body.translation();
+          const rotation = body.rotation();
+          this.position.set(translation.x, translation.y, translation.z);
+          this.rotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
+          this.matrix.compose(this.position, this.rotation, new Vector3(1, 1, 1));
+          this.physicsMesh!.setMatrixAt(index, this.matrix);
+        });
+        this.physicsMesh.instanceMatrix.needsUpdate = true;
+      } catch (error) {
+        if (!this.physicsFailureReported) {
+          this.physicsFailureReported = true;
+          console.warn("[Stage Effects] Rapier runtime failed; disabling confetti while preserving other stage effects.", error);
+        }
+        this.clearPhysics();
+      }
     }
   }
 

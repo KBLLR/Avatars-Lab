@@ -265,3 +265,54 @@ export const setSpeakerActor = (analysis: MusicAnalysis, speakerId: string, acto
   ...analysis,
   speakers: analysis.speakers.map((speaker) => speaker.id === speakerId ? { ...speaker, actorId } : speaker),
 });
+
+const withSpeakerDurations = (analysis: MusicAnalysis): MusicAnalysis => {
+  const durations = new Map(analysis.speakers.map((speaker) => [speaker.id, 0]));
+  for (const segment of analysis.segments) {
+    if (!segment.speakerId || !durations.has(segment.speakerId)) continue;
+    durations.set(segment.speakerId, (durations.get(segment.speakerId) || 0) + segment.endMs - segment.startMs);
+  }
+  return {
+    ...analysis,
+    speakers: analysis.speakers.map((speaker) => ({
+      ...speaker,
+      durationMs: durations.get(speaker.id) || 0,
+    })),
+  };
+};
+
+export const addManualSpeaker = (analysis: MusicAnalysis, actorId?: string): MusicAnalysis => {
+  let index = 1;
+  let speakerId = "MANUAL_SINGER_01";
+  const existing = new Set(analysis.speakers.map((speaker) => speaker.id));
+  while (existing.has(speakerId)) {
+    index += 1;
+    speakerId = `MANUAL_SINGER_${String(index).padStart(2, "0")}`;
+  }
+  const assignUnmappedSegments = analysis.speakers.length === 0;
+  return withSpeakerDurations({
+    ...analysis,
+    segments: analysis.segments.map((segment) =>
+      assignUnmappedSegments && !segment.speakerId ? { ...segment, speakerId } : segment),
+    speakers: [...analysis.speakers, { id: speakerId, durationMs: 0, actorId, confidence: "low" }],
+    source: {
+      ...analysis.source,
+      speakerReview: analysis.source.diarisation ? "mlx+manual" : "manual",
+    },
+  });
+};
+
+export const setSegmentSpeaker = (
+  analysis: MusicAnalysis,
+  segmentId: string,
+  speakerId?: string,
+): MusicAnalysis => withSpeakerDurations({
+  ...analysis,
+  segments: analysis.segments.map((segment) => segment.id === segmentId
+    ? { ...segment, speakerId: speakerId || undefined }
+    : segment),
+  source: {
+    ...analysis.source,
+    speakerReview: analysis.source.diarisation ? "mlx+manual" : "manual",
+  },
+});

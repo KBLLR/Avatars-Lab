@@ -32,7 +32,7 @@ export const compilePerformanceProject = (project: PerformanceProject): Compiled
     if (!action) continue;
     const sorted = [...track.clips].sort((a, b) => a.startMs - b.startMs);
     let previousEnd = -1;
-    for (const clip of sorted) {
+    for (const [clipIndex, clip] of sorted.entries()) {
       const startMs = Math.max(0, Math.min(project.durationMs, Math.round(clip.startMs)));
       const durationMs = Math.max(1, Math.round(clip.durationMs));
       const endMs = Math.min(project.durationMs, startMs + durationMs);
@@ -50,15 +50,23 @@ export const compilePerformanceProject = (project: PerformanceProject): Compiled
         data: { ...clip.data }
       });
       if (track.kind === "animation") {
-        events.push({
-          id: `${clip.id}:stop`,
-          timeMs: endMs,
-          endMs,
-          action: "animation:stop",
-          actorId: track.actorId,
-          clipId: clip.id,
-          data: {}
-        });
+        const nextClip = sorted[clipIndex + 1];
+        const nextStartMs = nextClip
+          ? Math.max(0, Math.min(project.durationMs, Math.round(nextClip.startMs)))
+          : Number.POSITIVE_INFINITY;
+        // Keep the outgoing pose alive across contiguous boundaries so the
+        // room can crossfade instead of dropping through the bind pose.
+        if (nextStartMs > endMs + 400) {
+          events.push({
+            id: `${clip.id}:stop`,
+            timeMs: endMs,
+            endMs,
+            action: "animation:stop",
+            actorId: track.actorId,
+            clipId: clip.id,
+            data: {}
+          });
+        }
       } else if (track.kind === "expression") {
         events.push({
           id: `${clip.id}:reset`,
@@ -83,7 +91,9 @@ export const compilePerformanceProject = (project: PerformanceProject): Compiled
     }
   }
 
-  events.sort((a, b) => a.timeMs - b.timeMs || a.id.localeCompare(b.id));
+  const actionPriority = (event: CompiledPerformanceEvent): number =>
+    event.action === "animation:start" ? 0 : event.action === "animation:stop" ? 2 : 1;
+  events.sort((a, b) => a.timeMs - b.timeMs || actionPriority(a) - actionPriority(b) || a.id.localeCompare(b.id));
   return {
     projectId: project.id,
     durationMs: project.durationMs,

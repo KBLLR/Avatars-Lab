@@ -1,6 +1,7 @@
 import {
   Activity,
   ArrowUpRight,
+  AudioLines,
   AudioWaveform,
   Boxes,
   CircleGauge,
@@ -50,6 +51,7 @@ createIcons({
   icons: {
     Activity,
     ArrowUpRight,
+    AudioLines,
     AudioWaveform,
     Boxes,
     CircleGauge,

@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#d1d1d0" />
+    <title>Motion Capture Lab / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
+    <style>
+      :root {
+        --mocap-border: var(--workbench-line-soft, #b5b5b2);
+        --mocap-surface: var(--workbench-surface, rgba(229, 229, 227, 0.96));
+        --mocap-ink: var(--workbench-ink, #2d2824);
+        --mocap-muted: var(--workbench-muted, #6b6560);
+        --mocap-green: var(--workbench-green, #3d7a45);
+        --mocap-blue: var(--workbench-blue, #3d6e96);
+        --mocap-red: var(--workbench-red, #8a3030);
+        --mocap-amber: #946800;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #mocapApp {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        height: calc(100vh - 40px);
+        padding: 16px;
+        gap: 16px;
+        background: var(--workbench-bg);
+      }
+
+      .mocap-main-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+      }
+
+      .mocap-hero {
+        background: var(--mocap-surface);
+        border: 1px solid var(--mocap-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .mocap-hero .eyebrow {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--mocap-blue);
+      }
+
+      .mocap-hero h1 {
+        margin: 2px 0 0 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--mocap-ink);
+      }
+
+      .mocap-hero p {
+        margin: 2px 0 0 0;
+        font-size: 12px;
+        color: var(--mocap-muted);
+      }
+
+      .mocap-badges {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .badge {
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .badge-research {
+        background: rgba(148, 104, 0, 0.12);
+        color: var(--mocap-amber);
+        border: 1px solid rgba(148, 104, 0, 0.3);
+      }
+
+      .badge-mps {
+        background: rgba(61, 110, 150, 0.12);
+        color: var(--mocap-blue);
+        border: 1px solid rgba(61, 110, 150, 0.3);
+      }
+
+      .badge-gate {
+        background: rgba(61, 122, 69, 0.12);
+        color: var(--mocap-green);
+        border: 1px solid rgba(61, 122, 69, 0.3);
+      }
+
+      .viewports-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .viewport-card {
+        background: #000;
+        border: 1px solid var(--mocap-border);
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .viewport-header {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: none;
+      }
+
+      .viewport-header > * {
+        pointer-events: auto;
+      }
+
+      .viewport-title {
+        background: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .viewport-metrics {
+        display: flex;
+        gap: 6px;
+      }
+
+      .viewport-metric-tag {
+        background: rgba(0, 0, 0, 0.7);
+        color: #aaa;
+        font-size: 10px;
+        padding: 3px 6px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      #videoElement, #videoCanvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #0d0d0f;
+      }
+
+      #preview3dViewport {
+        width: 100%;
+        height: 100%;
+      }
+
+      .mocap-transport {
+        background: var(--mocap-surface);
+        border: 1px solid var(--mocap-border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .transport-btn {
+        background: var(--workbench-surface-strong, #fff);
+        border: 1px solid var(--mocap-border);
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--mocap-ink);
+      }
+
+      .transport-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      .transport-btn.primary {
+        background: var(--mocap-blue);
+        color: #fff;
+        border-color: var(--mocap-blue);
+      }
+
+      .transport-scrub {
+        flex: 1;
+        accent-color: var(--mocap-blue);
+        cursor: pointer;
+      }
+
+      .timecode {
+        font-family: var(--workbench-mono);
+        font-size: 12px;
+        color: var(--mocap-ink);
+        min-width: 65px;
+      }
+
+      .pipeline-panel {
+        background: var(--mocap-surface);
+        border: 1px solid var(--mocap-border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        flex-shrink: 0;
+      }
+
+      .pipeline-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        margin-bottom: 6px;
+        color: var(--mocap-muted);
+      }
+
+      .pipeline-bar {
+        height: 6px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .pipeline-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--mocap-blue);
+        transition: width 0.3s ease;
+      }
+
+      .pipeline-stages {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--mocap-muted);
+        margin-top: 6px;
+      }
+
+      .stage-step {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .stage-step.active {
+        color: var(--mocap-blue);
+        font-weight: 600;
+      }
+
+      .stage-step.done {
+        color: var(--mocap-green);
+      }
+
+      /* Inspector column */
+      .mocap-inspector-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+      }
+
+      .inspector-card {
+        background: var(--mocap-surface);
+        border: 1px solid var(--mocap-border);
+        border-radius: 8px;
+        padding: 12px 14px;
+      }
+
+      .inspector-card h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+        color: var(--mocap-ink);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .form-row {
+        margin-bottom: 10px;
+      }
+
+      .form-row label {
+        display: block;
+        font-size: 11px;
+        color: var(--mocap-muted);
+        margin-bottom: 4px;
+      }
+
+      .form-row select, .form-row input[type="text"] {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid var(--mocap-border);
+        border-radius: 4px;
+        font-size: 12px;
+        background: #fff;
+        color: var(--mocap-ink);
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        margin-bottom: 8px;
+        cursor: pointer;
+      }
+
+      .qa-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .qa-badge {
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--mocap-border);
+        background: rgba(255, 255, 255, 0.6);
+        font-size: 11px;
+      }
+
+      .qa-badge strong {
+        display: block;
+        font-size: 10px;
+        color: var(--mocap-muted);
+      }
+
+      .qa-badge span {
+        font-weight: 600;
+        color: var(--mocap-green);
+      }
+
+      .action-btn {
+        width: 100%;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid var(--mocap-border);
+        background: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        color: var(--mocap-ink);
+      }
+
+      .action-btn:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      .action-btn.primary {
+        background: var(--mocap-blue);
+        color: #fff;
+        border-color: var(--mocap-blue);
+      }
+
+      .action-btn.accent {
+        background: var(--mocap-green);
+        color: #fff;
+        border-color: var(--mocap-green);
+      }
+
+      .json-output {
+        font-family: var(--workbench-mono);
+        font-size: 10px;
+        background: #18181b;
+        color: #a1a1aa;
+        padding: 8px;
+        border-radius: 4px;
+        max-height: 140px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="mocapApp" aria-label="Avatar Labs Motion Capture Lab">
+      <div class="mocap-main-column">
+        <!-- Hero Header -->
+        <header class="mocap-hero">
+          <div>
+            <span class="eyebrow">SPECIALIST PROVIDER · MOTION2MIXAMORIG</span>
+            <h1>Motion Capture &amp; Retargeting Lab</h1>
+            <p>Video-to-motion recovery, skeletal inspection, and neutral corex-humanoid-22 retargeting</p>
+          </div>
+          <div class="mocap-badges">
+            <span class="badge badge-mps" title="Hardware accelerator">MPS · Apple Silicon</span>
+            <span class="badge badge-research" title="MPI SMPL-X &amp; GVHMR non-commercial terms">RESEARCH_ONLY</span>
+            <span class="badge badge-gate" id="preflightStatusBadge">MPS_INFERENCE_ACTIVE</span>
+          </div>
+        </header>
+
+        <!-- Side-by-Side Viewports Grid -->
+        <section class="viewports-grid" aria-label="Side-by-side viewports">
+          <!-- Footage Viewport -->
+          <div class="viewport-card" id="footageViewportCard">
+            <div class="viewport-header">
+              <span class="viewport-title">Input Video Footage</span>
+              <div class="viewport-metrics">
+                <span class="viewport-metric-tag" id="videoResolutionTag">1280×720 @ 30fps (8.03s)</span>
+                <span class="viewport-metric-tag" id="videoSourceTag">Real Human Dance</span>
+                <span class="viewport-metric-tag" id="videoServiceTag" style="color: var(--mocap-green);">Service: Online (8104)</span>
+              </div>
+            </div>
+            <video id="videoElement" playsinline muted loop style="width: 100%; height: 100%; object-fit: contain; background: #0d0d0f; display: block;"></video>
+            <div id="videoDropOverlay" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.8); border: 2px dashed var(--mocap-blue); border-radius: 8px; z-index: 20; justify-content: center; align-items: center; flex-direction: column; gap: 8px; color: #fff; font-size: 13px; font-weight: 500;">
+              <span>Drop performance video here (.mp4, .mov, .webm)</span>
+            </div>
+          </div>
+
+          <!-- 3D Preview Viewport -->
+          <div class="viewport-card">
+            <div class="viewport-header">
+              <span class="viewport-title">3D Retargeted Preview</span>
+              <div class="viewport-metrics">
+                <select id="viewportModelSelect" style="background: rgba(0,0,0,0.7); color: #fff; font-size: 10px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 2px 4px; cursor: pointer;">
+                  <option value="glb" selected>Skinned Character (GLB)</option>
+                  <option value="wireframe">Procedural Skeleton</option>
+                </select>
+                <span class="viewport-metric-tag" id="meshLoadStatusTag">GLB: Loading...</span>
+                <span class="viewport-metric-tag" id="rigStatusTag">Rig: Brunette (RPM)</span>
+                <span class="viewport-metric-tag" id="fingersStatusTag">Fingers: 40 at Rest</span>
+              </div>
+            </div>
+            <div id="preview3dViewport"></div>
+          </div>
+        </section>
+
+        <!-- Transport Controls -->
+        <div class="mocap-transport" role="toolbar" aria-label="Timeline transport">
+          <button id="stopButton" class="transport-btn" type="button" title="Stop">Stop</button>
+          <button id="playPauseButton" class="transport-btn primary" type="button" title="Play">Play</button>
+          <output id="timecodeDisplay" class="timecode">00:00:00</output>
+          <input id="timeScrubber" class="transport-scrub" type="range" min="0" max="150" value="0" step="1" aria-label="Motion frame scrubber" />
+          <output id="frameDisplay" class="timecode">F 0 / 150</output>
+          <label style="font-size: 11px; display: flex; align-items: center; gap: 4px;">
+            <input type="checkbox" id="loopCheckbox" checked /> Loop
+          </label>
+        </div>
+
+        <!-- Incremental Pipeline Telemetry -->
+        <section class="pipeline-panel" aria-label="Pipeline Telemetry">
+          <div class="pipeline-header">
+            <strong id="pipelineStageText">Stage: Ready</strong>
+            <span id="pipelineProgressPercent">0%</span>
+          </div>
+          <div class="pipeline-bar">
+            <div id="pipelineFill" class="pipeline-fill"></div>
+          </div>
+          <div class="pipeline-stages">
+            <span class="stage-step done" id="stage1">1. Ingest</span>
+            <span class="stage-step" id="stage2">2. GVHMR Detect</span>
+            <span class="stage-step" id="stage3">3. SMPL-X Norm</span>
+            <span class="stage-step" id="stage4">4. Retarget Mixamo</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- Inspector Column -->
+      <aside class="mocap-inspector-column" aria-label="Motion Capture Inspector">
+        <!-- Mode Switcher -->
+        <section class="inspector-card">
+          <h2>Execution &amp; Evidence Tier</h2>
+          <div class="form-row">
+            <label for="executionModeSelect">Evidence Classification</label>
+            <select id="executionModeSelect">
+              <option value="REAL_NEURAL_EXTRACTION" selected>REAL NEURAL EXTRACTION (GVHMR Local MPS · Genuine Inference)</option>
+              <option value="RECORDED_UPSTREAM_FIXTURE">RECORDED UPSTREAM FIXTURE (v0.1.8 Test Fixture)</option>
+              <option value="SYNTHETIC_PROCEDURAL">SYNTHETIC PROCEDURAL (Procedural Kinematic Generation)</option>
+            </select>
+          </div>
+          <!-- Verification Banner -->
+          <div id="blockerBanner" class="blocker-banner" style="background: rgba(61, 122, 69, 0.12); border: 1px solid rgba(61, 122, 69, 0.35); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 11px;">
+            <strong style="color: var(--mocap-green); display: block; margin-bottom: 2px;">NEURAL WEIGHTS ACTIVE · APPLE SILICON MPS</strong>
+            <span id="blockerBannerText" style="color: var(--mocap-ink);">Motion2MixamoRig v0.1.8 online on port 8104. Genuine GVHMR pose estimation and Blender retargeting ready.</span>
+          </div>
+        </section>
+
+        <!-- Input & Rig Selection -->
+        <section class="inspector-card">
+          <h2>Extraction Settings</h2>
+          <div class="form-row">
+            <label>Input Video Footage</label>
+            <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm" style="display: none;" />
+            <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+              <button id="browseVideoBtn" class="action-btn" type="button" style="margin-bottom: 0; flex: 1;">Upload Video...</button>
+              <button id="useSampleVideoBtn" class="action-btn" type="button" style="margin-bottom: 0; flex: 1;">Dance Sample</button>
+            </div>
+            <div id="selectedVideoName" style="font-size: 11px; font-family: var(--workbench-mono); color: var(--mocap-ink); background: rgba(0,0,0,0.04); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--mocap-border);">
+              sample_dance_30fps.mp4 (8.03s, 241 frames)
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="targetRigSelect">Target Character Rig</label>
+            <select id="targetRigSelect">
+              <option value="drive_char_1319" selected>drive_char_1319.glb (Local MIA · 52 Joints · 4K PBR)</option>
+              <option value="brunette">brunette.glb (ReadyPlayerMe · 73 Blendshapes)</option>
+              <option value="mixamo-5-fingers">mixamo-5-fingers.fbx (Licensed Mixamo Biped)</option>
+            </select>
+          </div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="detectHandsToggle" />
+            <span>Detect Hands (--detect-hands)</span>
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="lockFeetToggle" checked />
+            <span>Lock Feet to Floor (--lock-feet)</span>
+          </label>
+        </section>
+
+        <!-- QA Diagnostics -->
+        <section class="inspector-card">
+          <h2>Motion QA Badges &amp; Metrics</h2>
+          <div class="qa-grid">
+            <div class="qa-badge">
+              <strong>Ground Check</strong>
+              <span id="qaRootGround">✓ 0.02m (Pass)</span>
+            </div>
+            <div class="qa-badge">
+              <strong>Foot Sliding</strong>
+              <span id="qaFootSlide">✓ 0.012m (Pass)</span>
+            </div>
+            <div class="qa-badge">
+              <strong>Continuity</strong>
+              <span id="qaContinuity">✓ Clean</span>
+            </div>
+            <div class="qa-badge">
+              <strong>Penetration</strong>
+              <span id="qaPenetration">✓ 0 frames</span>
+            </div>
+            <div class="qa-badge" style="grid-column: span 2;">
+              <strong>Kinematic Fidelity (FK MPJPE)</strong>
+              <span id="qaMpjpe">✓ 0.0124m (FK vs Ref: 1/(F·J) Σ ||P_fk - P_ref||)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Cryptographic Provenance -->
+        <section class="inspector-card">
+          <h2>Cryptographic Provenance</h2>
+          <div style="font-size: 11px; display: flex; flex-direction: column; gap: 6px;">
+            <div>
+              <span style="color: var(--mocap-muted); display: block; font-size: 10px;">Input Video SHA-256 (sample_dance_30fps.mp4)</span>
+              <code id="inputVideoHashTag" style="font-size: 10px; word-break: break-all; background: rgba(0,0,0,0.04); padding: 2px 4px; border-radius: 3px;">417a0b3d6812b3f3b7d06f10e97579ab6d01da5ffacdd1a5adbeda6ddc55ecad</code>
+            </div>
+            <div>
+              <span style="color: var(--mocap-muted); display: block; font-size: 10px;">Target Rig SHA-256 (mixamo-5-fingers.fbx)</span>
+              <code id="targetRigHashTag" style="font-size: 10px; word-break: break-all; background: rgba(0,0,0,0.04); padding: 2px 4px; border-radius: 3px;">1d694c2d4c095c66ed36de5ac5046bc697704a955f2ef85538ef298edf337b09</code>
+            </div>
+            <div>
+              <span style="color: var(--mocap-muted); display: block; font-size: 10px;">Upstream Pinned Reference</span>
+              <code id="upstreamCommitTag" style="font-size: 10px;">MaxLiu22/Motion2MixamoRig v0.1.8 (f05a7181)</code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <section class="inspector-card">
+          <h2>Provider Actions</h2>
+          <button id="extractMotionBtn" class="action-btn primary" type="button" style="font-size: 12px; padding: 10px; font-weight: 600;">
+            Extract &amp; Retarget Animation (MPS)
+          </button>
+          <div style="display: flex; gap: 8px;">
+            <button id="downloadGlbBtn" class="action-btn accent" type="button" style="flex: 1;">Download GLB</button>
+            <button id="downloadMotionJsonBtn" class="action-btn" type="button" style="flex: 1;">Download Motion</button>
+          </div>
+          <button id="exportReviewBtn" class="action-btn" type="button">Export Review Packet</button>
+        </section>
+
+        <!-- Review Packet Details -->
+        <section class="inspector-card">
+          <h2>Research Review Packet</h2>
+          <pre id="reviewPacketJson" class="json-output">{\n  "status": "PREFLIGHT_READY_AWAITING_AUTHORIZATION",\n  "license": "RESEARCH_ONLY_NON_COMMERCIAL",\n  "provider": "Motion2MixamoRig v0.1.8",\n  "joints_keyed": 22,\n  "fingers_at_rest": 40\n}</pre>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
+    <script type="module" src="/src/mocap-lab.ts"></script>
+  </body>
+</html>

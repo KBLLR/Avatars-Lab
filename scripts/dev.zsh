@@ -10,6 +10,7 @@ export VITE_COREX_GATEWAY_URL="${VITE_COREX_GATEWAY_URL:-$COREX_GATEWAY_URL}"
 export AVATAR_LABS_VITE_PORT
 
 node "$HOUSE_DIR/scripts/hydrate-avatar-assets.mjs"
+node "$HOUSE_DIR/scripts/hydrate-facial-assets.mjs"
 
 gateway_status=$(curl --config /dev/null --connect-timeout 1 --max-time 2 -s -o /dev/null -w "%{http_code}" "$COREX_GATEWAY_URL/health" || true)
 if [[ "$gateway_status" != "200" ]]; then

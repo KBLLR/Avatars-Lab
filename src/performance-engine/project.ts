@@ -42,25 +42,26 @@ const makeClip = (
   data: Record<string, unknown>,
 ): PerformanceClip => ({ id: createId("clip"), label, startMs, durationMs, data });
 
-export const createDefaultProject = (catalog: PerformanceCatalog): PerformanceProject => {
-  const body = catalog.actors.find((asset) => asset.id === "body:sandri") ||
-    catalog.actors.find((asset) => asset.kind === "body");
-  const head = catalog.actors.find((asset) => asset.id === "head:kbllr") ||
-    catalog.actors.find((asset) => asset.kind === "head");
-  if (!body && !head) throw new Error("Performance Engine found no usable avatar assets.");
+export const createDefaultProject = (
+  catalog: PerformanceCatalog,
+  random: () => number = Math.random,
+): PerformanceProject => {
+  const bodies = catalog.actors.filter((asset) => asset.kind === "body");
+  if (!bodies.length) throw new Error("Performance Engine found no full-body avatar assets.");
+  const randomValue = Math.max(0, Math.min(0.999999, Number(random()) || 0));
+  const body = bodies[Math.floor(randomValue * bodies.length)];
 
-  const actors = [body, head].filter(Boolean).slice(0, 2).map((asset, index, source) => ({
+  const actors = [body].map((asset) => ({
     id: createId("actor"),
-    label: asset!.label.replace(/ \/ (Head|Body)$/, ""),
-    asset: asset!,
-    shader: index === 1 ? "hologram" as const : "original" as const,
-    position: { x: source.length > 1 ? (index === 0 ? -1.15 : 1.15) : 0, y: 0, z: 0 },
-    rotationY: index === 0 ? 0.08 : -0.08,
+    label: asset.label.replace(/ \/ (Head|Body)$/, ""),
+    asset,
+    shader: "realismus" as const,
+    position: { x: 0, y: 0, z: 0 },
+    rotationY: 0,
     scale: 1,
     visible: true,
   }));
-  const bodyActor = actors.find((actor) => actor.asset.kind === "body");
-  const headActor = actors.find((actor) => actor.asset.kind === "head");
+  const bodyActor = actors[0];
   const animation = catalog.animations.find((candidate) => candidate.id.includes("standing-neutral")) ||
     catalog.animations.find((candidate) => candidate.category === "idle") ||
     catalog.animations[0];
@@ -73,32 +74,30 @@ export const createDefaultProject = (catalog: PerformanceCatalog): PerformancePr
       makeClip(environment.label, 0, durationMs, { environmentId: environment.id }),
     ]),
     makeTrack("camera", "Camera", undefined, [
-      makeClip("Two Shot", 0, durationMs, { preset: "two-shot" }),
+      makeClip("Solo Wide", 0, durationMs, {
+        preset: "wide",
+        targetActorId: bodyActor.id,
+        lensMm: 50,
+        autoCastFraming: true,
+      }),
     ]),
     makeTrack("lighting", "Lighting", undefined, [
       makeClip("Studio", 0, durationMs, { preset: "studio" }),
     ]),
   ];
-  if (bodyActor && animation) {
+  if (animation) {
     tracks.push(makeTrack("animation", `${bodyActor.label} / Motion`, bodyActor.id, [
-      makeClip(animation.label, 0, durationMs, {
-        animationId: animation.id,
-        url: animation.url,
-        loop: animation.loop,
-        speed: 1,
-      }),
-    ]));
+        makeClip(animation.label, 0, durationMs, {
+          animationId: animation.id,
+          url: animation.url,
+          loop: animation.loop,
+          speed: 1,
+        }),
+      ]));
   }
-  if (headActor) {
-    tracks.push(
-      makeTrack("shader", `${headActor.label} / Look`, headActor.id, [
-        makeClip("Hologram", 0, durationMs, { preset: "hologram" }),
-      ]),
-      makeTrack("expression", `${headActor.label} / Expression`, headActor.id, [
-        makeClip("Smile", 2_000, 4_000, { mouthSmileLeft: 0.65, mouthSmileRight: 0.65 }),
-      ]),
-    );
-  }
+  tracks.push(makeTrack("shader", `${bodyActor.label} / Look`, bodyActor.id, [
+    makeClip("Realismus", 0, durationMs, { preset: "realismus" }),
+  ]));
 
   return {
     schema: PERFORMANCE_PROJECT_SCHEMA,
@@ -174,6 +173,9 @@ const parseMusicAnalysis = (value: unknown, durationMs: number): MusicAnalysis |
       signal: "web-audio",
       transcription: typeof source.transcription === "string" ? source.transcription : undefined,
       diarisation: typeof source.diarisation === "string" ? source.diarisation : undefined,
+      speakerReview: source.speakerReview === "manual" || source.speakerReview === "mlx+manual"
+        ? source.speakerReview
+        : undefined,
     },
     warnings: value.warnings.filter((warning): warning is string => typeof warning === "string"),
   };
@@ -207,9 +209,9 @@ export const parsePerformanceProject = (
     if (actorIds.has(id)) throw new Error(`Actor ID ${id} is duplicated.`);
     actorIds.add(id);
     const position = isRecord(raw.position) ? raw.position : {};
-    const shader = ["original", "hologram", "toon", "chrome", "xray"].includes(String(raw.shader))
+    const shader = ["realismus", "original", "hologram", "toon", "chrome", "xray"].includes(String(raw.shader))
       ? raw.shader as PerformanceProject["actors"][number]["shader"]
-      : "original";
+      : "realismus";
     return {
       id,
       label: typeof raw.label === "string" && raw.label.trim() ? raw.label.trim() : asset.label,
