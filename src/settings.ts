@@ -1,183 +1,153 @@
-const byId = (id: string) => document.getElementById(id) as HTMLElement;
-
-const env = {
-  llmBase: import.meta.env.VITE_MLX_LLM_BASE_URL || "(missing)",
-  audioBase: import.meta.env.VITE_MLX_AUDIO_BASE_URL || "(missing)",
-  llmModel: import.meta.env.VITE_MLX_DEFAULT_LLM_MODEL || "(missing)",
-  ttsModel: import.meta.env.VITE_MLX_DEFAULT_TTS_MODEL || "(missing)",
-  sttModel: import.meta.env.VITE_MLX_DEFAULT_STT_MODEL || "(missing)"
+const byId = (id: string) => document.getElementById(id) as HTMLElement | null;
+const setText = (id: string, value: string) => {
+  const el = byId(id);
+  if (el) el.textContent = value;
+};
+const setStatus = (id: string, online: boolean) => {
+  const el = byId(id);
+  if (!el) return;
+  el.classList.remove("online", "offline");
+  el.classList.add(online ? "online" : "offline");
+  el.title = online ? "Online" : "Offline";
 };
 
-byId("llmBase").textContent = `LLM Base: ${env.llmBase}`;
-byId("audioBase").textContent = `Audio Base: ${env.audioBase}`;
-byId("llmModel").textContent = `LLM Model: ${env.llmModel}`;
-byId("ttsModel").textContent = `TTS Model: ${env.ttsModel}`;
-byId("sttModel").textContent = `STT Model: ${env.sttModel}`;
+const gatewayBase = (
+  import.meta.env.VITE_COREX_GATEWAY_URL || "http://127.0.0.1:8090"
+).replace(/\/$/, "");
+const motionBase = (
+  import.meta.env.VITE_AVATAR_LABS_MOTION_API_URL || "http://127.0.0.1:8104"
+).replace(/\/$/, "");
+
+setText("llmBase", `${gatewayBase}/v1/responses`);
+setText("audioBase", `${gatewayBase}/v1/audio/speech`);
+setText("motionBase", `${motionBase}/health`);
+setText("llmModel", import.meta.env.VITE_MLX_DEFAULT_LLM_MODEL || "openai/gpt-oss-20b (via Gateway)");
+setText("ttsModel", import.meta.env.VITE_MLX_DEFAULT_TTS_MODEL || "kokoro-82m");
+setText("sttModel", import.meta.env.VITE_MLX_DEFAULT_STT_MODEL || "whisper-large-v3-turbo");
 
 const headttsOptions = [
   {
     option: "endpoints",
-    description: "List of WebSocket/RESTful servers or backends webgpu/wasm, in order of priority.",
-    value: '["webgpu", "wasm"]'
-  },
-  {
-    option: "audioCtx",
-    description: "Audio context for creating audio buffers.",
-    value: "null"
-  },
-  {
-    option: "workerModule",
-    description: "URL of HeadTTS Web Worker module.",
-    value: "null"
-  },
-  {
-    option: "transformersModule",
-    description: "transformers.js module URL.",
-    value: "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js"
+    description: "Priority order of WebSocket/RESTful servers or local WebGPU/WASM backends.",
+    value: '["http://127.0.0.1:8090/v1/audio/speech", "webgpu", "wasm"]',
   },
   {
     option: "model",
-    description: "Kokoro ONNX model used for in-browser inference.",
-    value: "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped"
-  },
-  {
-    option: "dtypeWebgpu",
-    description: "Precision for WebGPU inference.",
-    value: "fp32"
-  },
-  {
-    option: "dtypeWasm",
-    description: "Precision for WASM inference.",
-    value: "q4"
-  },
-  {
-    option: "styleDim",
-    description: "Style embedding dimension.",
-    value: "256"
+    description: "Kokoro model used for speech and timestamped viseme synthesis.",
+    value: "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped",
   },
   {
     option: "audioSampleRate",
-    description: "Audio sample rate in Hz.",
-    value: "24000"
+    description: "PCM/WAV audio sample rate in Hz.",
+    value: "24000",
   },
   {
     option: "frameRate",
-    description: "Frame rate in FPS.",
-    value: "40"
-  },
-  {
-    option: "languages",
-    description: "Language modules to preload.",
-    value: "[\"en-us\"]"
-  },
-  {
-    option: "dictionaryURL",
-    description: "URL to language dictionaries.",
-    value: "../dictionaries"
-  },
-  {
-    option: "voiceURL",
-    description: "URL for loading voices.",
-    value: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices"
-  },
-  {
-    option: "voices",
-    description: "Voices to preload.",
-    value: "[]"
-  },
-  {
-    option: "splitSentences",
-    description: "Split text into sentences.",
-    value: "true"
-  },
-  {
-    option: "splitLength",
-    description: "Maximum length per text chunk.",
-    value: "500"
-  },
-  {
-    option: "deltaStart",
-    description: "Adjustment (ms) to viseme start times.",
-    value: "-10"
-  },
-  {
-    option: "deltaEnd",
-    description: "Adjustment (ms) to viseme end times.",
-    value: "10"
+    description: "Viseme & blendshape evaluation rate in FPS.",
+    value: "40",
   },
   {
     option: "defaultVoice",
-    description: "Default voice.",
-    value: "af_bella"
+    description: "Default Kokoro voice profile.",
+    value: "af_heart",
   },
   {
     option: "defaultLanguage",
-    description: "Default language.",
-    value: "en-us"
+    description: "Default phoneme dictionary language.",
+    value: "en-us",
   },
-  {
-    option: "defaultSpeed",
-    description: "Speaking speed (0.25-4).",
-    value: "1"
-  },
-  {
-    option: "defaultAudioEncoding",
-    description: "Default audio format.",
-    value: "wav"
-  },
-  {
-    option: "trace",
-    description: "Debug bitmask (0=none, 255=all).",
-    value: "0"
-  }
 ];
 
 const headttsTbody = byId("headttsOptions");
-headttsOptions.forEach((row) => {
-  const tr = document.createElement("tr");
-  tr.innerHTML = `<td><code>${row.option}</code></td><td>${row.description}</td><td><code>${row.value}</code></td>`;
-  headttsTbody.appendChild(tr);
-});
+if (headttsTbody) {
+  headttsTbody.innerHTML = "";
+  headttsOptions.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><code>${row.option}</code></td><td>${row.description}</td><td><code>${row.value}</code></td>`;
+    headttsTbody.appendChild(tr);
+  });
+}
 
-const renderModels = async () => {
+const probeServicesAndAssets = async () => {
+  // 1. Probe Avatar Labs /health, runtime avatars, and FBX animation catalog
   try {
-    const response = await fetch("/models/registry.json");
-    if (!response.ok) throw new Error("Missing registry snapshot");
-    const data = await response.json();
-    const models = Array.isArray(data.models) ? data.models : [];
-    const voices = Array.isArray(data.voices) ? data.voices : [];
+    const [healthRes, avatarsRes, catalogRes] = await Promise.all([
+      fetch("/health", { cache: "no-store" }),
+      fetch("/avatars/runtime-manifest.json", { cache: "no-store" }),
+      fetch("/performance-assets/catalog.json", { cache: "no-store" }),
+    ]);
+    const healthOk = healthRes.ok;
+    setStatus("stt-status", healthOk);
 
-    const list = document.createElement("table");
-    list.innerHTML = `
-      <thead>
-        <tr>
-          <th>Model ID</th>
-          <th>Type</th>
-          <th>Capabilities</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${models
-          .map(
-            (model: any) => `
-              <tr>
-                <td><code>${model.id}</code></td>
-                <td>${model.type || "-"}</td>
-                <td>${(model.capabilities || []).join(", ") || "-"}</td>
-              </tr>`
-          )
-          .join("")}
-      </tbody>`;
+    const avatarData = avatarsRes.ok ? await avatarsRes.json() : { avatars: [] };
+    const catalogData = catalogRes.ok ? await catalogRes.json() : { animations: [], summary: {} };
+    const avatars = Array.isArray(avatarData.avatars) ? avatarData.avatars : [];
+    const animations = Array.isArray(catalogData.animations) ? catalogData.animations : [];
+
+    setText(
+      "houseAssetsSummary",
+      `${avatars.length} hydrated GLB avatars · ${animations.length} FBX clips (${catalogData.summary?.curated || 0} Rigging Palace + ${catalogData.summary?.rpm || 0} RPM)`,
+    );
+
     const modelsEl = byId("models");
-    modelsEl.innerHTML = "";
-    modelsEl.appendChild(list);
+    if (modelsEl) {
+      const table = document.createElement("table");
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Asset / Avatar ID</th>
+            <th>File</th>
+            <th>Rig Profile</th>
+            <th>TalkingHead</th>
+            <th>Project / Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${avatars
+            .map(
+              (a: any) => `
+                <tr>
+                  <td><code>${a.id}</code> (${a.display_name || a.id})</td>
+                  <td><code>${a.file}</code>${a.m2mr_fbx ? ` + <code>${a.m2mr_fbx}</code>` : ""}</td>
+                  <td><code>${a.rig_profile || "mixamo-rpm-full"}</code></td>
+                  <td>${a.talkinghead_compatible === false ? "Body-only (MIA 52)" : "Yes (ARKit/Viseme)"}</td>
+                  <td>${a.project || "Avatar Labs"}</td>
+                </tr>`,
+            )
+            .join("")}
+        </tbody>`;
+      modelsEl.innerHTML = "";
+      modelsEl.appendChild(table);
+    }
+  } catch {
+    setStatus("stt-status", false);
+  }
 
-    const voicesEl = byId("voices");
-    voicesEl.textContent = voices.length ? voices.join(", ") : "No voices found.";
-  } catch (error) {
-    byId("models").textContent = "Model registry snapshot not found. Run npm run dev to generate it.";
-    byId("voices").textContent = "No voices found.";
+  // 2. Probe Motion2MixamoRig service (:8104)
+  try {
+    const motionRes = await fetch(`${motionBase}/health`, { cache: "no-store" });
+    setStatus("motion-status", motionRes.ok);
+  } catch {
+    setStatus("motion-status", false);
+  }
+
+  // 3. Probe Core-X Gateway (:8090)
+  try {
+    const gwRes = await fetch("/api/llm/health", { cache: "no-store" });
+    setStatus("llm-status", gwRes.ok);
+    setStatus("tts-status", gwRes.ok);
+  } catch {
+    setStatus("llm-status", false);
+    setStatus("tts-status", false);
+  }
+
+  // 4. Probe SAiD (:8096 via proxy or direct)
+  try {
+    const saidRes = await fetch("/api/said/health", { cache: "no-store" });
+    setStatus("said-status", saidRes.ok);
+  } catch {
+    setStatus("said-status", false);
   }
 };
 
-renderModels();
+void probeServicesAndAssets();

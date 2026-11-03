@@ -3,28 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lab Info - Avatar Labs</title>
+    <title>Architecture & Orchestration — Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
     <style>
       :root {
-        --bg: #fafafa;
-        --fg: #0a0a0a;
-        --muted: #71717a;
-        --border: #e4e4e7;
-        --surface: #ffffff;
-        --hover: #f4f4f5;
-        --code-bg: #f4f4f5;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #09090b;
-          --fg: #fafafa;
-          --muted: #a1a1aa;
-          --border: #27272a;
-          --surface: #18181b;
-          --hover: #27272a;
-          --code-bg: #27272a;
-        }
+        --bg: #d1d1d0;
+        --fg: #2d2824;
+        --muted: #6b6560;
+        --border: #9a9a98;
+        --surface: rgba(229, 229, 227, 0.96);
+        --hover: rgba(255, 255, 255, 0.36);
+        --code-bg: rgba(255, 255, 255, 0.45);
+        --accent: #3d6e96;
+        --accent-green: #3d7a45;
       }
 
       * {
@@ -33,84 +24,62 @@
         padding: 0;
       }
 
-      html {
-        font-size: 16px;
-        -webkit-font-smoothing: antialiased;
-      }
-
+      html,
       body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        height: 100%;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
         background: var(--bg);
         color: var(--fg);
-        line-height: 1.6;
-        min-height: 100vh;
+        line-height: 1.55;
+      }
+
+      body[data-avatar-labs-workbench="true"] {
+        overflow-y: auto !important;
       }
 
       .container {
-        max-width: 800px;
+        max-width: 980px;
         margin: 0 auto;
-        padding: 0 24px;
+        padding: 28px 24px 64px;
       }
 
-      /* Navigation */
-      nav {
-        padding: 20px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .nav-inner {
+      header.page-header {
+        padding: 20px 0 24px;
+        border-bottom: 1px dashed var(--border);
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
-      .nav-brand {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.1em;
+      .eyebrow {
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
         text-transform: uppercase;
-        color: var(--muted);
-        text-decoration: none;
-      }
-
-      .nav-back {
-        font-size: 13px;
-        color: var(--muted);
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: color 0.15s;
-      }
-
-      .nav-back:hover {
-        color: var(--fg);
-      }
-
-      /* Header */
-      header {
-        padding: 60px 0 40px;
-        border-bottom: 1px solid var(--border);
+        color: var(--accent);
+        margin-bottom: 6px;
+        display: block;
       }
 
       h1 {
+        font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif;
         font-size: 32px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 16px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
       }
 
       .lead {
-        font-size: 16px;
+        font-size: 13px;
         color: var(--muted);
-        max-width: 600px;
-        line-height: 1.7;
+        max-width: 680px;
+        margin-top: 6px;
       }
 
-      /* Sections */
       section {
-        padding: 48px 0;
-        border-bottom: 1px solid var(--border);
+        padding: 28px 0;
+        border-bottom: 1px dashed var(--border);
       }
 
       section:last-of-type {
@@ -118,260 +87,196 @@
       }
 
       .section-label {
-        font-size: 11px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
         font-weight: 600;
-        letter-spacing: 0.1em;
         text-transform: uppercase;
         color: var(--muted);
-        margin-bottom: 24px;
-      }
-
-      h2 {
-        font-size: 18px;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        margin-bottom: 12px;
-      }
-
-      h3 {
-        font-size: 15px;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-
-      p {
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.7;
         margin-bottom: 16px;
       }
 
-      p:last-child {
-        margin-bottom: 0;
-      }
-
-      /* Cards */
       .card-grid {
         display: grid;
-        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
       }
 
       .card {
-        padding: 24px;
+        padding: 16px 18px;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 8px;
       }
 
       .card-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 8px;
       }
 
-      .card-link {
-        font-size: 12px;
+      h2 {
+        font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif;
+        font-size: 17px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .badge {
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 9px;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border: 1px dashed var(--border);
         color: var(--muted);
         text-decoration: none;
-        padding: 4px 10px;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        transition: all 0.15s;
       }
 
-      .card-link:hover {
-        background: var(--hover);
-        color: var(--fg);
+      .badge--live {
+        color: var(--accent-green);
+        border-color: var(--accent-green);
       }
 
-      /* Lists */
+      p {
+        color: var(--muted);
+        font-size: 12.5px;
+        margin-bottom: 10px;
+      }
+
       ul {
         list-style: none;
-        padding: 0;
       }
 
       ul li {
         position: relative;
-        padding-left: 16px;
-        font-size: 14px;
-        color: var(--muted);
-        margin-bottom: 8px;
-        line-height: 1.6;
+        padding-left: 14px;
+        font-size: 12px;
+        color: var(--fg);
+        margin-bottom: 6px;
       }
 
       ul li::before {
-        content: '';
+        content: "▪";
         position: absolute;
         left: 0;
-        top: 10px;
-        width: 4px;
-        height: 4px;
-        background: var(--border);
-        border-radius: 50%;
+        color: var(--muted);
       }
 
-      /* Code */
       code {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-        padding: 2px 6px;
-        background: var(--code-bg);
-        border-radius: 4px;
-      }
-
-      /* Feature Grid */
-      .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 32px;
-      }
-
-      @media (max-width: 600px) {
-        .feature-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .feature {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .feature-number {
+        font-family: "SFMono-Regular", Consolas, monospace;
         font-size: 11px;
-        font-weight: 500;
-        color: var(--muted);
-        font-variant-numeric: tabular-nums;
+        padding: 1px 5px;
+        background: var(--code-bg);
+        border: 1px solid rgba(45, 40, 36, 0.14);
       }
 
-      /* Footer */
       footer {
-        padding: 32px 0;
-        text-align: center;
-      }
-
-      .footer-text {
-        font-size: 12px;
+        padding-top: 24px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
+        text-transform: uppercase;
         color: var(--muted);
+        display: flex;
+        justify-content: space-between;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <nav>
-        <div class="nav-inner">
-          <a href="/" class="nav-brand">Avatar Labs</a>
-          <a href="/" class="nav-back">&larr; Back</a>
+      <header class="page-header">
+        <div>
+          <span class="eyebrow">Core-X / Digital Humans House (`avatar-labs` v0.2.0)</span>
+          <h1>Avatar Labs Architecture &amp; AVARA Orchestration</h1>
+          <p class="lead">
+            Local-first embodiment, WebGPU/WebGL2 performance staging, neural video-to-Mixamo motion capture,
+            and ARKit 51/52 + Oculus viseme facial animation backed by Warehouse and Rigging Palace.
+          </p>
         </div>
-      </nav>
-
-      <header>
-        <h1>Lab Info</h1>
-        <p class="lead">
-          Avatar Labs is a local-first validation environment for real-time avatar pipelines.
-          Built on Apple Silicon with MLX-optimized models for speech, vision, and generation.
-        </p>
+        <a href="/settings.html" class="badge">Open Runtime Settings &rarr;</a>
       </header>
 
       <section>
-        <div class="section-label">Purpose</div>
-        <div class="feature-grid">
-          <div class="feature">
-            <span class="feature-number">01</span>
-            <h3>Validate Pipelines</h3>
-            <p>Test TalkingHead, HeadAudio, and HeadTTS integrations with deterministic fixtures and browser harnesses.</p>
-          </div>
-          <div class="feature">
-            <span class="feature-number">02</span>
-            <h3>Experiment Freely</h3>
-            <p>Realtime MLX conversation loops, viseme sync, streaming playback, and generative composition.</p>
-          </div>
-          <div class="feature">
-            <span class="feature-number">03</span>
-            <h3>Local-First</h3>
-            <p>All services run locally. No cloud dependencies, no API keys required for core functionality.</p>
-          </div>
-          <div class="feature">
-            <span class="feature-number">04</span>
-            <h3>Apple Silicon</h3>
-            <p>MLX-optimized models for M1/M2/M3. Metal GPU acceleration for inference and rendering.</p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="section-label">Core Dependencies</div>
+        <div class="section-label">House Orchestrator &amp; Delegation Chain</div>
         <div class="card-grid">
           <div class="card">
             <div class="card-header">
-              <h2>TalkingHead</h2>
-              <a href="https://github.com/met4citizen/TalkingHead" target="_blank" rel="noreferrer" class="card-link">GitHub</a>
+              <h2>AVARA (`orchestrator:avatar-labs:avara`)</h2>
+              <span class="badge badge--live">Live / Active</span>
             </div>
-            <p>3D avatar runtime for real-time speech synthesis with lip-sync, gestures, and expressions.</p>
+            <p>Canonical House Orchestrator for Avatar Labs. Proposes structural rig evaluations, motion retargeting assessments, and performance timeline reviews.</p>
             <ul>
-              <li>Streaming via <code>streamStart()</code> + <code>streamAudio()</code> with PCM16LE</li>
-              <li>Optional viseme and word timing arrays</li>
-              <li>Local GLB avatars without Ready Player Me dependency</li>
+              <li>Persona contract: <code>core-x/config/orchestrators/personas/avatar-labs/avara.md</code></li>
+              <li>Declared capabilities: <code>avatar-validation</code>, <code>animation</code>, <code>audio-response</code>, <code>performance-evaluation</code></li>
+              <li>Delegation chain: <code>corex-head &rarr; head:sofia &rarr; orchestrator:avatar-labs:avara &rarr; avatar-labs:avatar-director</code></li>
             </ul>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <h2>HeadAudio</h2>
-              <a href="https://github.com/met4citizen/HeadAudio" target="_blank" rel="noreferrer" class="card-link">GitHub</a>
+              <h2>Warehouse &amp; Rigging Palace Commons</h2>
+              <span class="badge badge--live">Connected</span>
             </div>
-            <p>AudioWorklet for real-time viseme detection. Emits Oculus blend-shape values in [0,1] range.</p>
+            <p>Consumes canonical humanoid rigs, Core-X Head busts, and normalized FBX motion libraries without duplicating binary weights in Git.</p>
             <ul>
-              <li>Worklet and model loaded locally from package dist</li>
-              <li>Used in Stage and Conversation harnesses</li>
-              <li>Deterministic callbacks for regression testing</li>
-            </ul>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h2>HeadTTS</h2>
-              <a href="https://github.com/met4citizen/HeadTTS" target="_blank" rel="noreferrer" class="card-link">GitHub</a>
-            </div>
-            <p>REST/WebSocket TTS with word and viseme timing arrays.</p>
-            <ul>
-              <li>Bridge: <code>packages/headtts-bridge/server.mjs</code></li>
-              <li>Backed by MLX Audio locally</li>
-              <li>Timing arrays are approximate in bridge mode</li>
+              <li>Warehouse house view: <code>modal-s3-rigging</code>, <code>core-x-avatars</code></li>
+              <li>Local MIA 52-joint GLB + paired 55-bone <code>.m2mr.fbx</code> consumption (`drive_char_1319`)</li>
+              <li>Bi-directional motion publishing into <code>houses/rigging-portal/public/animation-library/</code></li>
             </ul>
           </div>
         </div>
       </section>
 
       <section>
-        <div class="section-label">Experiments</div>
-        <div class="card">
-          <ul>
-            <li><strong>MLX Conversation</strong> &mdash; Mic &rarr; STT &rarr; LLM &rarr; TTS &rarr; TalkingHead pipeline</li>
-            <li><strong>Stage</strong> &mdash; Upload songs, generate transcripts, perform with visemes and lighting</li>
-            <li><strong>HeadAudio Harness</strong> &mdash; Deterministic viseme callbacks for regression testing</li>
-            <li><strong>Multi-Modal</strong> &mdash; Combined audio, visual, and text input processing</li>
-            <li><strong>Composition Layer</strong> &mdash; AI poster generator with mflux, typography presets, and WebGL effects</li>
-          </ul>
-        </div>
-      </section>
-
-      <section>
-        <div class="section-label">Running Tests</div>
-        <div class="card">
-          <p>Use the provided shell scripts for automated test runs:</p>
-          <ul>
-            <li><code>scripts/smoke.zsh</code> &mdash; Quick smoke tests for all harnesses</li>
-            <li><code>scripts/e2e.zsh</code> &mdash; Full end-to-end test suite with Playwright</li>
-          </ul>
+        <div class="section-label">Curated 10-Case Workbench Roster</div>
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-header"><h2>ENG / Performance Engine</h2><a class="badge" href="/engine-lab.html">Open</a></div>
+            <p>WebGPU multi-actor performance cockpit with 10-layer threaded timeline, TSL looks, and Warehouse project persistence.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>MCP / Mocap Lab</h2><a class="badge" href="/mocap-lab.html">Open</a></div>
+            <p>Motion2MixamoRig video-to-3D motion recovery, Local MIA 52-joint retargeting, <code>.m2mr.fbx</code> export, and Rigging Portal sync.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>GEM / Gemma Speech</h2><a class="badge" href="/gemma-avatar.html">Open</a></div>
+            <p>Streaming local TTS speech with HeadAudio AudioWorklet Oculus viseme synchronization.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>CXH / Core-X Head</h2><a class="badge" href="/corex-head.html">Open</a></div>
+            <p>Rig-less WebGPU/WebGL2 operator bust driven by real-time HeadAudio-to-ARKit 51 speech blendshapes.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>SAI / SAiD Face</h2><a class="badge" href="/said-face.html">Open</a></div>
+            <p>Audio-to-ARKit 51 facial performance via local SAiD UNet1D diffusion inference (`:8096`).</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>FMR / Face Mirror</h2><a class="badge" href="/face-mirror.html">Open</a></div>
+            <p>Private real-time MediaPipe Face Landmarker webcam expression capture mapped onto a Core-X head.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>STG / Stage Director</h2><a class="badge" href="/stage.html">Open</a></div>
+            <p>Single and Duo TalkingHead stage with Whisper STT transcription, Harmony LLM timeline planning, and Warehouse store.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>DNC / Dance Studio</h2><a class="badge" href="/dance-studio.html">Open</a></div>
+            <p>Mixamo and M2MR FBX choreography sequencer, BPM state machine, and live `/performance-assets/catalog.json` integration.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>GST / Gesture Library</h2><a class="badge" href="/gestures-lab.html">Open</a></div>
+            <p>Interactive 52 ARKit blendshape slider inspector, mood templates, and Mixamo hand/body gesture triggers.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>MLT / Multimodal Chat</h2><a class="badge" href="/multi-modal.html">Open</a></div>
+            <p>Three-column embodied MLX voice/text conversation workbench with push-to-talk, auto-VAD, and persona inspector.</p>
+          </div>
         </div>
       </section>
 
       <footer>
-        <p class="footer-text">Part of the HTDI ecosystem</p>
+        <span>Core-X / KBLLR Ecosystem &middot; Avatar Labs v0.2.0</span>
+        <span>Orchestrator: AVARA (`orchestrator:avatar-labs:avara`)</span>
       </footer>
     </div>
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
   </body>
 </html>

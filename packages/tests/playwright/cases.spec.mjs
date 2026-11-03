@@ -1,16 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 const workbenchRoutes = [
-  "/stage.html",
   "/engine-lab.html",
-  "/dance-studio.html",
-  "/gestures-lab.html",
+  "/mocap-lab.html",
   "/said-face.html",
   "/face-mirror.html",
+  "/stage.html",
+  "/dance-studio.html",
+  "/gestures-lab.html",
   "/multi-modal.html",
-  "/mlx-conversation.html",
-  "/composition-layer.html",
-  "/head-audio.html",
 ];
 
 const avatarRoutes = [
@@ -18,7 +16,6 @@ const avatarRoutes = [
   { path: "/dance-studio.html", ready: /Dance Studio ready/ },
   { path: "/gestures-lab.html", ready: /^Ready$/ },
   { path: "/multi-modal.html" },
-  { path: "/mlx-conversation.html", ready: /Avatar ready/ },
 ];
 
 test("all legacy cases expose the shared workbench shell", async ({ browser }) => {

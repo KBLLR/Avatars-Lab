@@ -37,6 +37,13 @@ for (const item of AVATAR_LAB_CASES) {
   option.selected = item.href === currentPath;
   routeSelect.appendChild(option);
 }
+if (!currentCase && currentPath !== "/") {
+  const fallbackOption = document.createElement("option");
+  fallbackOption.value = currentPath;
+  fallbackOption.textContent = document.title || currentPath;
+  fallbackOption.selected = true;
+  routeSelect.appendChild(fallbackOption);
+}
 routeSelect.addEventListener("change", () => {
   window.location.assign(routeSelect.value);
 });

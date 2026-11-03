@@ -342,6 +342,49 @@
         "storytelling"
       ],
       "default_mood": "love"
+    },
+    {
+      "id": "brunette",
+      "file": "brunette.glb",
+      "display_name": "Brunette (Reference)",
+      "body": "F",
+      "voice_id": "af_heart",
+      "kokoro_voice": "af_heart",
+      "chatterbox_voice": "brunette",
+      "intro": "I’m the Avatar Labs reference performer—full ARKit 52 + Oculus viseme rig calibrated for speech, dance, and Motion2MixamoRig retargeting.",
+      "background": "Canonical Avatar Labs reference character with 67 Mixamo/RPM joints and 72 morph targets across Head_Mesh, Teeth_Mesh, and Tongue_Mesh.",
+      "project": "Avatar Labs",
+      "tags": [
+        "reference",
+        "arkit-52",
+        "oculus-visemes",
+        "mixamo-rig",
+        "talkinghead"
+      ],
+      "default_mood": "neutral",
+      "talkinghead_compatible": true
+    },
+    {
+      "id": "drive_char_1319",
+      "file": "drive_char_1319.glb",
+      "display_name": "Character 1319 (Local MIA)",
+      "body": "M",
+      "voice_id": "am_adam",
+      "kokoro_voice": "am_adam",
+      "intro": "Rigging Palace Local MIA 52-joint humanoid rig with paired 55-bone Motion2MixamoRig (.m2mr.fbx) export.",
+      "background": "Rigged locally via Rigging Palace Make-It-Animatable (MIA) Lane A with 52 standard Mixamo joints and paired 55-bone .m2mr.fbx derivative for full-body motion capture retargeting.",
+      "project": "Rigging Palace",
+      "tags": [
+        "local-mia",
+        "rigging-portal",
+        "m2mr-ready",
+        "52-joint",
+        "body-motion"
+      ],
+      "default_mood": "neutral",
+      "talkinghead_compatible": false,
+      "rig_profile": "local-mia-52",
+      "m2mr_fbx": "drive_char_1319.m2mr.fbx"
     }
   ]
 }

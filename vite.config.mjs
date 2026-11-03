@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { basename, extname, relative, resolve, sep } from "node:path";
-import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
 const root = process.cwd();
 const findRepoRoot = (dir) => {
@@ -26,6 +26,14 @@ const COREX_PUBLIC = resolve(
 const PERFORMANCE_ANIMATION_ROOT = resolve(
   process.env.AVATAR_LABS_ANIMATION_ROOT ||
     resolve(repoRoot, "houses/rigging-portal/public/animation-library/fbx"),
+);
+const PERFORMANCE_ANIMATION_MANIFEST = resolve(
+  repoRoot,
+  "houses/rigging-portal/public/animation-library/manifest.json",
+);
+const RIGGING_PORTAL_STAGING_ROOT = resolve(
+  repoRoot,
+  "houses/rigging-portal/staging/rigged",
 );
 const RPM_ANIMATION_ROOT = resolve(
   process.env.AVATAR_LABS_RPM_ANIMATION_ROOT ||
@@ -139,19 +147,38 @@ const estimateAnimationDuration = (category, name) => {
 const encodeAssetPath = (value) => value.split("/").map(encodeURIComponent).join("/");
 
 const buildAnimationCatalog = () => {
+  const manifestByFile = new Map();
+  if (existsSync(PERFORMANCE_ANIMATION_MANIFEST)) {
+    try {
+      const parsed = JSON.parse(readFileSync(PERFORMANCE_ANIMATION_MANIFEST, "utf8"));
+      for (const motion of parsed.motions || []) {
+        if (motion?.canonicalFile) {
+          manifestByFile.set(motion.canonicalFile, motion);
+        }
+      }
+    } catch {
+      // Ignore malformed manifest fallback
+    }
+  }
+
   const curated = listFiles(PERFORMANCE_ANIMATION_ROOT, ".fbx").map((file) => {
     const filename = basename(file);
+    const meta = manifestByFile.get(filename);
     const category = classifyAnimation(filename);
     const rig = filename.includes("_rpm_")
       ? "rpm"
       : filename.includes("_mixamo_")
         ? "mixamo"
         : "humanoid";
-    const label = titleize(filename)
+    const defaultLabel = titleize(filename)
       .replace(/\b(Humanoid|Mixamo|Rpm)\b/g, "")
       .replace(/\s+\d+$/, "")
       .replace(/\s{2,}/g, " ")
       .trim();
+    const label = meta?.label || defaultLabel;
+    const origin = meta?.origin || "curated";
+    const extraTags = Array.isArray(meta?.tags) ? meta.tags : [];
+    const tags = Array.from(new Set([category, rig, "curated", "normalized", origin, ...extraTags]));
     return {
       id: `curated:${slugify(filename)}`,
       label,
@@ -159,10 +186,11 @@ const buildAnimationCatalog = () => {
       durationMs: estimateAnimationDuration(category, filename),
       loop: ["dance", "idle", "locomotion"].includes(category),
       category,
-      source: "rigging-portal-curated",
+      source: origin === "m2mr" ? "m2mr-capture" : "rigging-portal-curated",
+      origin,
       rig,
       body: "any",
-      tags: [category, rig, "curated", "normalized"],
+      tags,
     };
   });
 
@@ -259,6 +287,7 @@ const ecosystemAssetsPlugin = () => ({
       PERFORMANCE_ANIMATION_ROOT,
     );
     registerStaticRoot(server.middlewares, "/performance-assets/rpm", RPM_ANIMATION_ROOT);
+    registerStaticRoot(server.middlewares, "/rigging-portal-assets/characters", RIGGING_PORTAL_STAGING_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe/wasm", MEDIAPIPE_WASM_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe", MEDIAPIPE_MODEL_ROOT);
   },
@@ -272,6 +301,7 @@ const ecosystemAssetsPlugin = () => ({
       PERFORMANCE_ANIMATION_ROOT,
     );
     registerStaticRoot(server.middlewares, "/performance-assets/rpm", RPM_ANIMATION_ROOT);
+    registerStaticRoot(server.middlewares, "/rigging-portal-assets/characters", RIGGING_PORTAL_STAGING_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe/wasm", MEDIAPIPE_WASM_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe", MEDIAPIPE_MODEL_ROOT);
   },

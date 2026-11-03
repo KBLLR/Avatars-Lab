@@ -29,8 +29,11 @@ assert.equal(pkg.devDependencies.three, "0.185.1");
 assert.equal(pkg.engines.node, ">=22.12.0");
 assert.equal(manifest.house_id, "avatar-labs");
 assert.equal(manifest.surface.base_url, "http://127.0.0.1:5185");
+assert.equal(manifest.agents.orchestrator_id, "orchestrator:avatar-labs:avara");
+assert.equal(manifest.agents.persona_name, "AVARA");
 assert.equal(manifest.agents.default_agent, "avatar-labs:avatar-director");
 assert.equal(functionsManifest.items[0].id, manifest.agents.default_agent);
+assert.equal(manifest.surface.cases.length, 11); // launcher + 10 curated cases
 
 for (const item of manifest.surface.cases) {
   if (item.path === "/") continue;

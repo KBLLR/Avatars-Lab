@@ -7,18 +7,18 @@
     <link rel="stylesheet" href="/src/styles/case-workbench.css" />
     <style>
       :root {
-        /* Swiss design tokens */
-        --bg: #09090b;
-        --fg: #fafafa;
-        --muted: #a1a1aa;
-        --border: #27272a;
-        --surface: #18181b;
-        --hover: #27272a;
-        --code-bg: #27272a;
-        /* Accent colors - kept warm for stage energy */
-        --accent: #f97316;
-        --accent-2: #ef4444;
-        --accent-3: #22c55e;
+        /* Core-X Architectural Workbench tokens */
+        --bg: #d1d1d0;
+        --fg: #2d2824;
+        --muted: #6b6560;
+        --border: #9a9a98;
+        --surface: rgba(229, 229, 227, 0.96);
+        --hover: rgba(255, 255, 255, 0.35);
+        --code-bg: rgba(255, 255, 255, 0.45);
+        /* Accent colors */
+        --accent: #3d6e96;
+        --accent-2: #8a3030;
+        --accent-3: #3d7a45;
         /* Legacy aliases */
         --panel: var(--surface);
         --text: var(--fg);
@@ -51,9 +51,9 @@
       #stage {
         position: relative;
         overflow: hidden;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: #000;
+        border-radius: 0;
+        border: 1px dashed var(--border);
+        background: radial-gradient(circle at 50% 35%, #e2e2df 0%, #bcbcb8 100%);
         flex: 1;
         min-height: 0;
       }
@@ -66,22 +66,10 @@
       #spotlights {
         position: absolute;
         inset: 0;
-        background: radial-gradient(
-            circle at 20% 10%,
-            rgba(255, 179, 71, 0.3),
-            transparent 45%
-          ),
-          radial-gradient(
-            circle at 80% 20%,
-            rgba(255, 95, 122, 0.25),
-            transparent 50%
-          ),
-          radial-gradient(
-            circle at 50% 80%,
-            rgba(91, 242, 214, 0.2),
-            transparent 55%
-          );
-        mix-blend-mode: screen;
+        background:
+          linear-gradient(rgba(45, 40, 36, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(45, 40, 36, 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
         pointer-events: none;
       }
 

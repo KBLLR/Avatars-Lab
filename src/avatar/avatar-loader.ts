@@ -17,6 +17,9 @@ export interface AvatarManifestEntry {
   project?: string;
   tags?: string[];
   default_mood?: string;
+  talkinghead_compatible?: boolean;
+  rig_profile?: string;
+  m2mr_fbx?: string;
 }
 
 const normalizeAvatarEntry = (entry: string | AvatarManifestEntry): AvatarManifestEntry => {
@@ -124,7 +127,11 @@ export const loadAvatarList = async (
     : baseUrl
       ? await Promise.all(candidates.map((avatar) => isLoadableAvatar(avatar, baseUrl)))
       : candidates.map(() => false);
-  const avatars = candidates.filter((_, index) => availability[index]);
+  const availableAvatars = candidates.filter((_, index) => availability[index]);
+  const talkingHeadAvatars = availableAvatars.filter(
+    (avatar) => avatar.talkinghead_compatible !== false
+  );
+  const avatars = talkingHeadAvatars.length > 0 ? talkingHeadAvatars : availableAvatars;
 
   if (!avatars.length) {
     throw new Error(

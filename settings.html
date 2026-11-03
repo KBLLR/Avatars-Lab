@@ -3,31 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Settings - Avatar Labs</title>
+    <title>Runtime Settings — Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
     <style>
       :root {
-        --bg: #fafafa;
-        --fg: #0a0a0a;
-        --muted: #71717a;
-        --border: #e4e4e7;
-        --surface: #ffffff;
-        --hover: #f4f4f5;
-        --code-bg: #f4f4f5;
-        --success: #22c55e;
-        --warning: #eab308;
-        --danger: #ef4444;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #09090b;
-          --fg: #fafafa;
-          --muted: #a1a1aa;
-          --border: #27272a;
-          --surface: #18181b;
-          --hover: #27272a;
-          --code-bg: #27272a;
-        }
+        --bg: #d1d1d0;
+        --fg: #2d2824;
+        --muted: #6b6560;
+        --border: #9a9a98;
+        --surface: rgba(229, 229, 227, 0.96);
+        --hover: rgba(255, 255, 255, 0.36);
+        --code-bg: rgba(255, 255, 255, 0.45);
+        --success: #3d7a45;
+        --warning: #8a7420;
+        --danger: #8a3030;
       }
 
       * {
@@ -36,81 +25,59 @@
         padding: 0;
       }
 
-      html {
-        font-size: 16px;
-        -webkit-font-smoothing: antialiased;
-      }
-
+      html,
       body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        height: 100%;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
         background: var(--bg);
         color: var(--fg);
-        line-height: 1.6;
-        min-height: 100vh;
+        line-height: 1.55;
+      }
+
+      body[data-avatar-labs-workbench="true"] {
+        overflow-y: auto !important;
       }
 
       .container {
-        max-width: 900px;
+        max-width: 980px;
         margin: 0 auto;
-        padding: 0 24px;
+        padding: 28px 24px 64px;
       }
 
-      /* Navigation */
-      nav {
-        padding: 20px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .nav-inner {
+      header.page-header {
+        padding: 20px 0 24px;
+        border-bottom: 1px dashed var(--border);
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
-      .nav-brand {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.1em;
+      .eyebrow {
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
         text-transform: uppercase;
-        color: var(--muted);
-        text-decoration: none;
-      }
-
-      .nav-back {
-        font-size: 13px;
-        color: var(--muted);
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: color 0.15s;
-      }
-
-      .nav-back:hover {
-        color: var(--fg);
-      }
-
-      /* Header */
-      header {
-        padding: 60px 0 40px;
-        border-bottom: 1px solid var(--border);
+        color: #3d6e96;
+        margin-bottom: 6px;
+        display: block;
       }
 
       h1 {
+        font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif;
         font-size: 32px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 16px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
       }
 
       .lead {
-        font-size: 16px;
+        font-size: 13px;
         color: var(--muted);
-        max-width: 600px;
-        line-height: 1.7;
+        max-width: 680px;
+        margin-top: 6px;
       }
 
-      /* Status Indicator */
       .status-indicator {
         display: inline-block;
         width: 8px;
@@ -121,27 +88,15 @@
 
       .status-indicator.online {
         background: var(--success);
-        box-shadow: 0 0 6px var(--success);
       }
 
       .status-indicator.offline {
         background: var(--danger);
       }
 
-      /* Config Table */
-      .config-table td:first-child {
-        font-weight: 500;
-        color: var(--fg);
-      }
-
-      .config-table td:last-child {
-        text-align: center;
-      }
-
-      /* Sections */
       section {
-        padding: 48px 0;
-        border-bottom: 1px solid var(--border);
+        padding: 26px 0;
+        border-bottom: 1px dashed var(--border);
       }
 
       section:last-of-type {
@@ -149,202 +104,150 @@
       }
 
       .section-label {
-        font-size: 11px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
         font-weight: 600;
-        letter-spacing: 0.1em;
         text-transform: uppercase;
         color: var(--muted);
-        margin-bottom: 24px;
+        margin-bottom: 14px;
+      }
+
+      .card {
+        padding: 16px 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+      }
+
+      .card + .card {
+        margin-top: 12px;
       }
 
       h2 {
-        font-size: 18px;
+        font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif;
+        font-size: 16px;
         font-weight: 600;
-        letter-spacing: -0.01em;
-        margin-bottom: 12px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
       }
 
       p {
         color: var(--muted);
-        font-size: 14px;
-        line-height: 1.7;
-        margin-bottom: 16px;
+        font-size: 12.5px;
+        margin-bottom: 12px;
       }
 
-      /* Cards */
-      .card {
-        padding: 24px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-      }
-
-      .card + .card {
-        margin-top: 16px;
-      }
-
-      /* Tables */
       table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 12px;
       }
 
-      th, td {
+      th,
+      td {
         text-align: left;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
+        padding: 9px 12px;
+        border-bottom: 1px dashed var(--border);
+        vertical-align: middle;
       }
 
       th {
-        font-size: 11px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
         font-weight: 600;
-        letter-spacing: 0.05em;
         text-transform: uppercase;
         color: var(--muted);
         background: var(--hover);
-      }
-
-      td {
-        color: var(--muted);
       }
 
       tr:last-child td {
         border-bottom: none;
       }
 
-      /* Code */
       code {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-        padding: 2px 6px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 11px;
+        padding: 1px 5px;
         background: var(--code-bg);
-        border-radius: 4px;
+        border: 1px solid rgba(45, 40, 36, 0.14);
         color: var(--fg);
       }
 
-      /* Lists */
-      ul {
-        list-style: none;
-        padding: 0;
+      .badge {
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 9px;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border: 1px dashed var(--border);
+        color: var(--fg);
+        text-decoration: none;
       }
 
-      ul li {
-        position: relative;
-        padding-left: 16px;
-        font-size: 14px;
-        color: var(--muted);
-        margin-bottom: 8px;
-        line-height: 1.6;
-      }
-
-      ul li::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 10px;
-        width: 4px;
-        height: 4px;
-        background: var(--border);
-        border-radius: 50%;
-      }
-
-      /* Model Grid */
-      .model-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 8px;
-      }
-
-      .model-item {
-        padding: 12px 16px;
-        background: var(--hover);
-        border-radius: 6px;
-        font-size: 12px;
-        font-family: 'JetBrains Mono', monospace;
-        color: var(--muted);
-      }
-
-      /* Voice Grid */
-      .voice-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .voice-chip {
-        padding: 6px 12px;
-        background: var(--hover);
-        border-radius: 4px;
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      /* Loading State */
-      .loading {
-        color: var(--muted);
-        font-size: 13px;
-        font-style: italic;
-      }
-
-      /* Footer */
       footer {
-        padding: 32px 0;
-        text-align: center;
-      }
-
-      .footer-text {
-        font-size: 12px;
+        padding-top: 24px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
+        text-transform: uppercase;
         color: var(--muted);
+        display: flex;
+        justify-content: space-between;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <nav>
-        <div class="nav-inner">
-          <a href="/" class="nav-brand">Avatar Labs</a>
-          <a href="/" class="nav-back">&larr; Back</a>
+      <header class="page-header">
+        <div>
+          <span class="eyebrow">Core-X / Avatar Labs Runtime Diagnostics</span>
+          <h1>Service Topology, Warehouse Assets &amp; Models</h1>
+          <p class="lead">
+            Live local-first endpoints for Core-X Gateway (`:8090`), Motion2MixamoRig (`:8104`),
+            SAiD Facial Diffusion (`:8096`), Warehouse (`:5202`), and hydrated Avatar Labs assets.
+          </p>
         </div>
-      </nav>
-
-      <header>
-        <h1>Settings</h1>
-        <p class="lead">
-          MLX service endpoints and active model configuration.
-        </p>
+        <a href="/info.html" class="badge">Architecture &amp; AVARA Info &rarr;</a>
       </header>
 
       <section>
-        <div class="section-label">Active Configuration</div>
+        <div class="section-label">Active Service Topology</div>
         <div class="card">
           <table class="config-table">
             <thead>
               <tr>
-                <th style="width: 100px;">Service</th>
-                <th style="width: 200px;">Endpoint</th>
-                <th>Model</th>
-                <th style="width: 60px;">Status</th>
+                <th style="width: 170px;">Service</th>
+                <th style="width: 240px;">Canonical Endpoint</th>
+                <th>Contract / Active Model</th>
+                <th style="width: 80px;">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>LLM</td>
-                <td><code id="llmBase">--</code></td>
-                <td><code id="llmModel">--</code></td>
+                <td>Core-X Gateway (LLM)</td>
+                <td><code id="llmBase">http://127.0.0.1:8090/v1/responses</code></td>
+                <td><code id="llmModel">Probing...</code></td>
                 <td><span class="status-indicator" id="llm-status"></span></td>
               </tr>
               <tr>
-                <td>TTS</td>
-                <td><code id="audioBase">--</code></td>
-                <td><code id="ttsModel">--</code></td>
+                <td>Core-X Audio (TTS / STT)</td>
+                <td><code id="audioBase">http://127.0.0.1:8090/v1/audio</code></td>
+                <td><code id="ttsModel">kokoro / whisper-large-v3-turbo</code> &middot; <code id="sttModel">STT ready</code></td>
                 <td><span class="status-indicator" id="tts-status"></span></td>
               </tr>
               <tr>
-                <td>STT</td>
-                <td><code>—</code></td>
-                <td><code id="sttModel">--</code></td>
+                <td>Motion2MixamoRig Service</td>
+                <td><code id="motionBase">http://127.0.0.1:8104/health</code></td>
+                <td><code id="motionModel">GVHMR + 65-bone FBX + Local MIA 52-joint retarget</code></td>
+                <td><span class="status-indicator" id="motion-status"></span></td>
+              </tr>
+              <tr>
+                <td>SAiD Facial Diffusion</td>
+                <td><code id="saidBase">http://127.0.0.1:8096/health</code></td>
+                <td><code id="saidModel">SAiD-UNet1D (ARKit 51 blendshapes)</code></td>
+                <td><span class="status-indicator" id="said-status"></span></td>
+              </tr>
+              <tr>
+                <td>Avatar Labs Asset Bridge</td>
+                <td><code id="houseHealthBase">http://127.0.0.1:5185/health</code></td>
+                <td><code id="houseAssetsSummary">Probing hydrated avatars &amp; FBX catalog...</code></td>
                 <td><span class="status-indicator" id="stt-status"></span></td>
               </tr>
             </tbody>
@@ -353,28 +256,16 @@
       </section>
 
       <section>
-        <div class="section-label">Available Models</div>
+        <div class="section-label">Hydrated Avatar &amp; Animation Commons</div>
         <div class="card">
-          <p>Models loaded from the registry:</p>
-          <div id="models" class="model-grid">
-            <span class="loading">Loading...</span>
-          </div>
+          <p>Live assets resolved from Warehouse (`warehouse/var/cache/objects/avatar-labs`), Rigging Palace (`houses/rigging-portal`), and Project Anja:</p>
+          <div id="models">Probing runtime manifests...</div>
         </div>
       </section>
 
       <section>
-        <div class="section-label">HeadTTS Configuration</div>
+        <div class="section-label">HeadTTS &amp; Viseme Driver Reference</div>
         <div class="card">
-          <h2>Compatibility Notes</h2>
-          <ul>
-            <li>Uses <code>ws</code> (MIT License) and <code>@huggingface/transformers.js</code> + ONNX Runtime (Apache 2.0)</li>
-            <li>Reference model: <code>onnx-community/Kokoro-82M-v1.0-ONNX-timestamped</code></li>
-            <li>Local voices directory: <code>model-zoo/mlx/models/voices</code></li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h2>Options Reference</h2>
           <table>
             <thead>
               <tr>
@@ -383,42 +274,21 @@
                 <th>Default</th>
               </tr>
             </thead>
-            <tbody id="headttsOptions">
-              <tr>
-                <td><code>voice</code></td>
-                <td>Voice ID to use for synthesis</td>
-                <td><code>af_heart</code></td>
-              </tr>
-              <tr>
-                <td><code>rate</code></td>
-                <td>Speech rate multiplier</td>
-                <td><code>1.0</code></td>
-              </tr>
-              <tr>
-                <td><code>pitch</code></td>
-                <td>Pitch adjustment</td>
-                <td><code>1.0</code></td>
-              </tr>
-              <tr>
-                <td><code>language</code></td>
-                <td>Language code</td>
-                <td><code>en</code></td>
-              </tr>
-            </tbody>
+            <tbody id="headttsOptions"></tbody>
           </table>
         </div>
       </section>
 
       <section>
-        <div class="section-label">Available Voices</div>
+        <div class="section-label">Kokoro Voice Roster (`model-zoo/mlx/models/voices`)</div>
         <div class="card">
-          <p>Local voices from <code>model-zoo/mlx/models/voices</code>:</p>
+          <p id="voices" style="margin-bottom: 10px;">Loaded voices across English, Spanish, French, Hindi, Italian, and Portuguese:</p>
           <table>
             <thead>
               <tr>
                 <th>Language</th>
-                <th>Female</th>
-                <th>Male</th>
+                <th>Female Voices</th>
+                <th>Male Voices</th>
               </tr>
             </thead>
             <tbody>
@@ -433,29 +303,9 @@
                 <td><code>bm_daniel</code>, <code>bm_fable</code>, <code>bm_george</code>, <code>bm_lewis</code></td>
               </tr>
               <tr>
-                <td>Spanish</td>
-                <td><code>ef_dora</code></td>
-                <td><code>em_alex</code>, <code>em_santa</code></td>
-              </tr>
-              <tr>
-                <td>French</td>
-                <td><code>ff_siwis</code></td>
-                <td>—</td>
-              </tr>
-              <tr>
-                <td>Hindi</td>
-                <td><code>hf_alpha</code>, <code>hf_beta</code></td>
-                <td><code>hm_omega</code>, <code>hm_psi</code></td>
-              </tr>
-              <tr>
-                <td>Italian</td>
-                <td><code>if_sara</code></td>
-                <td><code>im_nicola</code></td>
-              </tr>
-              <tr>
-                <td>Portuguese</td>
-                <td><code>pf_dora</code></td>
-                <td><code>pm_alex</code>, <code>pm_santa</code></td>
+                <td>Spanish / Italian / French</td>
+                <td><code>ef_dora</code>, <code>if_sara</code>, <code>ff_siwis</code>, <code>pf_dora</code></td>
+                <td><code>em_alex</code>, <code>em_santa</code>, <code>im_nicola</code>, <code>pm_alex</code></td>
               </tr>
             </tbody>
           </table>
@@ -463,10 +313,12 @@
       </section>
 
       <footer>
-        <p class="footer-text">Part of the HTDI ecosystem</p>
+        <span>Core-X / KBLLR Ecosystem &middot; Avatar Labs v0.2.0</span>
+        <span>Orchestrator: AVARA (`orchestrator:avatar-labs:avara`)</span>
       </footer>
     </div>
 
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
     <script type="module" src="/src/settings.ts"></script>
   </body>
 </html>

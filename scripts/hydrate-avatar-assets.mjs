@@ -3,10 +3,24 @@ import { basename, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const houseRoot = resolve(import.meta.dirname, "..");
+const repoRoot = resolve(houseRoot, "../..");
 const avatarDir = join(houseRoot, "public", "avatars");
 const manifestPath = join(avatarDir, "manifest.json");
 const runtimeManifestPath = join(avatarDir, "runtime-manifest.json");
-const fixturePath = join(houseRoot, "fixtures", "avatars", "brunette.glb");
+const fixtureDir = join(houseRoot, "fixtures", "avatars");
+const fixturePath = join(fixtureDir, "brunette.glb");
+const warehouseAvatarRoot = join(
+  repoRoot,
+  "warehouse",
+  "var",
+  "cache",
+  "objects",
+  "avatar-labs",
+  "intake-2026-05-05",
+  "public",
+  "avatars",
+);
+const riggingStagingRoot = join(repoRoot, "houses", "rigging-portal", "staging", "rigged");
 const assetRoot = process.env.AVATAR_LABS_ASSET_ROOT
   ? resolve(process.env.AVATAR_LABS_ASSET_ROOT)
   : null;
@@ -57,11 +71,30 @@ for (const rawEntry of canonical.avatars || []) {
   if (!file.toLowerCase().endsWith(".glb")) continue;
 
   const destination = join(avatarDir, file);
-  if (!isGlb(destination) && assetRoot) {
-    const source = join(assetRoot, file);
-    if (isGlb(source)) copyFileSync(source, destination);
+  const candidateSources = [
+    assetRoot ? join(assetRoot, file) : null,
+    join(warehouseAvatarRoot, file),
+    join(fixtureDir, file),
+    join(riggingStagingRoot, entry.id || file.replace(/\.glb$/i, ""), file),
+  ].filter(Boolean);
+
+  for (const source of candidateSources) {
+    if (!isGlb(destination) && isGlb(source)) {
+      copyFileSync(source, destination);
+      break;
+    }
   }
   if (!isGlb(destination)) extractSnapshotAsset(file, destination);
+
+  // Also hydrate paired .m2mr.fbx if present in Rigging Palace staging
+  if (entry.m2mr_fbx) {
+    const fbxFile = basename(entry.m2mr_fbx);
+    const fbxDest = join(avatarDir, fbxFile);
+    const fbxSource = join(riggingStagingRoot, entry.id || "", fbxFile);
+    if (!existsSync(fbxDest) && existsSync(fbxSource)) {
+      copyFileSync(fbxSource, fbxDest);
+    }
+  }
 
   if (isGlb(destination)) available.push({ ...entry, file });
   else missing.push(file);

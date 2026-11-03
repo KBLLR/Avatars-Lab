@@ -3,22 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MLX Conversation Lab | Avatar Labs</title>
+    <title>Multimodal Chat | Avatar Labs</title>
     <link rel="stylesheet" href="/src/styles/case-workbench.css" />
     <style>
       :root {
-        --bg: #09090b;
-        --fg: #fafafa;
-        --muted: #a1a1aa;
-        --border: #27272a;
-        --surface: #18181b;
-        --hover: #27272a;
-        --accent: #f97316;
-        --accent-2: #ef4444;
-        --accent-3: #22c55e;
-        --radius: 12px;
-        --gutter: 16px;
-        --margin: 16px;
+        --bg: #d1d1d0;
+        --fg: #2d2824;
+        --muted: #6b6560;
+        --border: #9a9a98;
+        --surface: rgba(229, 229, 227, 0.96);
+        --hover: rgba(255, 255, 255, 0.35);
+        --accent: #3d6e96;
+        --accent-2: #8a3030;
+        --accent-3: #3d7a45;
+        --radius: 0px;
+        --gutter: 14px;
+        --margin: 14px;
       }
 
       * {
@@ -96,8 +96,8 @@
         flex: 1;
         position: relative;
         border-radius: var(--radius);
-        border: 1px solid var(--border);
-        background: var(--surface);
+        border: 1px dashed var(--border);
+        background: radial-gradient(circle at 50% 35%, #e2e2df 0%, #bcbcb8 100%);
         overflow: hidden;
         min-height: 0;
       }

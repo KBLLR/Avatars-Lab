@@ -28,6 +28,8 @@
     }
   },
   "agents": {
+    "orchestrator_id": "orchestrator:avatar-labs:avara",
+    "persona_name": "AVARA",
     "roster": [
       {
         "agent_id": "avatar-labs:avatar-director",
@@ -38,6 +40,15 @@
           "audio-response",
           "rendering"
         ]
+      },
+      {
+        "agent_id": "avatar-labs:performance-director",
+        "role_in_house": "specialist",
+        "capabilities": [
+          "performance-evaluation",
+          "animation",
+          "choreography"
+        ]
       }
     ],
     "default_agent": "avatar-labs:avatar-director",
@@ -46,6 +57,11 @@
         "pattern": "*",
         "capability": "avatar-validation",
         "agent_id": "avatar-labs:avatar-director"
+      },
+      {
+        "pattern": "performance*",
+        "capability": "performance-evaluation",
+        "agent_id": "avatar-labs:performance-director"
       }
     ]
   },
@@ -54,12 +70,14 @@
       "avatar-validation",
       "3d-rendering",
       "speech-animation",
-      "performance-authoring"
+      "performance-authoring",
+      "motion-capture"
     ],
     "input_types": [
       "text",
       "image",
       "audio",
+      "video",
       "file",
       "voice"
     ],
@@ -74,13 +92,23 @@
     "tool_calling": true
   },
   "dependencies": {
-    "services": [],
+    "services": [
+      "gateway",
+      "mlx-llm",
+      "mlx-audio",
+      "mlx-vision",
+      "said"
+    ],
     "models": [],
-    "houses": [],
+    "houses": [
+      "rigging-portal"
+    ],
     "mcp_servers": []
   },
   "skills": {
-    "house_skills": [],
+    "house_skills": [
+      "mixamo-armature-adaptation"
+    ],
     "shared_skills": [
       "core-ops",
       "mlx-chat",
@@ -95,22 +123,20 @@
   ],
   "surface": {
     "base_url": "http://127.0.0.1:5185",
-    "health_url": "http://127.0.0.1:5185/",
+    "health_url": "http://127.0.0.1:5185/health",
     "default_case": "launcher",
     "cases": [
       { "id": "launcher", "label": "Avatar Labs", "path": "/" },
-      { "id": "gemma-avatar", "label": "Gemma Avatar", "path": "/gemma-avatar.html" },
-      { "id": "corex-head", "label": "Core-X Head", "path": "/corex-head.html" },
-      { "id": "stage", "label": "Stage Director", "path": "/stage.html" },
       { "id": "engine-lab", "label": "Performance Engine", "path": "/engine-lab.html" },
-      { "id": "dance-studio", "label": "Dance Studio", "path": "/dance-studio.html" },
-      { "id": "gestures-lab", "label": "Gestures Lab", "path": "/gestures-lab.html" },
+      { "id": "mocap-lab", "label": "Mocap Lab", "path": "/mocap-lab.html" },
+      { "id": "gemma-avatar", "label": "Gemma Speech", "path": "/gemma-avatar.html" },
+      { "id": "corex-head", "label": "Core-X Head", "path": "/corex-head.html" },
       { "id": "said-face", "label": "SAiD Face", "path": "/said-face.html" },
       { "id": "face-mirror", "label": "Face Mirror", "path": "/face-mirror.html" },
-      { "id": "multi-modal", "label": "Multi-Modal", "path": "/multi-modal.html" },
-      { "id": "mlx-conversation", "label": "MLX Conversation", "path": "/mlx-conversation.html" },
-      { "id": "composition-layer", "label": "Composition Layer", "path": "/composition-layer.html" },
-      { "id": "head-audio", "label": "HeadAudio Probe", "path": "/head-audio.html" }
+      { "id": "stage", "label": "Stage Director", "path": "/stage.html" },
+      { "id": "dance-studio", "label": "Dance Studio", "path": "/dance-studio.html" },
+      { "id": "gestures-lab", "label": "Gesture Library", "path": "/gestures-lab.html" },
+      { "id": "multi-modal", "label": "Multimodal Chat", "path": "/multi-modal.html" }
     ]
   },
   "council_integration": {
