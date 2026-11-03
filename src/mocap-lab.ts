@@ -46,6 +46,8 @@ const stage3 = document.getElementById("stage3") as HTMLElement;
 const stage4 = document.getElementById("stage4") as HTMLElement;
 
 const extractMotionBtn = document.getElementById("extractMotionBtn") as HTMLButtonElement;
+const publishRiggingPortalBtn = document.getElementById("publishRiggingPortalBtn") as HTMLButtonElement | null;
+const riggingPortalSyncStatus = document.getElementById("riggingPortalSyncStatus") as HTMLElement | null;
 const downloadGlbBtn = document.getElementById("downloadGlbBtn") as HTMLButtonElement;
 const downloadMotionJsonBtn = document.getElementById("downloadMotionJsonBtn") as HTMLButtonElement;
 const exportReviewBtn = document.getElementById("exportReviewBtn") as HTMLButtonElement;
@@ -465,6 +467,10 @@ function setupExtractionPipeline() {
             if (reviewPacketJson) {
               reviewPacketJson.textContent = JSON.stringify(job, null, 2);
             }
+            if (job.rigging_portal_library?.ok && riggingPortalSyncStatus) {
+              riggingPortalSyncStatus.style.display = "block";
+              riggingPortalSyncStatus.textContent = `✓ Registered in Rigging Portal: ${job.rigging_portal_library.motion_id} (${job.rigging_portal_library.pack_id})`;
+            }
 
             play();
           } else if (job.status === "failed") {
@@ -566,6 +572,48 @@ function setupExportButtons() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  });
+
+  publishRiggingPortalBtn?.addEventListener("click", async () => {
+    publishRiggingPortalBtn.disabled = true;
+    const origText = publishRiggingPortalBtn.textContent;
+    publishRiggingPortalBtn.textContent = "Syncing to Rigging Portal Library...";
+    try {
+      const formData = new FormData();
+      const customStem = currentVideoFile
+        ? currentVideoFile.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-")
+        : "sample-dance";
+      formData.append("motion_id", `m2mr-${customStem}`);
+      formData.append(
+        "label",
+        currentVideoFile ? `${currentVideoFile.name} (M2MR)` : "Street Dance (M2MR Capture)",
+      );
+      const res = await fetch(`${MOTION_SERVICE_URL}/v1/motion/publish-rigging-portal`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.detail || data.error || `HTTP ${res.status}`);
+      }
+      if (riggingPortalSyncStatus) {
+        riggingPortalSyncStatus.style.display = "block";
+        riggingPortalSyncStatus.style.color = "var(--mocap-green)";
+        riggingPortalSyncStatus.textContent = `✓ Registered in Rigging Portal: ${data.motion_id} → ${data.entry?.publicUrl || "/animation-library/fbx/"} (${data.pack_id})`;
+      }
+      if (reviewPacketJson) {
+        reviewPacketJson.textContent = JSON.stringify(data, null, 2);
+      }
+    } catch (err: any) {
+      if (riggingPortalSyncStatus) {
+        riggingPortalSyncStatus.style.display = "block";
+        riggingPortalSyncStatus.style.color = "var(--mocap-red)";
+        riggingPortalSyncStatus.textContent = `Sync error: ${err.message}`;
+      }
+    } finally {
+      publishRiggingPortalBtn.disabled = false;
+      publishRiggingPortalBtn.textContent = origText;
+    }
   });
 }
 

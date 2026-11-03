@@ -594,8 +594,12 @@
           <button id="extractMotionBtn" class="action-btn primary" type="button" style="font-size: 12px; padding: 10px; font-weight: 600;">
             Extract &amp; Retarget Animation (MPS)
           </button>
+          <button id="publishRiggingPortalBtn" class="action-btn accent" type="button" style="font-weight: 600;">
+            Send Motion to Rigging Portal Library
+          </button>
+          <div id="riggingPortalSyncStatus" style="display: none; font-size: 10px; font-family: var(--workbench-mono); color: var(--mocap-green); background: rgba(61, 122, 69, 0.1); border: 1px solid rgba(61, 122, 69, 0.3); border-radius: 4px; padding: 6px; margin-bottom: 6px;"></div>
           <div style="display: flex; gap: 8px;">
-            <button id="downloadGlbBtn" class="action-btn accent" type="button" style="flex: 1;">Download GLB</button>
+            <button id="downloadGlbBtn" class="action-btn" type="button" style="flex: 1;">Download GLB</button>
             <button id="downloadMotionJsonBtn" class="action-btn" type="button" style="flex: 1;">Download Motion</button>
           </div>
           <button id="exportReviewBtn" class="action-btn" type="button">Export Review Packet</button>
