@@ -6,7 +6,7 @@ const root = process.cwd();
 const findRepoRoot = (dir) => {
   let curr = dir;
   while (curr && curr !== "/") {
-    if (existsSync(resolve(curr, ".git")) || existsSync(resolve(curr, "core-x"))) return curr;
+    if (existsSync(resolve(curr, "core-x")) && existsSync(resolve(curr, "houses"))) return curr;
     curr = resolve(curr, "..");
   }
   return resolve(dir, "../..");
