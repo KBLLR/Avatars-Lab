@@ -94,7 +94,7 @@ let controls: OrbitControls;
 let characterModel: THREE.Group | null = null;
 let mixer: THREE.AnimationMixer | null = null;
 let primaryAction: THREE.AnimationAction | null = null;
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -167,10 +167,13 @@ function init3D() {
   // Load default character GLB
   loadCharacterGLB(activeGlbUrl, clipDuration);
 
+  timer.connect(document);
+
   // Render Loop
-  function animate() {
+  function animate(timestamp?: number) {
     requestAnimationFrame(animate);
-    const delta = clock.getDelta();
+    timer.update(timestamp);
+    const delta = timer.getDelta();
     controls.update();
 
     if (isPlaying && mixer) {
