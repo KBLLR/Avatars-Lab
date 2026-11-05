@@ -14,6 +14,7 @@ import {
   Settings,
   SlidersHorizontal,
   Stethoscope,
+  Video,
   createIcons,
 } from "lucide";
 import { AVATAR_LAB_CASES } from "./cases/registry";
@@ -64,6 +65,7 @@ createIcons({
     Settings,
     SlidersHorizontal,
     Stethoscope,
+    Video,
   },
   attrs: { "stroke-width": 1.5 },
 });

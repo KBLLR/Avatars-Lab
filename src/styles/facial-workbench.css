@@ -1,14 +1,16 @@
+@import "./corex-foundation.css";
+
 :root {
   color-scheme: light;
-  --facial-ink: #2d2824;
-  --facial-muted: #6b6560;
-  --facial-line: #9a9a98;
-  --facial-line-soft: #b5b5b2;
+  --facial-ink: var(--corex-ink);
+  --facial-muted: var(--corex-muted);
+  --facial-line: var(--corex-line);
+  --facial-line-soft: var(--corex-line-soft);
   --facial-panel: rgba(229, 229, 227, 0.96);
-  --facial-blue: #3d6e96;
-  --facial-green: #3d7a45;
-  --facial-red: #8a3030;
-  --facial-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --facial-blue: var(--corex-status-blue);
+  --facial-green: var(--corex-status-green);
+  --facial-red: var(--corex-status-red);
+  --facial-mono: var(--corex-mono);
 }
 
 * { box-sizing: border-box; }

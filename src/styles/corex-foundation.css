@@ -1,0 +1,19 @@
+/* Shared Core-X foundation for Avatar Labs' launcher and workbenches.
+   See core-x/docs/design/core-x-design-system-canon-v0.1.md. */
+:root {
+  --corex-canvas: #d1d1d0;
+  --corex-surface: rgba(209, 209, 208, 0.85);
+  --corex-elevated: rgba(195, 195, 193, 0.6);
+  --corex-input: rgba(255, 255, 255, 0.35);
+  --corex-ink: #2d2824;
+  --corex-muted: #6b6560;
+  --corex-line: #9a9a9a;
+  --corex-line-soft: #b5b5b3;
+  --corex-status-green: #3d7a45;
+  --corex-status-yellow: #8a7420;
+  --corex-status-red: #8a3030;
+  --corex-status-blue: #3d6e96;
+  --corex-heading: "Chakra Petch", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+  --corex-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --corex-mono: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}

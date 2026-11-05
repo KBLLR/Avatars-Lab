@@ -1,20 +1,22 @@
+@import "./corex-foundation.css";
+
 :root {
   color-scheme: light;
-  --bg: #d1d1d0;
+  --bg: var(--corex-canvas);
   --surface: rgba(229, 229, 227, 0.76);
   --surface-strong: rgba(241, 241, 239, 0.9);
-  --ink: #2d2824;
-  --muted: #6b6560;
+  --ink: var(--corex-ink);
+  --muted: var(--corex-muted);
   --dim: #8f8f8c;
   --line: #9a9a98;
   --line-soft: #b5b5b2;
-  --green: #3d7a45;
-  --blue: #3d6e96;
-  --amber: #8a7420;
-  --red: #8a3030;
-  --font-heading: "Avenir Next Condensed", "Arial Narrow", sans-serif;
-  --font-body: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --green: var(--corex-status-green);
+  --blue: var(--corex-status-blue);
+  --amber: var(--corex-status-yellow);
+  --red: var(--corex-status-red);
+  --font-heading: var(--corex-heading);
+  --font-body: var(--corex-body);
+  --font-mono: var(--corex-mono);
 }
 
 * { box-sizing: border-box; }
@@ -117,11 +119,38 @@ textarea { font: inherit; }
 
 .launcher-content { min-height: 0; overflow: auto; }
 
+.launcher-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+  align-items: end;
+  gap: 24px;
+  padding: 28px 24px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.launcher-intro h1 {
+  max-width: 20ch;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 3.2vw, 40px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.launcher-intro p {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .case-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-content: start;
-  min-height: 100%;
+  min-height: 0;
   border-left: 1px solid var(--line-soft);
 }
 
@@ -190,6 +219,7 @@ textarea { font: inherit; }
   .launcher-subheader,
   .launcher-footer { padding-inline: 10px; }
   .telemetry-cluster .telemetry:not(.service-state) { display: none; }
+  .launcher-intro { grid-template-columns: 1fr; gap: 12px; padding: 22px 15px; }
   .case-grid { grid-template-columns: minmax(0, 1fr); }
   .case-tile { min-height: 170px; padding: 15px; }
 }
@@ -226,7 +256,7 @@ textarea { font: inherit; }
   min-height: 46px;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   text-decoration: none;
   border: 1px dashed transparent;
 }
@@ -364,14 +394,14 @@ textarea { font: inherit; }
   overflow: auto;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.55;
   white-space: pre-wrap;
   background: rgba(255, 255, 255, 0.22);
   border: 1px dashed var(--line-soft);
 }
 
-.control-panel__footer { margin-top: auto; color: var(--dim); font-size: 9px; line-height: 1.45; }
+.control-panel__footer { margin-top: auto; color: var(--dim); font-size: 10px; line-height: 1.45; }
 
 @media (max-width: 860px) {
   .runtime-shell { grid-template-columns: 50px minmax(0, 1fr); grid-template-rows: minmax(360px, 58vh) minmax(0, 1fr); overflow: auto; }

@@ -3,6 +3,7 @@ import type {
   PerformanceCatalog,
   PerformanceEnvironment
 } from "./types";
+import sampleAvatarUrl from "../../fixtures/avatars/brunette.glb?url";
 
 const COREX_HEADS = [
   "kbllr",
@@ -73,21 +74,21 @@ interface AvatarManifestEntry {
 }
 
 export const loadPerformanceCatalog = async (): Promise<PerformanceCatalog> => {
-  const [avatarResponse, animationResponse] = await Promise.all([
-    fetch("/avatars/runtime-manifest.json"),
-    fetch("/performance-assets/catalog.json"),
+  const warnings: string[] = [];
+  const readCatalog = async (url: string): Promise<any> => {
+    const response = await fetch(url);
+    if (!response.ok || (response.headers.get("content-type") || "").includes("text/html")) throw new Error("unavailable");
+    return response.json();
+  };
+  const [avatarPayload, rawAnimations] = await Promise.all([
+    readCatalog("/avatars/runtime-manifest.json").catch(() => null),
+    readCatalog("/performance-assets/catalog.json").catch(() => null),
   ]);
-  if (!avatarResponse.ok) throw new Error(`Avatar catalog failed (${avatarResponse.status}).`);
-  if (!animationResponse.ok) throw new Error(`Animation catalog failed (${animationResponse.status}).`);
-  const [avatarPayload, animationPayload] = await Promise.all([
-    avatarResponse.json(),
-    animationResponse.json(),
-  ]);
-  if (animationPayload?.schema !== "avatar-labs.animation-catalog.v1" || !Array.isArray(animationPayload.animations)) {
-    throw new Error("Animation catalog returned an unsupported schema.");
-  }
+  const animationPayload = rawAnimations?.schema === "avatar-labs.animation-catalog.v1" && Array.isArray(rawAnimations.animations)
+    ? rawAnimations : { animations: [], summary: {} };
+  if (animationPayload !== rawAnimations) warnings.push("Animation catalog unavailable; motion clips are not loaded.");
   const bodies: ActorAsset[] = (Array.isArray(avatarPayload?.avatars) ? avatarPayload.avatars : [])
-    .filter((entry: AvatarManifestEntry) => entry?.file?.endsWith(".glb"))
+    .filter((entry: AvatarManifestEntry) => typeof entry?.file === "string" && /^[^/\\]+\.glb$/i.test(entry.file) && !entry.file.includes(".."))
     .map((entry: AvatarManifestEntry) => {
       const id = entry.id || entry.file.replace(/\.glb$/i, "");
       return {
@@ -99,7 +100,12 @@ export const loadPerformanceCatalog = async (): Promise<PerformanceCatalog> => {
       };
     });
 
+  if (!bodies.length) {
+    bodies.push({ id: "body:sample-brunette", label: "Sample avatar / Body", kind: "body", url: sampleAvatarUrl });
+    warnings.push("Avatar catalog unavailable or empty; using the bundled sample avatar.");
+  }
   return {
+    warnings,
     actors: [...HEAD_ASSETS, ...bodies],
     animations: animationPayload.animations,
     animationSummary: {

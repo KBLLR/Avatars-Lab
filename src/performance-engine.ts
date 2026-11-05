@@ -1448,6 +1448,7 @@ const initialize = async (): Promise<void> => {
   try {
     loadingDetail.textContent = "Reading canonical asset catalogs";
     catalog = await loadPerformanceCatalog();
+    for (const warning of catalog.warnings || []) reportError(warning);
     void loadDirectorModels();
     // Every launch opens a fresh randomized full-body stage. Browser saves are
     // intentionally explicit through Restore so reloads never resurrect a
