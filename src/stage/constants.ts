@@ -1,6 +1,6 @@
 import type { LightPresetConfig } from "./types";
 
-export const directorModelFallback = "text/gpt-oss-20b-mxfp4-q8";
+export const directorModelFallback = "text/gpt-oss-20b-optiq-4bit";
 export const directorMaxTokens = 700;
 
 export const lightPresets: Record<string, LightPresetConfig> = {
