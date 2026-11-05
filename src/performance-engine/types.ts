@@ -195,6 +195,7 @@ export interface CompiledSchedule {
 }
 
 export interface PerformanceCatalog {
+  warnings?: string[];
   actors: ActorAsset[];
   animations: Array<{
     id: string;

@@ -1,17 +1,19 @@
+@import "./corex-foundation.css";
+
 :root {
-  --workbench-bg: #d1d1d0;
+  --workbench-bg: var(--corex-canvas);
   --workbench-surface: rgba(229, 229, 227, 0.96);
   --workbench-surface-strong: #f1f1ef;
-  --workbench-ink: #2d2824;
-  --workbench-muted: #6b6560;
-  --workbench-line: #9a9a98;
-  --workbench-line-soft: #b5b5b2;
-  --workbench-green: #3d7a45;
-  --workbench-blue: #3d6e96;
-  --workbench-red: #8a3030;
-  --workbench-heading: "Avenir Next Condensed", "Arial Narrow", sans-serif;
-  --workbench-body: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --workbench-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --workbench-ink: var(--corex-ink);
+  --workbench-muted: var(--corex-muted);
+  --workbench-line: var(--corex-line);
+  --workbench-line-soft: var(--corex-line-soft);
+  --workbench-green: var(--corex-status-green);
+  --workbench-blue: var(--corex-status-blue);
+  --workbench-red: var(--corex-status-red);
+  --workbench-heading: var(--corex-heading);
+  --workbench-body: var(--corex-body);
+  --workbench-mono: var(--corex-mono);
 }
 
 html:has(body[data-avatar-labs-workbench="true"]),
@@ -101,7 +103,7 @@ body[data-avatar-labs-workbench="true"] > main {
 .case-workbench-bar__runtime,
 .case-workbench-bar__picker select {
   font-family: var(--workbench-mono);
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
 }
 
