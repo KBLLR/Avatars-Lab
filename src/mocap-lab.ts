@@ -196,7 +196,7 @@ function init3D() {
 }
 
 // 2. Load Retargeted Character GLB
-function loadCharacterGLB(glbUrl: string, duration: number = 8.03) {
+function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 0) {
   if (characterModel) {
     scene.remove(characterModel);
     characterModel = null;
@@ -210,9 +210,10 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03) {
   activeGlbUrl = glbUrl;
   if (meshLoadStatusTag) meshLoadStatusTag.textContent = "GLB: Loading...";
 
+  const targetUrl = glbUrl.includes("?") ? glbUrl : `${glbUrl}?t=${Date.now()}`;
   const loader = new GLTFLoader();
   loader.load(
-    glbUrl,
+    targetUrl,
     (gltf) => {
       characterModel = gltf.scene;
       characterModel.traverse((child) => {
@@ -272,7 +273,11 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03) {
     },
     (err) => {
       console.error("Retargeted GLB load error:", err);
-      if (meshLoadStatusTag) meshLoadStatusTag.textContent = "GLB: Ready";
+      if (retryCount < 2) {
+        setTimeout(() => loadCharacterGLB(glbUrl, duration, retryCount + 1), 600);
+      } else {
+        if (meshLoadStatusTag) meshLoadStatusTag.textContent = "GLB: Error";
+      }
     }
   );
 }

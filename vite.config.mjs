@@ -44,6 +44,8 @@ const MEDIAPIPE_MODEL_ROOT = resolve(
   process.env.AVATAR_LABS_MEDIAPIPE_MODEL_ROOT ||
     resolve(repoRoot, "warehouse/var/cache/objects/avatar-labs/intake-2026-05-05/public/mediapipe"),
 );
+const MOTION_PROOF_ROOT = resolve(root, "public/motion-proof");
+const VAR_MOTION_ROOT = resolve(repoRoot, "var/motion-proof");
 
 const contentTypes = {
   ".bin": "application/octet-stream",
@@ -55,10 +57,14 @@ const contentTypes = {
   ".jpeg": "image/jpeg",
   ".jpg": "image/jpeg",
   ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
   ".ktx2": "image/ktx2",
+  ".mov": "video/quicktime",
+  ".mp4": "video/mp4",
   ".png": "image/png",
   ".task": "application/octet-stream",
   ".wasm": "application/wasm",
+  ".webm": "video/webm",
   ".webp": "image/webp",
 };
 
@@ -290,6 +296,8 @@ const ecosystemAssetsPlugin = () => ({
     registerStaticRoot(server.middlewares, "/rigging-portal-assets/characters", RIGGING_PORTAL_STAGING_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe/wasm", MEDIAPIPE_WASM_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe", MEDIAPIPE_MODEL_ROOT);
+    registerStaticRoot(server.middlewares, "/motion-proof", MOTION_PROOF_ROOT);
+    registerStaticRoot(server.middlewares, "/var/motion-proof", VAR_MOTION_ROOT);
   },
   configurePreviewServer(server) {
     registerHealthCheck(server.middlewares);
@@ -304,6 +312,8 @@ const ecosystemAssetsPlugin = () => ({
     registerStaticRoot(server.middlewares, "/rigging-portal-assets/characters", RIGGING_PORTAL_STAGING_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe/wasm", MEDIAPIPE_WASM_ROOT);
     registerStaticRoot(server.middlewares, "/facial-assets/mediapipe", MEDIAPIPE_MODEL_ROOT);
+    registerStaticRoot(server.middlewares, "/motion-proof", MOTION_PROOF_ROOT);
+    registerStaticRoot(server.middlewares, "/var/motion-proof", VAR_MOTION_ROOT);
   },
 });
 
