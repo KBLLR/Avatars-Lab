@@ -1,9 +1,10 @@
 @import "./corex-foundation.css";
 
 :root {
+  color-scheme: dark;
   --workbench-bg: var(--corex-canvas);
-  --workbench-surface: rgba(229, 229, 227, 0.96);
-  --workbench-surface-strong: #f1f1ef;
+  --workbench-surface: var(--corex-surface);
+  --workbench-surface-strong: #1a1c20;
   --workbench-ink: var(--corex-ink);
   --workbench-muted: var(--corex-muted);
   --workbench-line: var(--corex-line);
@@ -33,13 +34,13 @@ body[data-avatar-labs-workbench="true"] {
   --panel-2: var(--workbench-surface-strong);
   --surface: var(--workbench-surface);
   --card: var(--workbench-surface);
-  --hover: rgba(255, 255, 255, 0.35);
+  --hover: rgba(255, 255, 255, 0.08);
   --border: var(--workbench-line-soft);
   --line: var(--workbench-line-soft);
-  --chip: rgba(255, 255, 255, 0.34);
+  --chip: rgba(255, 255, 255, 0.08);
   --accent: var(--workbench-blue);
   --accent-2: var(--workbench-green);
-  --accent-3: #8a7420;
+  --accent-3: #eab308;
   box-sizing: border-box;
   padding-top: 40px;
   color: var(--workbench-ink);
@@ -47,8 +48,8 @@ body[data-avatar-labs-workbench="true"] {
   letter-spacing: 0;
   background-color: var(--workbench-bg);
   background-image:
-    linear-gradient(rgba(45, 40, 36, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45, 40, 36, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 100px 100px;
 }
 
@@ -69,7 +70,7 @@ body[data-avatar-labs-workbench="true"] > main {
   align-items: center;
   height: 40px;
   color: var(--workbench-ink);
-  background: rgba(209, 209, 208, 0.94);
+  background: rgba(18, 19, 21, 0.94);
   border-bottom: 1px dashed var(--workbench-line);
   backdrop-filter: blur(14px);
 }
@@ -85,7 +86,7 @@ body[data-avatar-labs-workbench="true"] > main {
 
 .case-workbench-bar__launcher:hover,
 .case-workbench-bar__launcher:focus-visible {
-  background: rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.12);
   outline: 1px solid var(--workbench-ink);
   outline-offset: -3px;
 }
@@ -134,7 +135,7 @@ body[data-avatar-labs-workbench="true"] > main {
   padding: 0 30px 0 9px;
   color: var(--workbench-ink);
   appearance: none;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px dashed var(--workbench-line);
   border-radius: 0;
   outline: none;
@@ -184,7 +185,7 @@ body[data-avatar-labs-workbench="true"] :is(button, input, textarea, select, .st
 body[data-avatar-labs-workbench="true"]:not([data-avatar-labs-case="composition-layer"])
   :is(input:not([type="range"]):not([type="checkbox"]), textarea, select) {
   color: var(--workbench-ink) !important;
-  background: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   border-color: var(--workbench-line-soft) !important;
 }
 

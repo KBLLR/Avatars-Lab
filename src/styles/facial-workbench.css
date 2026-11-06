@@ -1,12 +1,12 @@
 @import "./corex-foundation.css";
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   --facial-ink: var(--corex-ink);
   --facial-muted: var(--corex-muted);
   --facial-line: var(--corex-line);
   --facial-line-soft: var(--corex-line-soft);
-  --facial-panel: rgba(229, 229, 227, 0.96);
+  --facial-panel: rgba(20, 22, 25, 0.96);
   --facial-blue: var(--corex-status-blue);
   --facial-green: var(--corex-status-green);
   --facial-red: var(--corex-status-red);
@@ -125,7 +125,7 @@
   min-height: 34px;
   padding: 6px 8px;
   color: var(--facial-ink);
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--facial-line-soft);
   border-radius: 2px;
 }
@@ -152,7 +152,7 @@
 }
 
 .facial-command svg { width: 15px; height: 15px; }
-.facial-command:hover:not(:disabled) { background: rgba(255, 255, 255, 0.64); }
+.facial-command:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
 .facial-command:disabled { opacity: 0.45; cursor: not-allowed; }
 .facial-command--primary { color: #f7f7f5; background: var(--facial-blue); border-color: var(--facial-blue); }
 .facial-command--stop { color: var(--facial-red); }
@@ -171,7 +171,7 @@
   gap: 4px;
   min-width: 0;
   padding: 9px;
-  background: rgba(241, 241, 239, 0.94);
+  background: rgba(26, 29, 33, 0.94);
 }
 
 .facial-metric dt { color: var(--facial-muted); }
