@@ -22,6 +22,7 @@ import {
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   Object3D,
+  PCFSoftShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
@@ -49,6 +50,7 @@ import type {
   ShaderPresetId
 } from "./types";
 import { StageEffectsController, type StageEffectCue } from "./stage-effects";
+import { calibrateChatAvatarEyes } from "../scene/studio-scene-template";
 
 interface CinematicCameraCue {
   preset: CameraPresetId;
@@ -126,6 +128,7 @@ const normalizeHeadAssembly = (headScene: Object3D): void => {
       eye.position.multiplyScalar(ratio);
     }
   }
+  calibrateChatAvatarEyes(headScene);
   headScene.traverse((object) => {
     const mesh = object as Mesh;
     if (!mesh.isMesh) return;
@@ -149,29 +152,29 @@ const createStudioHeadPlinth = (): Group => {
   pedestal.name = "avatar-labs-head-pedestal-studio-plinth";
   pedestal.userData.avatarLabsPedestalSource = "studio-plinth";
   const stoneMaterial = new MeshPhysicalMaterial({
-    color: 0x77736e,
-    metalness: 0.02,
-    roughness: 0.38,
-    clearcoat: 0.18,
-    clearcoatRoughness: 0.28,
+    color: 0x222426,
+    metalness: 0.04,
+    roughness: 0.42,
+    clearcoat: 0.16,
+    clearcoatRoughness: 0.32,
   });
   const trimMaterial = new MeshPhysicalMaterial({
-    color: 0x1d2023,
-    metalness: 0.68,
-    roughness: 0.24,
-    clearcoat: 0.42,
-    clearcoatRoughness: 0.16,
+    color: 0x141618,
+    metalness: 0.72,
+    roughness: 0.22,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.15,
   });
-  const base = new Mesh(new CylinderGeometry(0.52, 0.58, 0.1, 64), stoneMaterial);
-  base.position.y = 0.05;
-  const lowerTrim = new Mesh(new CylinderGeometry(0.47, 0.52, 0.06, 64), trimMaterial);
-  lowerTrim.position.y = 0.13;
-  const column = new Mesh(new CylinderGeometry(0.32, 0.42, 0.56, 64), stoneMaterial.clone());
-  column.position.y = 0.44;
-  const upperTrim = new Mesh(new CylinderGeometry(0.4, 0.33, 0.07, 64), trimMaterial.clone());
-  upperTrim.position.y = 0.75;
-  const cap = new Mesh(new CylinderGeometry(0.46, 0.4, 0.08, 64), stoneMaterial.clone());
-  cap.position.y = 0.82;
+  const base = new Mesh(new CylinderGeometry(0.28, 0.32, 0.06, 64), stoneMaterial);
+  base.position.y = 0.03;
+  const lowerTrim = new Mesh(new CylinderGeometry(0.25, 0.28, 0.03, 64), trimMaterial);
+  lowerTrim.position.y = 0.075;
+  const column = new Mesh(new CylinderGeometry(0.18, 0.24, 0.54, 64), stoneMaterial.clone());
+  column.position.y = 0.36;
+  const upperTrim = new Mesh(new CylinderGeometry(0.21, 0.18, 0.04, 64), trimMaterial.clone());
+  upperTrim.position.y = 0.65;
+  const cap = new Mesh(new CylinderGeometry(0.20, 0.21, 0.04, 64), stoneMaterial.clone());
+  cap.position.y = 0.69;
   for (const mesh of [base, lowerTrim, column, upperTrim, cap]) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -234,12 +237,59 @@ const createRealismusMaterial = (
   const materialIdentity = source.name.toLowerCase();
   const meshIdentity = meshName.toLowerCase();
   const roleIdentity = materialIdentity || meshIdentity;
-  const isHair = /hair|brow|lash|beard/.test(materialIdentity) ||
-    (!materialIdentity && /hair|brow|lash|beard/.test(meshIdentity));
-  const isEye = !isHair && (/eye|cornea|iris/.test(materialIdentity) ||
-    (!materialIdentity && /eye|cornea|iris/.test(meshIdentity)));
-  const isSkin = !isEye && !isHair && (/skin|face|head|body|ear|lip/.test(materialIdentity) ||
-    (!materialIdentity && /skin|face|head|body|ear|lip/.test(meshIdentity)));
+
+  // 1. Occlusion hidden helper geometry
+  if (roleIdentity.includes("occlusion")) {
+    const hidden = source.clone();
+    hidden.transparent = true;
+    hidden.opacity = 0;
+    hidden.depthWrite = false;
+    hidden.depthTest = false;
+    hidden.visible = false;
+    return hidden;
+  }
+
+  // 2. Mouth interior (polygon-offset prevents black slits around lips)
+  if (roleIdentity.includes("mouth") || roleIdentity.includes("interior")) {
+    const mouthMat = (source.clone() as MeshPhysicalMaterial);
+    mouthMat.name = `${source.name || meshName || "actor"}:realismus-mouth`;
+    mouthMat.side = FrontSide;
+    mouthMat.roughness = 0.8;
+    mouthMat.metalness = 0;
+    mouthMat.color = new Color(0x1a0808);
+    mouthMat.transparent = false;
+    mouthMat.depthWrite = true;
+    mouthMat.depthTest = true;
+    mouthMat.polygonOffset = true;
+    mouthMat.polygonOffsetFactor = 1;
+    mouthMat.polygonOffsetUnits = 1;
+    mouthMat.transmission = 0;
+    mouthMat.thickness = 0;
+    mouthMat.sheen = 0;
+    mouthMat.clearcoat = 0;
+    return mouthMat;
+  }
+
+  // 3. Teeth (wet enamel clearcoat)
+  if (roleIdentity.includes("teeth")) {
+    const teethMat = (source.clone() as MeshPhysicalMaterial);
+    teethMat.name = `${source.name || meshName || "actor"}:realismus-teeth`;
+    teethMat.side = FrontSide;
+    teethMat.roughness = 0.35;
+    teethMat.metalness = 0;
+    teethMat.clearcoat = 0.6;
+    teethMat.clearcoatRoughness = 0.1;
+    teethMat.transmission = 0;
+    teethMat.thickness = 0;
+    teethMat.sheen = 0;
+    teethMat.iridescence = 0;
+    return teethMat;
+  }
+
+  const isHair = /hair|brow|lash|beard/.test(roleIdentity);
+  const isEye = !isHair && /eye|cornea|iris/.test(roleIdentity);
+  const isSkin = !isEye && !isHair && /skin|face|head|body|ear|lip/.test(roleIdentity);
+
   if (!isSkin) {
     const authored = source.clone() as MeshStandardMaterial & Partial<MeshPhysicalMaterial>;
     authored.name = `${source.name || meshName || "actor"}:realismus`;
@@ -258,6 +308,7 @@ const createRealismusMaterial = (
         authored.clearcoat = Math.max(authored.clearcoat || 0, 0.28);
         authored.clearcoatRoughness = Math.min(authored.clearcoatRoughness || 0.08, 0.08);
         authored.specularIntensity = Math.max(authored.specularIntensity || 0, 0.72);
+        authored.envMapIntensity = Math.max(authored.envMapIntensity || 0, 0.55);
         authored.ior = 1.38;
       }
     } else if (isHair) {
@@ -275,9 +326,8 @@ const createRealismusMaterial = (
     authored.needsUpdate = true;
     return authored;
   }
-  // Core-X upgrades only skin to the WebGPU SSS node path. Keeping eyes,
-  // lashes, hair and wardrobe on a classic physical material preserves the
-  // authored glTF UV/texture behavior and avoids whitewashed irises.
+
+  // Canonical Core-X skin: pure diffuse + GGX specular, SSS-extinction to prevent black cutouts
   const material = webgpu ? new MeshPhysicalNodeMaterial() : new MeshPhysicalMaterial();
   material.name = `${source.name || meshName || "actor"}:realismus`;
   material.color.copy(sourcePbr.color);
@@ -299,36 +349,28 @@ const createRealismusMaterial = (
   material.normalMap = sourcePbr.normalMap;
   material.normalScale.copy(sourcePbr.normalScale);
   material.roughnessMap = sourcePbr.roughnessMap;
-  material.roughness = sourcePbr.roughness;
-  material.metalness = sourcePbr.metalness;
-  material.envMapIntensity = sourcePbr.envMapIntensity;
+  material.roughness = 0.58;
+  material.metalness = 0;
+  material.envMapIntensity = 0.85;
   material.opacity = source.opacity;
-  material.transparent = source.transparent;
+  material.transparent = false;
   material.alphaTest = source.alphaTest;
   material.alphaHash = source.alphaHash;
   material.alphaToCoverage = source.alphaToCoverage;
-  material.side = source.side;
-  material.depthTest = source.depthTest;
-  material.depthWrite = source.depthWrite;
+  material.side = FrontSide;
+  material.depthTest = true;
+  material.depthWrite = true;
   material.colorWrite = source.colorWrite;
   material.vertexColors = sourcePbr.vertexColors;
 
-  material.roughness = Math.max(0.42, Math.min(0.62, sourcePbr.roughness || 0.5));
-  material.metalness = 0;
-  material.clearcoat = 0.08;
-  material.clearcoatRoughness = 0.48;
-  material.sheen = 0.18;
-  material.sheenColor.set("#ff8a70");
-  material.sheenRoughness = 0.68;
-  material.ior = 1.4;
-  material.transmission = webgpu ? 0.055 : 0;
-  material.thickness = webgpu ? 0.18 : 0;
-  material.attenuationDistance = webgpu ? 0.32 : Infinity;
-  material.attenuationColor.set("#ff7a55");
-  material.envMapIntensity = 0.82;
-  material.transparent = false;
-  material.depthWrite = true;
-  material.side = FrontSide;
+  // SSS extinction — prevents black punchout holes
+  material.clearcoat = 0;
+  material.clearcoatRoughness = 0;
+  material.sheen = 0;
+  material.ior = 1.5;
+  material.transmission = 0;
+  material.thickness = 0;
+  material.attenuationDistance = Infinity;
   material.userData = { ...source.userData, avatarLabsGeneratedMaterial: true, preset: "realismus" };
   material.needsUpdate = true;
   return material;
@@ -483,7 +525,13 @@ export class PerformanceRoom {
     this.rendererLabel = label;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    if ((this.renderer as unknown as { shadowMap?: { enabled: boolean; type: number } }).shadowMap) {
+      const sm = (this.renderer as unknown as { shadowMap: { enabled: boolean; type: number } }).shadowMap;
+      sm.enabled = true;
+      sm.type = PCFSoftShadowMap;
+    }
     this.container.replaceChildren(this.renderer.domElement as HTMLCanvasElement);
     this.renderer.domElement.classList.add("performance-canvas");
 
@@ -502,10 +550,21 @@ export class PerformanceRoom {
     this.cameraControls.maxPolarAngle = Math.PI / 2 - 0.02;
     this.cameraControls.target.copy(this.cameraLookAt);
     this.scene.add(this.roomRoot);
-    this.scene.add(new AmbientLight(0xffffff, 0.42), this.keyLight, this.fillLight, this.rimLight);
-    this.keyLight.position.set(3.6, 5.2, 4.2);
-    this.fillLight.position.set(-4, 2.5, 3);
-    this.rimLight.position.set(0, 3.5, -2.5);
+    this.scene.add(new AmbientLight(0xffffff, 0.38), this.keyLight, this.fillLight, this.rimLight);
+    this.keyLight.position.set(2.4, 4.2, 3.4);
+    this.keyLight.castShadow = true;
+    this.keyLight.shadow.mapSize.set(2048, 2048);
+    this.keyLight.shadow.camera.near = 0.2;
+    this.keyLight.shadow.camera.far = 14;
+    this.keyLight.shadow.camera.left = -1.5;
+    this.keyLight.shadow.camera.right = 1.5;
+    this.keyLight.shadow.camera.top = 1.5;
+    this.keyLight.shadow.camera.bottom = -1.5;
+    this.keyLight.shadow.bias = -0.0008;
+    this.keyLight.shadow.normalBias = 0.02;
+    this.keyLight.shadow.radius = 2;
+    this.fillLight.position.set(-2.8, 2.2, 1.8);
+    this.rimLight.position.set(0, 3.0, -2.6);
     this.stageEffects = new StageEffectsController(this.scene);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -802,8 +861,8 @@ export class PerformanceRoom {
     const scaledBox = new Box3().setFromObject(model);
     const center = scaledBox.getCenter(new Vector3());
     if (definition.asset.kind === "head") {
-      model.position.set(-center.x, -center.y, -center.z);
-      performanceRoot.position.y = HEAD_CENTER_Y;
+      model.position.set(-center.x, -scaledBox.min.y, -center.z);
+      performanceRoot.position.y = 0.71;
     } else {
       model.position.set(-center.x, -scaledBox.min.y, -center.z);
     }

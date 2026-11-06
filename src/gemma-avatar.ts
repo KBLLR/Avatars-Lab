@@ -26,6 +26,7 @@ import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import avatarUrl from "../fixtures/avatars/brunette.glb?url";
 import { streamSpeech } from "./runtime/audio-stream";
 import { corexClient } from "./runtime/corex-client";
+import { upgradeTalkingHeadScene } from "./scene/studio-scene-template";
 
 const els = {
   avatar: document.getElementById("avatar") as HTMLElement,
@@ -103,6 +104,7 @@ async function initStage(): Promise<Stage> {
 
   setStatus("Loading avatar (brunette.glb)…");
   await head.showAvatar({ url: avatarUrl, body: "F", avatarMood: "neutral" });
+  upgradeTalkingHeadScene(head);
 
   setStatus("Wiring HeadAudio…");
   await head.audioCtx.audioWorklet.addModule(headWorkletUrl);

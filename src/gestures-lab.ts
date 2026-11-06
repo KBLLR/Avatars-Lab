@@ -3,6 +3,7 @@
  */
 
 import { TalkingHead } from "@met4citizen/talkinghead";
+import { upgradeTalkingHeadScene } from "./scene/studio-scene-template";
 import {
   loadAvatarList,
   resolveAvatarUrl,
@@ -129,6 +130,7 @@ const createHead = async () => {
     lightDirectIntensity: 0.6,
     lightSpotIntensity: 12
   });
+  upgradeTalkingHeadScene(head, { showPlinth: true });
   return head;
 };
 
@@ -222,6 +224,8 @@ const loadAvatar = async (name: string) => {
 
   // Set persistent eye contact - look at camera
   head.makeEyeContact(Infinity);
+
+  upgradeTalkingHeadScene(head, { showPlinth: true });
 
   updateStatus(`Avatar loaded: ${avatarLabel}`);
 };

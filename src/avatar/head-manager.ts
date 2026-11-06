@@ -3,6 +3,7 @@ import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import type { HeadConfig, HeadAudioConfig, UpdateStageLightingFn } from "./types";
 import { ensureLipsync } from "./lipsync-bridge";
 import { effectsManager } from "../effects/manager";
+import { upgradeTalkingHeadScene } from "../scene/studio-scene-template";
 
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
@@ -34,6 +35,8 @@ export const createHead = (config: HeadConfig): TalkingHead => {
     head.controls.autoRotate = config.cameraSettings.autoRotate;
     head.controls.autoRotateSpeed = config.cameraSettings.autoRotateSpeed;
   }
+
+  upgradeTalkingHeadScene(head);
 
   // Hook EffectsManager
   if (head.renderer && head.scene && head.camera) {

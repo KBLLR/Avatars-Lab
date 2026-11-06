@@ -6,6 +6,7 @@
  */
 
 import { TalkingHead } from "@met4citizen/talkinghead";
+import { upgradeTalkingHeadScene } from "./scene/studio-scene-template";
 import {
   loadAvatarList,
   resolveAvatarUrl,
@@ -131,6 +132,7 @@ const createHead = async () => {
     lightDirectIntensity: 1,
     lightSpotIntensity: 20
   });
+  upgradeTalkingHeadScene(head);
   return head;
 };
 
@@ -144,6 +146,7 @@ const loadAvatar = async (name: string) => {
     body: avatarEntry?.body || "F",
     avatarMood: avatarEntry?.default_mood || "neutral"
   });
+  upgradeTalkingHeadScene(head);
   head.start();
   updateStatus(`Avatar loaded: ${avatarLabel}`);
 };

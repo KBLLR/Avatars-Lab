@@ -5,6 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Core-X Head / Avatar Labs</title>
     <link rel="stylesheet" href="/src/styles/avatar-labs.css" />
+    <style>
+      .emotion-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 4px;
+      }
+      .emotion-pill {
+        padding: 3px 7px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.4);
+        border: 1px dashed var(--line);
+        cursor: pointer;
+      }
+      .emotion-pill:hover {
+        background: var(--ink);
+        color: var(--bg);
+      }
+      .emotion-pill.is-active {
+        background: var(--blue);
+        color: #fff;
+        border-style: solid;
+      }
+      .command-button--live {
+        background: #9c27b0;
+        border-color: #9c27b0;
+        color: #fff;
+      }
+      .command-button--live.is-recording {
+        background: #e91e63;
+        border-color: #e91e63;
+        animation: pulse-live 1.2s infinite;
+      }
+      @keyframes pulse-live {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.72; }
+      }
+      .vu-meter-wrap {
+        height: 6px;
+        background: rgba(0, 0, 0, 0.12);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+      .vu-meter-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--green);
+        transition: width 0.06s linear;
+      }
+      .timeline-track {
+        display: flex;
+        height: 12px;
+        background: rgba(0,0,0,0.08);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+      .timeline-segment {
+        height: 100%;
+        font-size: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        text-transform: uppercase;
+        font-family: var(--font-mono);
+      }
+      .timeline-segment--neutral { background: #78909c; }
+      .timeline-segment--happy { background: #4caf50; }
+      .timeline-segment--surprised { background: #ff9800; }
+      .timeline-segment--angry { background: #f44336; }
+      .timeline-segment--empathic { background: #00bcd4; }
+      .timeline-segment--thinking { background: #673ab7; }
+      .timeline-segment--excited { background: #e91e63; }
+    </style>
   </head>
   <body class="case-page">
     <main class="runtime-shell">
@@ -14,6 +92,7 @@
         <a class="runtime-nav__item" href="/mocap-lab.html" title="Mocap Lab">MCP</a>
         <a class="runtime-nav__item" href="/gemma-avatar.html" title="Gemma Speech">GEM</a>
         <a class="runtime-nav__item" href="/corex-head.html" aria-current="page" title="Core-X Head">CXH</a>
+        <a class="runtime-nav__item" href="/audio2face.html" title="Audio2Face Lab">A2F</a>
         <a class="runtime-nav__item" href="/said-face.html" title="SAiD Face">SAI</a>
         <a class="runtime-nav__item" href="/face-mirror.html" title="Face Mirror">FMR</a>
         <a class="runtime-nav__item" href="/stage.html" title="Stage Director">STG</a>
@@ -23,29 +102,105 @@
       </nav>
 
       <section id="stage" class="runtime-stage" aria-label="Core-X head stage">
-        <span class="runtime-stage__badge">WebGPU primary / WebGL2 fallback</span>
+        <span class="runtime-stage__badge">Core-X Canonical Render (WebGPU / ACES / PCFSoft)</span>
       </section>
 
       <aside class="control-panel">
         <header class="control-panel__header">
           <h1>Core-X Head</h1>
-          <p>Rig-less ChatAvatar head with HeadAudio-to-ARKit speech animation.</p>
+          <p>Canonical Core-X ChatAvatar rendering with real-time talk & dynamic emotion states.</p>
         </header>
 
         <section class="control-panel__section control-stack">
           <div id="status" class="runtime-status">booting</div>
-          <label>Text<textarea id="text">Hello operator. This is my own head, no bones attached. My mouth is ARKit blendshapes driven straight from the streaming audio.</textarea></label>
+
+          <label>
+            Performer Head & Canonical Voice
+            <select id="head-select" style="width: 100%; padding: 8px; border: 1px dashed var(--line); background: rgba(255,255,255,0.4);">
+              <option value="kbllr" selected>KBLLR (Curator / voice: lullabot)</option>
+              <option value="anja">Anja (Speaker / voice: katanja)</option>
+              <option value="susi-q">Susi-Q (Balanced / voice: katanja)</option>
+              <option value="david">David (Hyperhuman / voice: davido)</option>
+              <option value="eli">Eli (Hyperhuman / voice: eli_luma)</option>
+              <option value="sofia">Sofia (Hyperhuman / voice: sofi_v)</option>
+              <option value="nyx">Nyx (Hyperhuman / voice: vicky_spice)</option>
+              <option value="vee">Vee (ChatAvatar / voice: princess_leia)</option>
+              <option value="nino">Nino (Generalist / voice: ninoo)</option>
+            </select>
+          </label>
+          <input id="head-url" type="hidden" value="/corex-assets/avatars/heads/kbllr/kbllr.glb" />
+
+          <label>
+            Speech Prompt (Supports [Happy], [Angry], [Surprised], [Thinking], [Empathic], [Excited])
+            <textarea id="text">[Happy] Hello operator! [Surprised] Real-time talk and lip articulation are fully calibrated. [Thinking] Watch how my lips pucker, stretch, and expose upper teeth, [Excited] all synchronized live at sixty frames per second!</textarea>
+          </label>
+
+          <div style="font-size: 10px; color: var(--muted); text-transform: uppercase;">
+            Insert Emotion Cue:
+            <div class="emotion-pills" id="prompt-tag-pills">
+              <button type="button" class="emotion-pill" data-tag="[Happy]">+ Happy</button>
+              <button type="button" class="emotion-pill" data-tag="[Surprised]">+ Surprise</button>
+              <button type="button" class="emotion-pill" data-tag="[Thinking]">+ Thinking</button>
+              <button type="button" class="emotion-pill" data-tag="[Angry]">+ Intense</button>
+              <button type="button" class="emotion-pill" data-tag="[Empathic]">+ Empathic</button>
+              <button type="button" class="emotion-pill" data-tag="[Excited]">+ Excited</button>
+            </div>
+          </div>
+
+          <div id="timeline-container" style="display: none;">
+            <div style="font-size: 10px; color: var(--muted); text-transform: uppercase;">Pre-Speech Emotion Timeline:</div>
+            <div id="timeline-track" class="timeline-track"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <label>
+              Plinth Display
+              <select id="plinth-mode" style="width: 100%; padding: 6px; border: 1px dashed var(--line); background: rgba(255,255,255,0.4);">
+                <option value="none" selected>Core-X Float (Canonical)</option>
+                <option value="plinth">Studio Plinth</option>
+              </select>
+            </label>
+            <label>
+              Lip Articulation Gain: <b id="lip-gain-val">1.35x</b>
+              <input id="lip-gain" type="range" min="0.8" max="2.0" step="0.05" value="1.35" style="padding: 0; width: 100%;" />
+            </label>
+          </div>
+
+          <div style="font-size: 10px; color: var(--muted); text-transform: uppercase;">
+            Live Emotion State Override:
+            <div class="emotion-pills" id="live-emotion-pills">
+              <button type="button" class="emotion-pill is-active" data-emotion="neutral">Neutral</button>
+              <button type="button" class="emotion-pill" data-emotion="happy">Happy</button>
+              <button type="button" class="emotion-pill" data-emotion="surprised">Surprised</button>
+              <button type="button" class="emotion-pill" data-emotion="thinking">Thinking</button>
+              <button type="button" class="emotion-pill" data-emotion="angry">Intense</button>
+              <button type="button" class="emotion-pill" data-emotion="empathic">Empathic</button>
+              <button type="button" class="emotion-pill" data-emotion="excited">Excited</button>
+            </div>
+          </div>
+
           <label>Voice<input id="voice" value="lullabot" /></label>
-          <label>Head asset<input id="head-url" value="/corex-assets/avatars/heads/kbllr/kbllr.glb" /></label>
           <label>Core-X Gateway<input id="service" value="http://127.0.0.1:8090" /></label>
-          <div class="command-row">
+
+          <div class="command-row" style="grid-template-columns: 1fr 1fr 1fr 48px;">
             <button id="speak-stream" class="command-button">Stream</button>
             <button id="speak-blob" class="command-button command-button--secondary">Blob</button>
+            <button id="btn-live-mic" class="command-button command-button--live" title="Speak through microphone in real time">🎤 Live Mic</button>
             <button id="stop" class="command-button command-button--stop" title="Stop playback">Stop</button>
+          </div>
+
+          <div id="mic-meter-box" style="display: none;">
+            <div style="display: flex; justify-content: space-between; font-size: 9px; font-family: var(--font-mono); color: var(--muted);">
+              <span>MIC INPUT LEVEL</span>
+              <span id="mic-latency-val">&lt; 15ms</span>
+            </div>
+            <div class="vu-meter-wrap"><div id="mic-vu-bar" class="vu-meter-bar"></div></div>
           </div>
         </section>
 
         <section class="control-panel__section metrics-grid" aria-label="Performance metrics">
+          <span>Active Emotion</span><b id="m-emotion">neutral</b>
+          <span>Lip Articulation</span><b id="m-articulation">1.35x (Active)</b>
           <span>First audio</span><b id="m-ttfa">-</b>
           <span>Request total</span><b id="m-total">-</b>
           <span>Audio duration</span><b id="m-audio">-</b>
@@ -54,7 +209,7 @@
         </section>
 
         <section class="control-panel__section"><pre id="log" class="runtime-log"></pre></section>
-        <footer class="control-panel__footer">Asset source: Core-X canonical head library. No binary duplication.</footer>
+        <footer class="control-panel__footer">Asset source: Core-X canonical head library. Pure diffuse + GGX physical realism.</footer>
       </aside>
     </main>
     <script type="module" src="/src/corex-head.ts"></script>

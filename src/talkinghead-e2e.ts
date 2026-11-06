@@ -1,4 +1,5 @@
 import { TalkingHead } from "@met4citizen/talkinghead";
+import { upgradeTalkingHeadScene } from "./scene/studio-scene-template";
 import lipsyncEnUrl from "@met4citizen/talkinghead/modules/lipsync-en.mjs?url";
 import avatarUrl from "../fixtures/avatars/brunette.glb?url";
 import promptUrl from "../fixtures/prompts/tts_prompt.txt?url";
@@ -113,6 +114,7 @@ async function run() {
     body: "F",
     lipsyncLang: "en"
   });
+  upgradeTalkingHeadScene(head);
 
   updateStatus("Avatar loaded. Requesting MLX TTS...");
 

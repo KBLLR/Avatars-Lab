@@ -1,4 +1,5 @@
 import type { TalkingHead } from "@met4citizen/talkinghead";
+import { upgradeTalkingHeadScene } from "../scene/studio-scene-template";
 
 export interface AvatarManifest {
   avatars: Array<string | AvatarManifestEntry>;
@@ -202,6 +203,8 @@ export const loadAvatar = async (
     body: avatarMeta?.body || "F",
     avatarMood
   });
+
+  upgradeTalkingHeadScene(head);
 
   head.setMood(avatarMood);
   updateHero(avatarLabel, audioFileName);
