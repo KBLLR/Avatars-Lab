@@ -141,7 +141,7 @@ const normalizeHeadAssembly = (headScene: Object3D): void => {
   });
 };
 
-const HEAD_CENTER_Y = 1.35;
+const HEAD_CENTER_Y = 1.20;
 const HEAD_MODEL_HEIGHT = 1.08;
 
 const damp = (current: number, target: number, deltaMs: number, responseMs: number): number =>
@@ -152,29 +152,29 @@ const createStudioHeadPlinth = (): Group => {
   pedestal.name = "avatar-labs-head-pedestal-studio-plinth";
   pedestal.userData.avatarLabsPedestalSource = "studio-plinth";
   const stoneMaterial = new MeshPhysicalMaterial({
-    color: 0x222426,
+    color: 0x1e2022,
     metalness: 0.04,
     roughness: 0.42,
     clearcoat: 0.16,
     clearcoatRoughness: 0.32,
   });
   const trimMaterial = new MeshPhysicalMaterial({
-    color: 0x141618,
+    color: 0x121315,
     metalness: 0.72,
     roughness: 0.22,
     clearcoat: 0.45,
     clearcoatRoughness: 0.15,
   });
-  const base = new Mesh(new CylinderGeometry(0.28, 0.32, 0.06, 64), stoneMaterial);
-  base.position.y = 0.03;
-  const lowerTrim = new Mesh(new CylinderGeometry(0.25, 0.28, 0.03, 64), trimMaterial);
-  lowerTrim.position.y = 0.075;
-  const column = new Mesh(new CylinderGeometry(0.18, 0.24, 0.54, 64), stoneMaterial.clone());
-  column.position.y = 0.36;
-  const upperTrim = new Mesh(new CylinderGeometry(0.21, 0.18, 0.04, 64), trimMaterial.clone());
-  upperTrim.position.y = 0.65;
-  const cap = new Mesh(new CylinderGeometry(0.20, 0.21, 0.04, 64), stoneMaterial.clone());
-  cap.position.y = 0.69;
+  const base = new Mesh(new CylinderGeometry(0.22, 0.26, 0.05, 64), stoneMaterial);
+  base.position.y = 0.025;
+  const lowerTrim = new Mesh(new CylinderGeometry(0.18, 0.22, 0.03, 64), trimMaterial);
+  lowerTrim.position.y = 0.065;
+  const column = new Mesh(new CylinderGeometry(0.11, 0.15, 0.46, 64), stoneMaterial.clone());
+  column.position.y = 0.31;
+  const upperTrim = new Mesh(new CylinderGeometry(0.12, 0.11, 0.03, 64), trimMaterial.clone());
+  upperTrim.position.y = 0.555;
+  const cap = new Mesh(new CylinderGeometry(0.095, 0.12, 0.03, 64), stoneMaterial.clone());
+  cap.position.y = 0.585;
   for (const mesh of [base, lowerTrim, column, upperTrim, cap]) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -378,11 +378,11 @@ const createRealismusMaterial = (
 
 const roomColors = (room: PerformanceEnvironment["room"]) => {
   switch (room) {
-    case "facial-lab": return { background: 0xc8cbcc, floor: 0xaeb2b3, wall: 0xd7d9d8, accent: 0x66737a };
+    case "facial-lab": return { background: 0x141516, floor: 0x181a1c, wall: 0x121314, accent: 0x3d6e96 };
     case "black-box": return { background: 0x030303, floor: 0x09090b, wall: 0x111113, accent: 0x71717a };
     case "broadcast": return { background: 0x121416, floor: 0x202326, wall: 0x292d31, accent: 0x60a5fa };
     case "neon-grid": return { background: 0x070613, floor: 0x101026, wall: 0x17132e, accent: 0xc026d3 };
-    default: return { background: 0x17191b, floor: 0x34383c, wall: 0x4a4f54, accent: 0xf5f5f4 };
+    default: return { background: 0x141516, floor: 0x181a1c, wall: 0x121314, accent: 0x60a5fa };
   }
 };
 
@@ -723,15 +723,15 @@ export class PerformanceRoom {
       : createPbrSurfaceTextures(colors.wall, "wall", seed + 11);
     const floorMaterial = new MeshStandardMaterial({
       ...floorTextures,
-      color: 0xffffff,
+      color: room === "facial-lab" ? colors.floor : 0xffffff,
       roughness: 0.78,
       metalness: room === "broadcast" ? 0.14 : 0.04,
       bumpScale: 0.045,
     });
     const wallMaterial = new MeshStandardMaterial({
       ...wallTextures,
-      color: 0xffffff,
-      roughness: room === "facial-lab" ? 1 : 0.9,
+      color: room === "facial-lab" ? colors.wall : 0xffffff,
+      roughness: room === "facial-lab" ? 0.95 : 0.9,
       metalness: 0.01,
       bumpScale: room === "facial-lab" ? 0 : 0.028,
     });
@@ -862,7 +862,7 @@ export class PerformanceRoom {
     const center = scaledBox.getCenter(new Vector3());
     if (definition.asset.kind === "head") {
       model.position.set(-center.x, -scaledBox.min.y, -center.z);
-      performanceRoot.position.y = 0.71;
+      performanceRoot.position.y = 0.60;
     } else {
       model.position.set(-center.x, -scaledBox.min.y, -center.z);
     }
@@ -1079,7 +1079,7 @@ export class PerformanceRoom {
     const headPositions: Record<CameraPresetId, [number, number, number]> = {
       wide: [0, 1.55, 5.25],
       "two-shot": [0, 1.55, 4.5],
-      portrait: [0.34, 1.38, 3.45],
+      portrait: [0.18, 1.25, 2.85],
       orbit: [2.55, 1.48, 3.55],
       profile: [2.45, 1.32, 3.55],
       "low-angle": [0.72, 1.02, 3.2],
@@ -1197,7 +1197,7 @@ export class PerformanceRoom {
     const values: Record<LightingPresetId, {
       key: [number, number]; fill: [number, number]; rim: [number, number]
     }> = {
-      studio: { key: [0xffffff, 3.2], fill: [0x9cc8ff, 1.4], rim: [0xffc48a, 18] },
+      studio: { key: [0xfff8ef, 1.35], fill: [0x90a4ff, 0.45], rim: [0xffe4cc, 1.8] },
       concert: { key: [0xff3cac, 4.4], fill: [0x2b86c5, 2.8], rim: [0x5ffbf1, 28] },
       noir: { key: [0xffffff, 4.8], fill: [0x334155, 0.25], rim: [0xffffff, 8] },
       sunset: { key: [0xffb36b, 3.8], fill: [0x7c3aed, 1.2], rim: [0xff6b35, 22] },

@@ -1,13 +1,13 @@
 :root {
-  color-scheme: light;
-  --facial-ink: #2d2824;
-  --facial-muted: #6b6560;
-  --facial-line: #9a9a98;
-  --facial-line-soft: #b5b5b2;
-  --facial-panel: rgba(229, 229, 227, 0.96);
-  --facial-blue: #3d6e96;
-  --facial-green: #3d7a45;
-  --facial-red: #8a3030;
+  color-scheme: dark;
+  --facial-ink: #f0f2f5;
+  --facial-muted: #9aa0a6;
+  --facial-line: rgba(255, 255, 255, 0.12);
+  --facial-line-soft: rgba(255, 255, 255, 0.08);
+  --facial-panel: rgba(20, 22, 25, 0.96);
+  --facial-blue: #60a5fa;
+  --facial-green: #34d399;
+  --facial-red: #f87171;
   --facial-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
@@ -123,7 +123,7 @@
   min-height: 34px;
   padding: 6px 8px;
   color: var(--facial-ink);
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--facial-line-soft);
   border-radius: 2px;
 }
@@ -150,7 +150,7 @@
 }
 
 .facial-command svg { width: 15px; height: 15px; }
-.facial-command:hover:not(:disabled) { background: rgba(255, 255, 255, 0.64); }
+.facial-command:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
 .facial-command:disabled { opacity: 0.45; cursor: not-allowed; }
 .facial-command--primary { color: #f7f7f5; background: var(--facial-blue); border-color: var(--facial-blue); }
 .facial-command--stop { color: var(--facial-red); }
@@ -169,7 +169,7 @@
   gap: 4px;
   min-width: 0;
   padding: 9px;
-  background: rgba(241, 241, 239, 0.94);
+  background: rgba(26, 29, 33, 0.94);
 }
 
 .facial-metric dt { color: var(--facial-muted); }

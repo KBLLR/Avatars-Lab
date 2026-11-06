@@ -569,6 +569,27 @@ export function upgradeTalkingHeadScene(
       head.scene.add(plinth);
     }
 
+    if (!head.scene.getObjectByName("studio-contact-floor")) {
+      const floorGeo = new PlaneGeometry(20, 20);
+      const floorMat = new ShadowMaterial({ opacity: 0.38 });
+      const floor = new Mesh(floorGeo, floorMat);
+      floor.name = "studio-contact-floor";
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0;
+      floor.receiveShadow = true;
+      head.scene.add(floor);
+    }
+
+    const meshTarget = head.armature || head.scene;
+    if (meshTarget && typeof meshTarget.traverse === "function") {
+      meshTarget.traverse((obj: any) => {
+        if (obj && obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+    }
+
     // Apply material realism on whatever meshes are present
     applyStudioMaterialRealism(head.armature || head.scene, false);
   }
