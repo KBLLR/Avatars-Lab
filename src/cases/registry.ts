@@ -69,6 +69,17 @@ export const AVATAR_LAB_CASES: AvatarLabCase[] = [
     services: ["gateway", "said"],
   },
   {
+    id: "audio2face",
+    code: "A2F",
+    title: "Audio2Face Lab",
+    description: "NVIDIA Audio2Face-3D multimodal workbench: ONNX CoreML, PyTorch MPS, and Native Apple MLX inference.",
+    href: "/audio2face.html",
+    icon: "Cpu",
+    status: "verified",
+    renderer: "webgpu",
+    services: ["gateway", "said", "mlx-services"],
+  },
+  {
     id: "face-mirror",
     code: "FMR",
     title: "Face Mirror",

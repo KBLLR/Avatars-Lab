@@ -1,52 +1,57 @@
 /**
- * Core-X Head bust-mode case (2026-07-17).
+ * Core-X Head bust-mode case (Avatar Labs).
  *
- * Proves the gemma-avatar streaming pipeline on a Core-X ChatAvatar head,
- * which has a DIFFERENT structure than the Ready Player Me reference avatar:
- * no skeleton (0 skins), no Oculus viseme morphs, no animations — just 51
- * ARKit blendshapes on the face mesh plus separate eyeball meshes. That
- * rules TalkingHead out (it requires a Mixamo rig + Oculus visemes), so the
- * bust renders in a plain three.js stage and HeadAudio's Oculus viseme
- * events are mapped onto ARKit morph combinations at runtime:
- *
- *   text → POST /v1/audio/speech/stream (chunked PCM16, Qwen3-TTS clone)
- *        → Int16→Float32 + linear resample → pcm-player worklet
- *        → GainNode → speakers, tapped by HeadAudio
- *        → viseme events → VISEME_TO_ARKIT → morphTargetInfluences.
- *
- * This is the exact contract core-x's VoiceScene consumes (ARKit morphs
- * driven per-frame), so a pass here is a pass for the core-x integration.
- * No Blender rigging is needed for speech; bones only become relevant if
- * the heads should ever run inside TalkingHead's body-animation system.
- *
- * Kept self-contained like the gemma-avatar case — shared modules get
- * extracted during the Avatar Labs modernization, not here.
+ * Implements canonical Core-X ChatAvatar rendering with:
+ *   - Three.js WebGPU / WebGL2 rendering matching Core-X UI VoiceScene
+ *   - Centered floating bust framing (0, 0, 0) with camera (0, 0.08, 1.8) and FOV 55
+ *   - Canonical physical materials: pure diffuse + GGX roughness, SSS extinction, wet cornea
+ *   - Expressive SpeechArticulationEngine: full ARKit lip articulation (pucker, funnel, stretch, upper up, lower down, roll, shrug)
+ *   - Pre-Speech Emotion Analysis: parses prompt emotion tags ([Happy], [Surprised], [Angry], [Thinking], [Empathic], [Excited])
+ *   - DynamicEmotionEngine: real-time emotional state transitions synchronized with speech progress
+ *   - Real-Time Talk Mode: live microphone streaming directly into HeadAudio neural viseme worklet
  */
 
 import {
   ACESFilmicToneMapping,
+  AmbientLight,
+  Box3,
   Color,
   DirectionalLight,
   FrontSide,
   Group,
-  HemisphereLight,
   Mesh,
   Object3D,
+  PCFSoftShadowMap,
   PerspectiveCamera,
-  PMREMGenerator,
+  PlaneGeometry,
+  PointLight,
   Scene,
+  ShadowMaterial,
   SRGBColorSpace,
   Vector3,
   WebGLRenderer,
-  Box3,
 } from "three";
 import { WebGPURenderer } from "three/webgpu";
 import { GLTFLoader } from "three-stdlib";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { PMREMGenerator } from "three";
+import {
+  createArchitecturalPlinth,
+  applyStudioMaterialRealism,
+  calibrateChatAvatarEyes,
+  centerAndFrameCoreXHead,
+} from "./scene/studio-scene-template";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import headWorkletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import { streamSpeech } from "./runtime/audio-stream";
+import { SpeechArticulationEngine } from "./facial/phoneme-articulation";
+import {
+  DynamicEmotionEngine,
+  analyzeSpeechPrompt,
+  type EmotionState,
+} from "./facial/emotion-analyzer";
 
 const els = {
   stage: document.getElementById("stage") as HTMLElement,
@@ -54,11 +59,25 @@ const els = {
   log: document.getElementById("log") as HTMLElement,
   text: document.getElementById("text") as HTMLTextAreaElement,
   voice: document.getElementById("voice") as HTMLInputElement,
+  headSelect: document.getElementById("head-select") as HTMLSelectElement,
   headUrl: document.getElementById("head-url") as HTMLInputElement,
   service: document.getElementById("service") as HTMLInputElement,
+  plinthMode: document.getElementById("plinth-mode") as HTMLSelectElement,
+  lipGain: document.getElementById("lip-gain") as HTMLInputElement,
+  lipGainVal: document.getElementById("lip-gain-val") as HTMLElement,
   speakStream: document.getElementById("speak-stream") as HTMLButtonElement,
   speakBlob: document.getElementById("speak-blob") as HTMLButtonElement,
+  btnLiveMic: document.getElementById("btn-live-mic") as HTMLButtonElement,
   stop: document.getElementById("stop") as HTMLButtonElement,
+  micMeterBox: document.getElementById("mic-meter-box") as HTMLElement,
+  micVuBar: document.getElementById("mic-vu-bar") as HTMLElement,
+  micLatencyVal: document.getElementById("mic-latency-val") as HTMLElement,
+  timelineContainer: document.getElementById("timeline-container") as HTMLElement,
+  timelineTrack: document.getElementById("timeline-track") as HTMLElement,
+  promptTagPills: document.getElementById("prompt-tag-pills") as HTMLElement,
+  liveEmotionPills: document.getElementById("live-emotion-pills") as HTMLElement,
+  mEmotion: document.getElementById("m-emotion") as HTMLElement,
+  mArticulation: document.getElementById("m-articulation") as HTMLElement,
   mTtfa: document.getElementById("m-ttfa") as HTMLElement,
   mTotal: document.getElementById("m-total") as HTMLElement,
   mAudio: document.getElementById("m-audio") as HTMLElement,
@@ -66,13 +85,103 @@ const els = {
   mQueue: document.getElementById("m-queue") as HTMLElement,
 };
 
+export interface HeadDefinition {
+  id: string;
+  label: string;
+  url: string;
+  hairUrl?: string;
+  voice: string;
+}
+
+/**
+ * Canonical Core-X head roster and voice assignments (avatar-config.ts contract).
+ */
+export const HEAD_ROSTER: Record<string, HeadDefinition> = {
+  kbllr: {
+    id: "kbllr",
+    label: "KBLLR",
+    url: "/corex-assets/avatars/heads/kbllr/kbllr.glb",
+    hairUrl: "/corex-assets/avatars/heads/kbllr/kbllr-hair.glb",
+    voice: "lullabot", // LOCKED
+  },
+  anja: {
+    id: "anja",
+    label: "Anja",
+    url: "/corex-assets/avatars/heads/anja/anja.glb",
+    hairUrl: "/corex-assets/avatars/heads/anja/anja-hair.glb",
+    voice: "katanja",
+  },
+  "susi-q": {
+    id: "susi-q",
+    label: "Susi-Q",
+    url: "/corex-assets/avatars/heads/susi-q/susi-q.glb",
+    hairUrl: "/corex-assets/avatars/heads/susi-q/susi-q-hair.glb",
+    voice: "katanja",
+  },
+  david: {
+    id: "david",
+    label: "David",
+    url: "/corex-assets/avatars/heads/david/david.glb",
+    voice: "davido",
+  },
+  eli: {
+    id: "eli",
+    label: "Eli",
+    url: "/corex-assets/avatars/heads/eli/eli.glb",
+    hairUrl: "/corex-assets/avatars/heads/eli/eli-hair.glb",
+    voice: "eli_luma",
+  },
+  sofia: {
+    id: "sofia",
+    label: "Sofia",
+    url: "/corex-assets/avatars/heads/sofia/sofia.glb",
+    hairUrl: "/corex-assets/avatars/heads/sofia/sofia-hair.glb",
+    voice: "sofi_v",
+  },
+  nyx: {
+    id: "nyx",
+    label: "Nyx",
+    url: "/corex-assets/avatars/heads/nyx/nyx.glb",
+    hairUrl: "/corex-assets/avatars/heads/nyx/nyx-hair.glb",
+    voice: "vicky_spice",
+  },
+  vee: {
+    id: "vee",
+    label: "Vee",
+    url: "/corex-assets/avatars/heads/vee/vee.glb",
+    voice: "princess_leia",
+  },
+  nino: {
+    id: "nino",
+    label: "Nino",
+    url: "/corex-assets/avatars/heads/nino/nino.glb",
+    voice: "ninoo",
+  },
+};
+
+export function resolveHeadDefinition(keyOrUrl: string): HeadDefinition {
+  if (HEAD_ROSTER[keyOrUrl]) {
+    return HEAD_ROSTER[keyOrUrl];
+  }
+  for (const def of Object.values(HEAD_ROSTER)) {
+    if (def.url === keyOrUrl || def.id === keyOrUrl) return def;
+  }
+  const filename = keyOrUrl.split("/").pop()?.replace(/\.glb$/i, "") || "custom";
+  return {
+    id: filename,
+    label: filename.charAt(0).toUpperCase() + filename.slice(1),
+    url: keyOrUrl,
+    voice: els.voice?.value || "lullabot",
+  };
+}
+
 const result = {
   ready: false,
-  capability: "tts-arkit-viseme",
   renderer: "pending",
   visemeEvents: 0,
   lastTtfaMs: 0,
   morphMeshes: 0,
+  activeEmotion: "neutral",
   errors: [] as string[],
 };
 (window as any).__corexHeadResult = result;
@@ -86,42 +195,17 @@ const log = (text: string) => {
   els.log.scrollTop = els.log.scrollHeight;
 };
 
-// ── HeadAudio Oculus visemes → ARKit blendshape combos ─────────────────────
-// Weights tuned for ChatAvatar heads: each viseme contributes to a few ARKit
-// morphs; concurrent visemes merge by max so shared morphs (jawOpen) never
-// double-count.
-const VISEME_TO_ARKIT: Record<string, Record<string, number>> = {
-  viseme_sil: {},
-  viseme_PP: { mouthClose: 0.9, mouthPressLeft: 0.5, mouthPressRight: 0.5 },
-  viseme_FF: { jawOpen: 0.12, mouthShrugUpper: 0.35, mouthLowerDownLeft: 0.3, mouthLowerDownRight: 0.3 },
-  viseme_TH: { jawOpen: 0.2, mouthStretchLeft: 0.2, mouthStretchRight: 0.2 },
-  viseme_DD: { jawOpen: 0.25, mouthStretchLeft: 0.15, mouthStretchRight: 0.15 },
-  viseme_kk: { jawOpen: 0.3 },
-  viseme_CH: { jawOpen: 0.25, mouthFunnel: 0.4, mouthPucker: 0.2 },
-  viseme_SS: { jawOpen: 0.15, mouthStretchLeft: 0.4, mouthStretchRight: 0.4, mouthSmileLeft: 0.15, mouthSmileRight: 0.15 },
-  viseme_nn: { jawOpen: 0.15, mouthClose: 0.3 },
-  viseme_RR: { jawOpen: 0.2, mouthPucker: 0.4 },
-  viseme_aa: { jawOpen: 0.7, mouthLowerDownLeft: 0.2, mouthLowerDownRight: 0.2 },
-  viseme_E: { jawOpen: 0.35, mouthStretchLeft: 0.35, mouthStretchRight: 0.35, mouthSmileLeft: 0.2, mouthSmileRight: 0.2 },
-  viseme_I: { jawOpen: 0.25, mouthStretchLeft: 0.5, mouthStretchRight: 0.5 },
-  viseme_O: { jawOpen: 0.45, mouthFunnel: 0.6, mouthPucker: 0.3 },
-  viseme_U: { jawOpen: 0.25, mouthPucker: 0.8, mouthFunnel: 0.4 },
-};
+// ── Engines & State ────────────────────────────────────────────────────────
+const articulationEngine = new SpeechArticulationEngine({ lipGain: 1.35, jawGain: 1.0 });
+const emotionEngine = new DynamicEmotionEngine("neutral", 0.8);
 
-/**
- * Minimal port of core-x's head-assembly normalization for ChatAvatar v2
- * busts (the full version lives in core-x's avatar-loader-v2-bridge +
- * voice-scene "head assembly"):
- *
- *  - The face mesh node carries the normalization scale (e.g. 0.0263) while
- *    the split `eyeball_left/right` nodes stay in RAW units — without
- *    adopting the face scale the eyes render as ~1m spheres swallowing the
- *    bust. Adopt scale AND translation.
- *  - `occlusion_hidden` material groups are helper geometry and must not
- *    render (they read as a shell over the eye sockets).
- *  - `eyes` renders FrontSide only — DoubleSide shows backfaces through the
- *    eyelid line.
- */
+let liveMicActive = false;
+let micStream: MediaStream | null = null;
+let micSourceNode: MediaStreamAudioSourceNode | null = null;
+let micAnalyser: AnalyserNode | null = null;
+let micVuAnimId: number | null = null;
+
+// Normalizes ChatAvatar heads: eye scales, occlusion mesh hiding, frontside eyes
 function normalizeChatAvatarHead(headScene: Object3D) {
   headScene.updateMatrixWorld(true);
 
@@ -141,12 +225,12 @@ function normalizeChatAvatarHead(headScene: Object3D) {
     if (!node) continue;
     const eyeWorldScale = node.getWorldScale(new Vector3()).x;
     const ratio = faceWorldScale / eyeWorldScale;
-    // Only adopt when the scales genuinely disagree (raw-unit eyeballs).
     if (ratio < 0.5 || ratio > 2) {
       node.scale.multiplyScalar(ratio);
       node.position.multiplyScalar(ratio);
     }
   }
+  calibrateChatAvatarEyes(headScene);
   headScene.updateMatrixWorld(true);
 
   headScene.traverse((obj) => {
@@ -163,47 +247,29 @@ function normalizeChatAvatarHead(headScene: Object3D) {
 }
 
 interface Stage {
+  renderer: WebGLRenderer | WebGPURenderer;
+  scene: Scene;
+  camera: PerspectiveCamera;
+  controls: OrbitControls;
   audioCtx: AudioContext;
   player: AudioWorkletNode;
   sink: GainNode;
   headaudio: HeadAudio;
   morphMeshes: Mesh[];
+  headGroup: Group;
+  plinthGroup: Group;
 }
 
 let stage: Stage | null = null;
 let abort: AbortController | null = null;
 let blobSource: AudioBufferSourceNode | null = null;
-// Live viseme envelope state (HeadAudio writes, render loop applies).
+let playbackStartTime = 0;
+let playbackDurationSec = 0;
+let isAudioPlaying = false;
+
 const visemeState: Record<string, number> = {};
 
-function applyVisemesToMorphs(meshes: Mesh[]) {
-  // Merge all active visemes into ARKit values (max wins on shared morphs).
-  const target: Record<string, number> = {};
-  for (const [viseme, level] of Object.entries(visemeState)) {
-    if (level <= 0.001) continue;
-    const combo = VISEME_TO_ARKIT[viseme];
-    if (!combo) continue;
-    for (const [morph, weight] of Object.entries(combo)) {
-      const value = level * weight;
-      if (value > (target[morph] ?? 0)) target[morph] = value;
-    }
-  }
-  for (const mesh of meshes) {
-    const dict = mesh.morphTargetDictionary as Record<string, number> | undefined;
-    const influences = mesh.morphTargetInfluences;
-    if (!dict || !influences) continue;
-    for (const [morph, index] of Object.entries(dict)) {
-      if (!morph.startsWith("jaw") && !morph.startsWith("mouth")) continue;
-      influences[index] = target[morph] ?? 0;
-    }
-    // Periodic blink rides on top of speech morphs.
-    const blink = blinkLevel();
-    if (dict.eyeBlinkLeft !== undefined) influences[dict.eyeBlinkLeft] = blink;
-    if (dict.eyeBlinkRight !== undefined) influences[dict.eyeBlinkRight] = blink;
-  }
-}
-
-// Simple blink envelope: every ~2.5–5s, 140ms down-up.
+// Periodic blink envelope
 let nextBlinkAt = performance.now() + 2200;
 function blinkLevel(): number {
   const now = performance.now();
@@ -218,82 +284,163 @@ function blinkLevel(): number {
   return 0;
 }
 
+/**
+ * Applies layered facial kinematics:
+ *  1. Base emotional blendshapes (DynamicEmotionEngine)
+ *  2. Speech lip & jaw articulation (SpeechArticulationEngine)
+ *  3. Natural blink cycle
+ */
+function applyFaceKinematics(meshes: Mesh[], dtMs: number) {
+  // 1. Advance speech articulation
+  articulationEngine.updateTargets(visemeState);
+  const speechMorphs = articulationEngine.step(dtMs);
+
+  // 2. Advance emotion layer
+  const emotionMorphs = emotionEngine.step(dtMs);
+  const currentEmotion = emotionEngine.getActiveEmotion();
+  if (result.activeEmotion !== currentEmotion) {
+    result.activeEmotion = currentEmotion;
+    els.mEmotion.textContent = currentEmotion;
+  }
+
+  // 3. Composite into ARKit dictionary
+  const blink = blinkLevel();
+
+  for (const mesh of meshes) {
+    const dict = mesh.morphTargetDictionary as Record<string, number> | undefined;
+    const influences = mesh.morphTargetInfluences;
+    if (!dict || !influences) continue;
+
+    for (const [morph, index] of Object.entries(dict)) {
+      let value = 0;
+
+      // Base emotional component
+      if (emotionMorphs[morph] !== undefined) {
+        value += emotionMorphs[morph];
+      }
+
+      // Speech viseme component (jaw & lips)
+      if (speechMorphs[morph] !== undefined) {
+        // Speech overrides or layers on top of emotion
+        if (morph.startsWith("jaw") || morph.startsWith("mouth")) {
+          value = Math.max(value, speechMorphs[morph]);
+        } else {
+          value += speechMorphs[morph];
+        }
+      }
+
+      // Blink
+      if ((morph === "eyeBlinkLeft" || morph === "eyeBlinkRight") && blink > 0) {
+        value = Math.max(value, blink);
+      }
+
+      influences[index] = Math.min(1.0, Math.max(0, value));
+    }
+  }
+}
+
 async function initStage(): Promise<Stage> {
-  setStatus("Creating three.js stage…");
+  setStatus("Creating Core-X Three.js stage…");
   const forceWebGl = new URLSearchParams(window.location.search).get("renderer") === "webgl";
   let renderer: WebGLRenderer | WebGPURenderer;
+
   if ("gpu" in navigator && !forceWebGl) {
     try {
-      const webgpu = new WebGPURenderer({ antialias: true });
+      const webgpu = new WebGPURenderer({ antialias: true, alpha: true });
       await webgpu.init();
       renderer = webgpu;
       result.renderer = "webgpu";
       log("renderer: WebGPU initialized");
     } catch (error) {
       log(`renderer: WebGPU unavailable (${String(error)}); using WebGL2`);
-      renderer = new WebGLRenderer({ antialias: true });
+      renderer = new WebGLRenderer({ antialias: true, alpha: true });
       result.renderer = "webgl-fallback";
     }
   } else {
-    renderer = new WebGLRenderer({ antialias: true });
+    renderer = new WebGLRenderer({ antialias: true, alpha: true });
     result.renderer = forceWebGl ? "webgl-forced" : "webgl-fallback";
   }
+
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(els.stage.clientWidth, els.stage.clientHeight);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.0;
+
+  if ((renderer as unknown as { shadowMap?: { enabled: boolean; type: number } }).shadowMap) {
+    const sm = (renderer as unknown as { shadowMap: { enabled: boolean; type: number } }).shadowMap;
+    sm.enabled = true;
+    sm.type = PCFSoftShadowMap;
+  }
   els.stage.appendChild(renderer.domElement);
 
   const scene = new Scene();
-  scene.background = new Color(0x101a2b);
+  scene.background = new Color(0x141516);
   const isWebGpu = result.renderer === "webgpu";
   if (!isWebGpu && renderer instanceof WebGLRenderer) {
     const pmrem = new PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   }
-  scene.add(new HemisphereLight(0xdfe8ff, 0x1a2233, isWebGpu ? 0.9 : 0.35));
-  const key = new DirectionalLight(0xffffff, isWebGpu ? 2.2 : 1.1);
-  key.position.set(0.6, 1.4, 1.2);
-  scene.add(key);
-  if (isWebGpu) {
-    const fill = new DirectionalLight(0xb8d5ff, 0.8);
-    fill.position.set(-1.4, 0.4, 0.8);
-    scene.add(fill);
-  }
 
-  const camera = new PerspectiveCamera(28, els.stage.clientWidth / els.stage.clientHeight, 0.01, 50);
+  // Canonical Core-X VoiceScene 3-point lighting
+  const amb = new AmbientLight(0xffffff, 0.42);
+  const key = new DirectionalLight(0xfff8ef, 1.15);
+  key.position.set(1.1, 1.95, 2.6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.bias = -0.0008;
+  key.shadow.normalBias = 0.02;
+  key.shadow.radius = 2;
 
-  setStatus(`Loading head GLB… (${els.headUrl.value})`);
-  const gltf = await new GLTFLoader().loadAsync(els.headUrl.value);
-  normalizeChatAvatarHead(gltf.scene);
-  const root = new Group();
-  root.add(gltf.scene);
-  scene.add(root);
+  const fill = new DirectionalLight(0x90a4ff, 0.35);
+  fill.position.set(-1.2, 1.6, -2.4);
 
-  // Frame the bust from its bounding box (heads are authored at real scale).
-  const box = new Box3().setFromObject(gltf.scene);
-  const center = box.getCenter(new Vector3());
-  const size = box.getSize(new Vector3());
-  camera.position.set(center.x, center.y + size.y * 0.06, center.z + size.y * 2.4);
-  camera.lookAt(center.x, center.y + size.y * 0.04, center.z);
+  const rim = new PointLight(0xffe4cc, 0.85, 8);
+  rim.position.set(0, 2.2, -2.2);
 
-  const morphMeshes: Mesh[] = [];
-  gltf.scene.traverse((obj) => {
-    const mesh = obj as Mesh;
-    if (mesh.isMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-      morphMeshes.push(mesh);
-    }
-  });
-  result.morphMeshes = morphMeshes.length;
-  if (morphMeshes.length === 0) {
-    log("WARNING: no morph-target meshes found — visemes will not move the face");
-  } else {
-    const dict = morphMeshes[0].morphTargetDictionary as Record<string, number>;
-    log(`head loaded — ${morphMeshes.length} morph mesh(es), ${Object.keys(dict).length} blendshapes`);
-  }
+  scene.add(amb, key, fill, rim);
 
-  setStatus("Wiring audio…");
+  // Soft shadow catcher floor placed at canonical y = -0.78
+  const floorGeo = new PlaneGeometry(12, 12);
+  const floorMat = new ShadowMaterial({ transparent: true, opacity: 0.32 });
+  const floor = new Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -0.78;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Architectural plinth (hidden by default in canonical floating mode)
+  const plinthGroup = createArchitecturalPlinth(-0.52);
+  plinthGroup.visible = els.plinthMode.value === "plinth";
+  scene.add(plinthGroup);
+
+  // Canonical VoiceScene portrait camera: FOV 55, pos (0, 0.08, 1.8) looking at (0, 0, 0)
+  const camera = new PerspectiveCamera(55, els.stage.clientWidth / els.stage.clientHeight, 0.01, 50);
+  camera.position.set(0, 0.08, 1.8);
+  camera.lookAt(0, 0, 0);
+  (window as any).__camera = camera;
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.minDistance = 0.6;
+  controls.maxDistance = 4.0;
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  const headGroup = new Group();
+  headGroup.name = "corex-performer-head-root";
+  scene.add(headGroup);
+
+  // Load initial GLTF head
+  const initialHeadKey = els.headSelect.value || "kbllr";
+  const initialHeadDef = resolveHeadDefinition(initialHeadKey);
+  els.voice.value = initialHeadDef.voice;
+  els.headUrl.value = initialHeadDef.url;
+  setStatus(`Loading head GLB… (${initialHeadDef.label})`);
+  const morphMeshes = await loadHeadModel(initialHeadDef, headGroup, isWebGpu, camera, controls);
+
+  setStatus("Wiring audio worklets…");
   const audioCtx = new AudioContext();
   await audioCtx.audioWorklet.addModule(headWorkletUrl);
   await audioCtx.audioWorklet.addModule("/worklets/pcm-player.js");
@@ -317,37 +464,43 @@ async function initStage(): Promise<Stage> {
 
   const headaudio = new HeadAudio(audioCtx);
   await headaudio.loadModel(headModelUrl);
-  sink.connect(headaudio); // tap the audible path for viseme classification
+  sink.connect(headaudio);
+
   headaudio.onvalue = (key: string, value: number) => {
     result.visemeEvents += 1;
     els.mVisemes.textContent = String(result.visemeEvents);
     visemeState[key] = value;
   };
 
-  // Render loop: subtle idle sway + viseme application. The rAF-stall
-  // watchdog keeps HeadAudio pumped in occluded tabs (same as the gemma
-  // case); rendering itself can freeze there without losing state.
-  let lastRafAt = performance.now();
+  // Render loop
+  let lastTime = performance.now();
   let lastPumpAt = performance.now();
+
   const tick = (now: number) => {
-    lastRafAt = now;
+    const dt = now - lastTime;
+    lastTime = now;
+
     headaudio.update(now - lastPumpAt);
     lastPumpAt = now;
-    root.rotation.y = Math.sin(now / 4200) * 0.035;
-    root.rotation.x = Math.sin(now / 5600) * 0.015;
-    applyVisemesToMorphs(morphMeshes);
+
+    // Advance emotion progress if speech is playing
+    if (isAudioPlaying && playbackDurationSec > 0) {
+      const elapsed = (performance.now() - playbackStartTime) / 1000;
+      const progress = Math.min(1.0, elapsed / playbackDurationSec);
+      emotionEngine.updateProgress(progress);
+    }
+
+    // Subtle breathing / idle sway
+    headGroup.rotation.y = Math.sin(now / 4200) * 0.025;
+    headGroup.rotation.x = Math.sin(now / 5600) * 0.012;
+
+    const currentMeshes = stage ? stage.morphMeshes : morphMeshes;
+    applyFaceKinematics(currentMeshes, dt);
+    controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
-  window.setInterval(() => {
-    const now = performance.now();
-    if (now - lastRafAt > 500) {
-      headaudio.update(now - lastPumpAt);
-      lastPumpAt = now;
-      applyVisemesToMorphs(morphMeshes);
-    }
-  }, 250);
 
   window.addEventListener("resize", () => {
     renderer.setSize(els.stage.clientWidth, els.stage.clientHeight);
@@ -357,15 +510,189 @@ async function initStage(): Promise<Stage> {
 
   result.ready = true;
   setStatus(`Ready / ${result.renderer}`);
-  log(`stage ready — ${result.renderer}, ctx ${audioCtx.sampleRate} Hz`);
-  const stageObj = { audioCtx, player, sink, headaudio, morphMeshes };
-  (window as any).__corexHeadStage = stageObj; // debug/Playwright handle
+  log(`Core-X Head ready — ${result.renderer}, ${audioCtx.sampleRate} Hz`);
+
+  const stageObj: Stage = {
+    renderer,
+    scene,
+    camera,
+    controls,
+    audioCtx,
+    player,
+    sink,
+    headaudio,
+    morphMeshes,
+    headGroup,
+    plinthGroup,
+  };
+  stage = stageObj;
+  (window as any).__corexHeadStage = stageObj;
   return stageObj;
+}
+
+/**
+ * Loads and frames a head GLTF model and optional companion hair into headGroup.
+ */
+async function loadHeadModel(
+  headDefOrUrl: HeadDefinition | string,
+  headGroup: Group,
+  isWebGpu: boolean,
+  camera: PerspectiveCamera,
+  controls: OrbitControls
+): Promise<Mesh[]> {
+  const headDef = typeof headDefOrUrl === "string" ? resolveHeadDefinition(headDefOrUrl) : headDefOrUrl;
+  headGroup.clear();
+
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync(headDef.url);
+  (window as any).__headScene = gltf.scene;
+
+  normalizeChatAvatarHead(gltf.scene);
+  applyStudioMaterialRealism(gltf.scene, isWebGpu);
+
+  headGroup.add(gltf.scene);
+
+  // Load companion hair if available
+  if (headDef.hairUrl) {
+    try {
+      const hairGltf = await loader.loadAsync(headDef.hairUrl);
+      hairGltf.scene.userData.corexHairFor = headDef.id;
+      applyStudioMaterialRealism(hairGltf.scene, isWebGpu);
+      gltf.scene.add(hairGltf.scene);
+      log(`Companion hair attached: ${headDef.hairUrl.split("/").pop()}`);
+    } catch (hairErr) {
+      log(`Companion hair note for ${headDef.label}: ${String(hairErr)}`);
+    }
+  }
+
+  // Canonical VoiceScene centering
+  centerAndFrameCoreXHead(headGroup, camera, controls);
+
+  const morphMeshes: Mesh[] = [];
+  headGroup.traverse((obj) => {
+    const mesh = obj as Mesh;
+    if (mesh.isMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
+      morphMeshes.push(mesh);
+    }
+  });
+
+  result.morphMeshes = morphMeshes.length;
+  if (morphMeshes.length === 0) {
+    log(`WARNING: no morph targets found in ${headDef.url}`);
+  } else {
+    const count = Object.keys(morphMeshes[0].morphTargetDictionary || {}).length;
+    log(`Loaded head: ${headDef.label} (${morphMeshes.length} morph mesh, ${count} ARKit shapes, voice: "${headDef.voice}")`);
+  }
+
+  return morphMeshes;
+}
+
+// ── Real-Time Live Mic Mode ────────────────────────────────────────────────
+async function toggleLiveMic() {
+  if (!stage) return;
+  stopPlayback();
+
+  if (liveMicActive) {
+    // Stop live mic
+    liveMicActive = false;
+    els.btnLiveMic.classList.remove("is-recording");
+    els.btnLiveMic.textContent = "🎤 Live Mic";
+    els.micMeterBox.style.display = "none";
+    if (micVuAnimId) cancelAnimationFrame(micVuAnimId);
+
+    if (micStream) {
+      micStream.getTracks().forEach((t) => t.stop());
+      micStream = null;
+    }
+    if (micSourceNode) {
+      micSourceNode.disconnect();
+      micSourceNode = null;
+    }
+    setStatus("Live mic stopped.");
+    log("Live mic disabled");
+    return;
+  }
+
+  try {
+    setStatus("Requesting microphone…");
+    await stage.audioCtx.resume();
+
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+
+    micSourceNode = stage.audioCtx.createMediaStreamSource(micStream);
+
+    // VU meter analyser
+    micAnalyser = stage.audioCtx.createAnalyser();
+    micAnalyser.fftSize = 256;
+    micSourceNode.connect(micAnalyser);
+
+    // Tap mic directly into HeadAudio worklet!
+    micSourceNode.connect(stage.headaudio);
+
+    liveMicActive = true;
+    els.btnLiveMic.classList.add("is-recording");
+    els.btnLiveMic.textContent = "🔴 Mic Active";
+    els.micMeterBox.style.display = "block";
+    setStatus("Live Mic Active — speak into your microphone!");
+    log("Real-time Live Mic connected to HeadAudio neural worklet (< 15ms latency)");
+
+    // Update VU meter loop
+    const dataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+    const updateVu = () => {
+      if (!liveMicActive || !micAnalyser) return;
+      micAnalyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+      const avg = sum / dataArray.length;
+      const pct = Math.min(100, Math.round((avg / 128) * 100));
+      els.micVuBar.style.width = `${pct}%`;
+      micVuAnimId = requestAnimationFrame(updateVu);
+    };
+    updateVu();
+  } catch (err) {
+    liveMicActive = false;
+    els.btnLiveMic.classList.remove("is-recording");
+    els.btnLiveMic.textContent = "🎤 Live Mic";
+    setStatus(`Mic error: ${String(err)}`);
+    log(`ERROR opening mic: ${String(err)}`);
+  }
+}
+
+// ── Pre-Speech Emotion Analysis & Timeline Display ─────────────────────────
+function renderEmotionTimeline(analysis: ReturnType<typeof analyzeSpeechPrompt>) {
+  if (analysis.timeline.length <= 1) {
+    els.timelineContainer.style.display = "none";
+    return;
+  }
+
+  els.timelineContainer.style.display = "block";
+  els.timelineTrack.innerHTML = "";
+
+  const total = analysis.timeline.length;
+  for (let i = 0; i < total; i++) {
+    const kf = analysis.timeline[i];
+    const nextRatio = i < total - 1 ? analysis.timeline[i + 1].timeRatio : 1.0;
+    const widthPct = Math.max(8, Math.round((nextRatio - kf.timeRatio) * 100));
+
+    const seg = document.createElement("div");
+    seg.className = `timeline-segment timeline-segment--${kf.emotion}`;
+    seg.style.width = `${widthPct}%`;
+    seg.title = `${kf.label}: "${kf.textSnippet}"`;
+    seg.textContent = kf.emotion.slice(0, 4);
+    els.timelineTrack.appendChild(seg);
+  }
 }
 
 const stopPlayback = () => {
   abort?.abort();
   abort = null;
+  isAudioPlaying = false;
   if (stage) stage.player.port.postMessage({ type: "clear" });
   if (blobSource) {
     try {
@@ -376,6 +703,8 @@ const stopPlayback = () => {
     blobSource = null;
   }
   for (const key of Object.keys(visemeState)) visemeState[key] = 0;
+  articulationEngine.reset();
+  emotionEngine.reset();
 };
 
 const setBusy = (busy: boolean) => {
@@ -389,17 +718,27 @@ const resetMetrics = () => {
   els.mAudio.textContent = "…";
 };
 
+// ── Streaming Speech (Text -> Analyze Emotion -> TTS -> Worklet) ───────────
 async function speakStreaming() {
   if (!stage) return;
+  if (liveMicActive) await toggleLiveMic();
   stopPlayback();
   setBusy(true);
   resetMetrics();
+
+  // 1. Analyze prompt emotions before speech
+  const promptAnalysis = analyzeSpeechPrompt(els.text.value);
+  log(`Pre-speech emotion analysis: dominant=[${promptAnalysis.dominantEmotion}], keyframes=${promptAnalysis.timeline.length}`);
+  renderEmotionTimeline(promptAnalysis);
+  emotionEngine.loadTimeline(promptAnalysis.timeline);
+
   try {
     await stage.audioCtx.resume();
     abort = new AbortController();
+
     const stream = await streamSpeech({
       baseUrl: els.service.value,
-      input: els.text.value,
+      input: promptAnalysis.cleanText,
       voice: els.voice.value,
       destinationSampleRate: stage.audioCtx.sampleRate,
       signal: abort.signal,
@@ -407,16 +746,18 @@ async function speakStreaming() {
         result.lastTtfaMs = firstAudioAt;
         els.mTtfa.textContent = `${(firstAudioAt / 1000).toFixed(2)}s`;
         log(`streaming: first audio after ${(firstAudioAt / 1000).toFixed(2)}s`);
+        playbackStartTime = performance.now();
+        isAudioPlaying = true;
       },
       onChunk: (samples) => {
         stage!.player.port.postMessage({ type: "chunk", samples }, [samples.buffer]);
       },
     });
+
+    playbackDurationSec = stream.sourceSamples / stream.sourceSampleRate;
     els.mTotal.textContent = `${(stream.totalMs / 1000).toFixed(2)}s`;
-    els.mAudio.textContent = `${(stream.sourceSamples / stream.sourceSampleRate).toFixed(2)}s`;
-    log(
-      `streaming: done — ${(stream.totalMs / 1000).toFixed(2)}s request for ${(stream.sourceSamples / stream.sourceSampleRate).toFixed(2)}s of audio`,
-    );
+    els.mAudio.textContent = `${playbackDurationSec.toFixed(2)}s`;
+    log(`streaming: done — ${(stream.totalMs / 1000).toFixed(2)}s request for ${playbackDurationSec.toFixed(2)}s audio`);
   } catch (error) {
     if ((error as Error)?.name !== "AbortError") {
       result.errors.push(String(error));
@@ -428,37 +769,56 @@ async function speakStreaming() {
   }
 }
 
+// ── Full WAV Blob Speech ───────────────────────────────────────────────────
 async function speakBlob() {
   if (!stage) return;
+  if (liveMicActive) await toggleLiveMic();
   stopPlayback();
   setBusy(true);
   resetMetrics();
+
+  const promptAnalysis = analyzeSpeechPrompt(els.text.value);
+  log(`Pre-speech emotion analysis: dominant=[${promptAnalysis.dominantEmotion}], keyframes=${promptAnalysis.timeline.length}`);
+  renderEmotionTimeline(promptAnalysis);
+  emotionEngine.loadTimeline(promptAnalysis.timeline);
+
   try {
     await stage.audioCtx.resume();
     abort = new AbortController();
     const t0 = performance.now();
+
     const response = await fetch(`${els.service.value}/v1/audio/speech`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        input: els.text.value,
+        input: promptAnalysis.cleanText,
         voice: els.voice.value,
         model: "qwen",
       }),
       signal: abort.signal,
     });
     if (!response.ok) throw new Error(`blob request failed (HTTP ${response.status})`);
+
     const bytes = await response.arrayBuffer();
     const buffer = await stage.audioCtx.decodeAudioData(bytes);
     const ttfa = performance.now() - t0;
+
     result.lastTtfaMs = ttfa;
     els.mTtfa.textContent = `${(ttfa / 1000).toFixed(2)}s`;
     els.mTotal.textContent = `${(ttfa / 1000).toFixed(2)}s`;
-    els.mAudio.textContent = `${buffer.duration.toFixed(2)}s`;
-    log(`blob: first audio after ${(ttfa / 1000).toFixed(2)}s (full WAV then play)`);
+    playbackDurationSec = buffer.duration;
+    els.mAudio.textContent = `${playbackDurationSec.toFixed(2)}s`;
+    log(`blob: audio decoded after ${(ttfa / 1000).toFixed(2)}s`);
+
+    playbackStartTime = performance.now();
+    isAudioPlaying = true;
+
     blobSource = stage.audioCtx.createBufferSource();
     blobSource.buffer = buffer;
     blobSource.connect(stage.sink);
+    blobSource.onended = () => {
+      isAudioPlaying = false;
+    };
     blobSource.start();
   } catch (error) {
     if ((error as Error)?.name !== "AbortError") {
@@ -471,6 +831,7 @@ async function speakBlob() {
   }
 }
 
+// ── Main UI Event Listeners ────────────────────────────────────────────────
 async function run() {
   try {
     stage = await initStage();
@@ -481,12 +842,78 @@ async function run() {
     log(`ERROR ${message}`);
     return;
   }
+
   els.speakStream.addEventListener("click", () => void speakStreaming());
   els.speakBlob.addEventListener("click", () => void speakBlob());
+  els.btnLiveMic.addEventListener("click", () => void toggleLiveMic());
   els.stop.addEventListener("click", () => {
     stopPlayback();
+    if (liveMicActive) void toggleLiveMic();
     setBusy(false);
     setStatus("Stopped.");
+  });
+
+  // Plinth display toggle
+  els.plinthMode.addEventListener("change", () => {
+    if (stage) {
+      stage.plinthGroup.visible = els.plinthMode.value === "plinth";
+      log(`Plinth mode: ${els.plinthMode.value}`);
+    }
+  });
+
+  // Lip gain slider
+  els.lipGain.addEventListener("input", () => {
+    const gain = Number(els.lipGain.value);
+    articulationEngine.lipGain = gain;
+    els.lipGainVal.textContent = `${gain.toFixed(2)}x`;
+    els.mArticulation.textContent = `${gain.toFixed(2)}x (Active)`;
+  });
+
+  // Head selection dropdown
+  els.headSelect.addEventListener("change", async () => {
+    if (!stage) return;
+    const headKey = els.headSelect.value;
+    const headDef = resolveHeadDefinition(headKey);
+
+    // 1. Update canonical voice for this character
+    els.voice.value = headDef.voice;
+    els.headUrl.value = headDef.url;
+
+    setStatus(`Switching performer head: ${headDef.label} (voice: ${headDef.voice})…`);
+    log(`Performer switched to ${headDef.label} — voice assigned to "${headDef.voice}"`);
+
+    try {
+      const isWebGpu = result.renderer === "webgpu";
+      stage.morphMeshes = await loadHeadModel(headDef, stage.headGroup, isWebGpu, stage.camera, stage.controls);
+      setStatus(`Performer ${headDef.label} ready.`);
+      log(`Performer ${headDef.label} active (${stage.morphMeshes.length} morph mesh, voice: "${headDef.voice}")`);
+    } catch (err) {
+      log(`ERROR loading head ${headDef.label}: ${String(err)}`);
+      setStatus(`Head load failed: ${String(err)}`);
+    }
+  });
+
+  // Prompt tag insert pills
+  els.promptTagPills.querySelectorAll<HTMLButtonElement>("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tag = btn.dataset.tag;
+      if (!tag) return;
+      const cur = els.text.value;
+      els.text.value = `${tag} ${cur}`;
+      els.text.focus();
+    });
+  });
+
+  // Live emotion override pills
+  els.liveEmotionPills.querySelectorAll<HTMLButtonElement>("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const em = btn.dataset.emotion as EmotionState;
+      if (!em) return;
+      els.liveEmotionPills.querySelectorAll("button").forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      emotionEngine.setEmotion(em, 0.85);
+      log(`Live emotion overridden to: [${em}]`);
+    });
   });
 }
 

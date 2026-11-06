@@ -11,6 +11,7 @@ import { TalkingHead } from "@met4citizen/talkinghead";
 import type { HeadConfig, HeadAudioConfig, UpdateStageLightingFn } from "./types";
 import { ensureLipsync } from "./lipsync-bridge";
 import { effectsManager } from "../effects/manager";
+import { upgradeTalkingHeadScene } from "../scene/studio-scene-template";
 
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import modelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
@@ -96,6 +97,8 @@ export class DuoHeadManager {
       effectsManager.init(this.headA.renderer, this.headA.scene, this.headA.camera);
     }
 
+    upgradeTalkingHeadScene(this.headA);
+
     // Wire update loop: headA updates headB
     const originalUpdate = this.headA.opt.update;
     this.headA.opt.update = (dt: number) => {
@@ -174,6 +177,9 @@ export class DuoHeadManager {
     }
 
     await Promise.all(loadPromises);
+
+    if (this.headA) upgradeTalkingHeadScene(this.headA);
+    if (this.headB) upgradeTalkingHeadScene(this.headB);
   }
 
   /**

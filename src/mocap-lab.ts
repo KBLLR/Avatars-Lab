@@ -11,6 +11,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { applyStudioMaterialRealism } from "./scene/studio-scene-template";
 
 const MOTION_SERVICE_URL = "http://127.0.0.1:8104";
 
@@ -118,8 +119,11 @@ function init3D() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(width, height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   preview3dEl.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -127,20 +131,27 @@ function init3D() {
   controls.dampingFactor = 0.05;
   controls.target.set(0, 0.95, 0);
 
-  // Studio Lights
-  const ambLight = new THREE.AmbientLight(0xffffff, 0.9);
+  // Calibrated Studio Lights
+  const ambLight = new THREE.AmbientLight(0xffffff, 0.35);
   scene.add(ambLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
-  dirLight.position.set(3, 8, 4);
+  const dirLight = new THREE.DirectionalLight(0xfff8ef, 1.45);
+  dirLight.position.set(2.4, 6, 3.5);
   dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 1024;
-  dirLight.shadow.mapSize.height = 1024;
+  dirLight.shadow.mapSize.width = 2048;
+  dirLight.shadow.mapSize.height = 2048;
+  dirLight.shadow.bias = -0.0008;
+  dirLight.shadow.normalBias = 0.02;
+  dirLight.shadow.radius = 2;
   scene.add(dirLight);
 
-  const fillLight = new THREE.DirectionalLight(0x3d6e96, 0.5);
-  fillLight.position.set(-3, 2, -2);
+  const fillLight = new THREE.DirectionalLight(0x9cc8ff, 0.45);
+  fillLight.position.set(-3, 2, 2);
   scene.add(fillLight);
+
+  const rimLight = new THREE.PointLight(0xffe4cc, 1.15, 8);
+  rimLight.position.set(0, 3, -3);
+  scene.add(rimLight);
 
   // Ground grid
   const grid = new THREE.GridHelper(8, 16, 0x3d6e96, 0x222226);
@@ -222,6 +233,7 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 
           child.receiveShadow = true;
         }
       });
+      applyStudioMaterialRealism(characterModel, false);
       scene.add(characterModel);
 
       if (gltf.animations && gltf.animations.length > 0) {

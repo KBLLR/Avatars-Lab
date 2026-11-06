@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio2Face Lab / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
+    <link rel="stylesheet" href="/src/styles/audio2face-workbench.css" />
+  </head>
+  <body>
+    <main class="a2f-shell">
+      <section class="facial-stage" aria-label="Audio2Face multimodal facial performance stage">
+        <div id="portraitStage" class="facial-stage__canvas"></div>
+        <output id="stageStatus" class="facial-stage__status">Booting Audio2Face runtime</output>
+        <span class="facial-stage__provenance">NVIDIA Audio2Face-3D Open-Source / 3 MLX-Ecosystem Modalities / 60 FPS</span>
+      </section>
+
+      <aside class="facial-panel">
+        <p class="facial-panel__summary">
+          NVIDIA Audio2Face-3D multimodal workbench. Compare and execute across three Apple Silicon runtimes: <strong>ONNX CoreML</strong>, <strong>PyTorch MPS</strong>, and <strong>Native Apple MLX</strong> with full 52 ARKit facial kinematics and eyeball gaze tracking.
+        </p>
+
+        <!-- 1. Performer -->
+        <section class="facial-section">
+          <h2>Performer & Bust</h2>
+          <label class="facial-field">
+            <span>Core-X Head</span>
+            <select id="headSelect" aria-label="Select Core-X Head"></select>
+          </label>
+          <dl class="facial-metrics">
+            <div class="facial-metric"><dt>Renderer</dt><dd id="rendererMetric">detecting</dd></div>
+            <div class="facial-metric"><dt>Pedestal</dt><dd id="pedestalMetric">detecting</dd></div>
+          </dl>
+        </section>
+
+        <!-- 2. Execution Modality (The 3 Modalities) -->
+        <section class="facial-section">
+          <h2>Execution Modality (3 Pathways)</h2>
+          <div class="a2f-modality-selector" role="tablist" aria-label="Audio2Face execution pathways">
+            <button class="a2f-modality-tab is-active" id="tab-onnx" data-modality="onnx" type="button" role="tab" aria-selected="true">
+              <span class="a2f-modality-tab__name">ONNX CoreML</span>
+              <span class="a2f-modality-tab__target">Apple Neural Engine</span>
+            </button>
+            <button class="a2f-modality-tab" id="tab-mps" data-modality="mps" type="button" role="tab" aria-selected="false">
+              <span class="a2f-modality-tab__name">PyTorch MPS</span>
+              <span class="a2f-modality-tab__target">Metal Shaders (:8096)</span>
+            </button>
+            <button class="a2f-modality-tab" id="tab-mlx" data-modality="mlx" type="button" role="tab" aria-selected="false">
+              <span class="a2f-modality-tab__name">Native MLX</span>
+              <span class="a2f-modality-tab__target">Unified Memory</span>
+            </button>
+          </div>
+
+          <div id="modalityCard" class="a2f-modality-card">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- 3. Audio2Emotion & Gaze Conditioning -->
+        <section class="facial-section">
+          <h2>Audio2Emotion & Eye Gaze</h2>
+          <label class="facial-field">
+            <span>Emotion Preset (26-dim Vector)</span>
+            <div class="a2f-emotion-grid">
+              <button class="a2f-emotion-btn is-active" data-emotion="neutral" type="button">Neutral</button>
+              <button class="a2f-emotion-btn" data-emotion="happy" type="button">Happy</button>
+              <button class="a2f-emotion-btn" data-emotion="surprised" type="button">Surprise</button>
+              <button class="a2f-emotion-btn" data-emotion="angry" type="button">Intense</button>
+              <button class="a2f-emotion-btn" data-emotion="empathic" type="button">Empathic</button>
+            </div>
+          </label>
+          <label class="facial-field">
+            <span>Arousal Intensity: <b id="emotionIntensityVal">0.75</b></span>
+            <input id="emotionIntensity" type="range" min="0" max="1" step="0.05" value="0.75" />
+          </label>
+          <label class="facial-field" style="grid-template-columns: 1fr auto; align-items: center;">
+            <span>Eyeball Tracking & Micro-Saccades</span>
+            <input id="eyeballToggle" type="checkbox" checked style="width: auto; min-height: auto;" />
+          </label>
+        </section>
+
+        <!-- 4. Speech Audio Input -->
+        <section class="facial-section">
+          <h2>Speech Audio Ingestion</h2>
+          <label class="facial-field">
+            <span>Audio Source</span>
+            <select id="audioSampleSelect">
+              <option value="builtin:intro">Core-X Architecture Brief (16kHz WAV)</option>
+              <option value="builtin:dialogue">Conversational Cadence & Visemes (16kHz WAV)</option>
+              <option value="builtin:emotion">Expressive Performance Monologue (16kHz WAV)</option>
+              <option value="custom">Upload Custom Local Audio File...</option>
+            </select>
+          </label>
+          <div id="customAudioContainer" style="display: none;">
+            <label class="facial-field">
+              <span>Upload Local Audio (.wav, .mp3, .m4a)</span>
+              <input id="audioFile" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac" />
+            </label>
+          </div>
+          <div class="facial-actions">
+            <button id="generateButton" class="facial-command facial-command--primary" type="button">
+              <i data-lucide="Cpu"></i>Infer Motion
+            </button>
+            <button id="playButton" class="facial-command" type="button" disabled>
+              <i data-lucide="Play"></i>Play
+            </button>
+            <button id="stopButton" class="facial-command facial-command--stop" type="button" disabled>
+              <i data-lucide="Square"></i>Stop
+            </button>
+            <button id="resetButton" class="facial-command" type="button">
+              <i data-lucide="RotateCcw"></i>Reset
+            </button>
+          </div>
+          <div class="a2f-compare-actions">
+            <button id="benchmarkAllButton" class="facial-command" type="button">
+              <i data-lucide="CircleGauge"></i>Benchmark All 3 Modalities
+            </button>
+          </div>
+        </section>
+
+        <!-- 5. Comparative Benchmarks Table -->
+        <section class="facial-section">
+          <h2>Modality Comparative Telemetry</h2>
+          <table class="a2f-benchmark-table">
+            <thead>
+              <tr>
+                <th>Modality</th>
+                <th>Device</th>
+                <th>Latency</th>
+                <th>Speedup</th>
+              </tr>
+            </thead>
+            <tbody id="benchmarkTableBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+          <dl class="facial-metrics" style="margin-top: 6px;">
+            <div class="facial-metric"><dt>Active Frame Count</dt><dd id="framesMetric">0 frames</dd></div>
+            <div class="facial-metric"><dt>Audio Duration</dt><dd id="durationMetric">0.0 s</dd></div>
+            <div class="facial-metric"><dt>Channels Generated</dt><dd id="channelsMetric">169 -> 52 ARKit</dd></div>
+            <div class="facial-metric"><dt>Pipeline Status</dt><dd id="pipelineStatus">Idle</dd></div>
+          </dl>
+        </section>
+
+        <!-- 6. Real-Time Blendshape Channels Inspector -->
+        <section class="facial-section">
+          <h2>Live Blendshape Channels (60 FPS)</h2>
+          <div id="channelMeters" class="a2f-channel-meters">
+            <!-- Dynamically populated meters -->
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
+    <script type="module" src="/src/audio2face.ts"></script>
+  </body>
+</html>

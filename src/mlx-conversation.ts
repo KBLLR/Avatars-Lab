@@ -1,4 +1,5 @@
 import { TalkingHead } from "@met4citizen/talkinghead";
+import { upgradeTalkingHeadScene } from "./scene/studio-scene-template";
 import { requestOpenResponsesTurn } from "./runtime/openresponses-client";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import workletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
@@ -485,6 +486,7 @@ const createHead = () => {
     lightDirectIntensity: 1.4,
     lightSpotIntensity: 1.2
   });
+  upgradeTalkingHeadScene(head);
   return head;
 };
 
@@ -798,6 +800,7 @@ const loadAvatar = async (reload = false) => {
     body: avatarEntry?.body || "F",
     avatarMood: avatarEntry?.default_mood || "neutral"
   });
+  upgradeTalkingHeadScene(state.head);
   if (avatarEntry?.voice_id) {
     els.voiceInput.value = avatarEntry.voice_id;
     config.ttsVoice = avatarEntry.voice_id;

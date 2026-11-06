@@ -13,9 +13,9 @@ const FACIAL_LAB: PerformanceEnvironment = {
   id: "room:facial-lab",
   label: "Facial Performance Lab",
   room: "facial-lab",
-  exposure: 1.08,
-  backgroundIntensity: 0.45,
-  environmentIntensity: 0.82,
+  exposure: 1.05,
+  backgroundIntensity: 0.38,
+  environmentIntensity: 0.95,
 };
 
 export interface FacialPortraitSnapshot {
@@ -76,7 +76,7 @@ export class FacialPortraitRuntime {
 
   private static frameForOperator(room: PerformanceRoom): void {
     room.setCameraAuthority("director");
-    room.setCameraCue({ preset: "portrait", targetActorId: ACTOR_ID, transitionMs: 0, lensMm: 72 });
+    room.setCameraCue({ preset: "portrait", targetActorId: ACTOR_ID, transitionMs: 0, lensMm: 75 });
     room.setCameraAuthority("operator");
   }
 

@@ -397,6 +397,7 @@ export default defineConfig({
         "gestures-lab": resolve(root, "gestures-lab.html"),
         "mocap-lab": resolve(root, "mocap-lab.html"),
         "said-face": resolve(root, "said-face.html"),
+        audio2face: resolve(root, "audio2face.html"),
         "face-mirror": resolve(root, "face-mirror.html"),
         "dance-studio": resolve(root, "dance-studio.html"),
         info: resolve(root, "info.html"),
