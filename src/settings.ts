@@ -15,7 +15,7 @@ const gatewayBase = (
   import.meta.env.VITE_COREX_GATEWAY_URL || "http://127.0.0.1:8090"
 ).replace(/\/$/, "");
 const motionBase = (
-  import.meta.env.VITE_AVATAR_LABS_MOTION_API_URL || "http://127.0.0.1:8104"
+  import.meta.env.VITE_AVATAR_LABS_MOTION_API_URL || "/api/motion"
 ).replace(/\/$/, "");
 
 setText("llmBase", `${gatewayBase}/v1/responses`);
@@ -126,7 +126,12 @@ const probeServicesAndAssets = async () => {
   // 2. Probe Motion2MixamoRig service (:8104)
   try {
     const motionRes = await fetch(`${motionBase}/health`, { cache: "no-store" });
-    setStatus("motion-status", motionRes.ok);
+    if (motionRes.ok) {
+      const motionData = await motionRes.json();
+      setStatus("motion-status", motionData?.status === "healthy" || motionData?.ok === true);
+    } else {
+      setStatus("motion-status", false);
+    }
   } catch {
     setStatus("motion-status", false);
   }

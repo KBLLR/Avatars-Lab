@@ -22,7 +22,7 @@ import {
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   Object3D,
-  PCFSoftShadowMap,
+  PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
@@ -530,7 +530,7 @@ export class PerformanceRoom {
     if ((this.renderer as unknown as { shadowMap?: { enabled: boolean; type: number } }).shadowMap) {
       const sm = (this.renderer as unknown as { shadowMap: { enabled: boolean; type: number } }).shadowMap;
       sm.enabled = true;
-      sm.type = PCFSoftShadowMap;
+      sm.type = PCFShadowMap;
     }
     this.container.replaceChildren(this.renderer.domElement as HTMLCanvasElement);
     this.renderer.domElement.classList.add("performance-canvas");

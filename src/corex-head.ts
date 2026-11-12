@@ -21,7 +21,7 @@ import {
   Group,
   Mesh,
   Object3D,
-  PCFSoftShadowMap,
+  PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
@@ -370,7 +370,7 @@ async function initStage(): Promise<Stage> {
   if ((renderer as unknown as { shadowMap?: { enabled: boolean; type: number } }).shadowMap) {
     const sm = (renderer as unknown as { shadowMap: { enabled: boolean; type: number } }).shadowMap;
     sm.enabled = true;
-    sm.type = PCFSoftShadowMap;
+    sm.type = PCFShadowMap;
   }
   els.stage.appendChild(renderer.domElement);
 
