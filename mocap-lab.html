@@ -420,7 +420,7 @@
           <div class="mocap-badges">
             <span class="badge badge-mps" title="Hardware accelerator">MPS · Apple Silicon</span>
             <span class="badge badge-research" title="MPI SMPL-X &amp; GVHMR non-commercial terms">RESEARCH_ONLY</span>
-            <span class="badge badge-gate" id="preflightStatusBadge">MPS_INFERENCE_ACTIVE</span>
+            <span class="badge badge-research" id="preflightStatusBadge">CHECKING_SERVICE_8104</span>
           </div>
         </header>
 
@@ -433,7 +433,7 @@
               <div class="viewport-metrics">
                 <span class="viewport-metric-tag" id="videoResolutionTag">1280×720 @ 30fps (8.03s)</span>
                 <span class="viewport-metric-tag" id="videoSourceTag">Real Human Dance</span>
-                <span class="viewport-metric-tag" id="videoServiceTag" style="color: var(--mocap-green);">Service: Online (8104)</span>
+                <span class="viewport-metric-tag" id="videoServiceTag" style="color: var(--mocap-amber);">Service: Checking (8104)</span>
               </div>
             </div>
             <video id="videoElement" playsinline muted loop style="width: 100%; height: 100%; object-fit: contain; background: #0d0d0f; display: block;"></video>
@@ -504,9 +504,9 @@
             </select>
           </div>
           <!-- Verification Banner -->
-          <div id="blockerBanner" class="blocker-banner" style="background: rgba(61, 122, 69, 0.12); border: 1px solid rgba(61, 122, 69, 0.35); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 11px;">
-            <strong style="color: var(--mocap-green); display: block; margin-bottom: 2px;">NEURAL WEIGHTS ACTIVE · APPLE SILICON MPS</strong>
-            <span id="blockerBannerText" style="color: var(--mocap-ink);">Motion2MixamoRig v0.1.8 online on port 8104. Genuine GVHMR pose estimation and Blender retargeting ready.</span>
+          <div id="blockerBanner" class="blocker-banner" style="background: rgba(154, 108, 36, 0.12); border: 1px solid rgba(154, 108, 36, 0.35); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-size: 11px;">
+            <strong id="blockerBannerTitle" style="color: var(--mocap-amber); display: block; margin-bottom: 2px;">CHECKING MOTION SERVICE · PORT 8104</strong>
+            <span id="blockerBannerText" style="color: var(--mocap-ink);">Probing local Motion2MixamoRig service on port 8104...</span>
           </div>
         </section>
 

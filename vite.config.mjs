@@ -19,6 +19,55 @@ const avatarLabsPort = Number(
 const corexGatewayUrl = (
   process.env.COREX_GATEWAY_URL || process.env.VITE_COREX_GATEWAY_URL || "http://127.0.0.1:8090"
 ).replace(/\/$/, "");
+const corexMotionUrl = (
+  process.env.AVATAR_LABS_MOTION_API_URL ||
+  process.env.VITE_AVATAR_LABS_MOTION_API_URL ||
+  "http://127.0.0.1:8104"
+).replace(/\/$/, "");
+
+const createApiProxy = () => ({
+  "/api/audio": {
+    target: corexGatewayUrl,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/audio/, ""),
+  },
+  "/api/llm": {
+    target: corexGatewayUrl,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/llm/, ""),
+  },
+  "/api/said": {
+    target: corexGatewayUrl,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/said/, ""),
+  },
+  "/api/mflux": {
+    target: corexGatewayUrl,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/mflux/, ""),
+  },
+  "/api/motion": {
+    target: corexMotionUrl,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/motion/, ""),
+    configure(proxy) {
+      proxy.on("error", (_err, req, res) => {
+        if (!res || res.headersSent) return;
+        const isHealth = typeof req?.url === "string" && req.url.endsWith("/health");
+        res.writeHead(isHealth ? 200 : 503, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            ok: false,
+            status: "offline",
+            service: "motion2mixamorig",
+            port: 8104,
+            detail: "Motion service (:8104) is offline. Start core-x/scripts/motion_service.py.",
+          }),
+        );
+      });
+    },
+  },
+});
 
 const COREX_PUBLIC = resolve(
   process.env.AVATAR_LABS_COREX_PUBLIC_ROOT || resolve(repoRoot, "core-x/ui/public"),
@@ -322,28 +371,7 @@ export default defineConfig({
     host: "127.0.0.1",
     port: avatarLabsPort,
     strictPort: true,
-    proxy: {
-      "/api/audio": {
-        target: corexGatewayUrl,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/audio/, ""),
-      },
-      "/api/llm": {
-        target: corexGatewayUrl,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/llm/, ""),
-      },
-      "/api/said": {
-        target: corexGatewayUrl,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/said/, ""),
-      },
-      "/api/mflux": {
-        target: corexGatewayUrl,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/mflux/, ""),
-      },
-    },
+    proxy: createApiProxy(),
   },
   plugins: [ecosystemAssetsPlugin()],
   resolve: {
@@ -366,6 +394,7 @@ export default defineConfig({
     host: "127.0.0.1",
     port: avatarLabsPort,
     strictPort: true,
+    proxy: createApiProxy(),
   },
   assetsInclude: ["**/*.glb", "**/*.bin", "**/*.wav"],
   optimizeDeps: {

@@ -13,7 +13,9 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { applyStudioMaterialRealism } from "./scene/studio-scene-template";
 
-const MOTION_SERVICE_URL = "http://127.0.0.1:8104";
+const MOTION_SERVICE_URL = (
+  import.meta.env.VITE_AVATAR_LABS_MOTION_API_URL || "/api/motion"
+).replace(/\/$/, "");
 
 // DOM Elements
 const preview3dEl = document.getElementById("preview3dViewport") as HTMLDivElement;
@@ -56,6 +58,7 @@ const reviewPacketJson = document.getElementById("reviewPacketJson") as HTMLElem
 
 const executionModeSelect = document.getElementById("executionModeSelect") as HTMLSelectElement | null;
 const blockerBanner = document.getElementById("blockerBanner") as HTMLElement | null;
+const blockerBannerTitle = document.getElementById("blockerBannerTitle") as HTMLElement | null;
 const blockerBannerText = document.getElementById("blockerBannerText") as HTMLElement | null;
 const viewportModelSelect = document.getElementById("viewportModelSelect") as HTMLSelectElement | null;
 
@@ -123,7 +126,7 @@ function init3D() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   preview3dEl.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -412,14 +415,31 @@ function setupVideoDragAndDrop() {
 }
 
 // 6. Genuine Extraction & Pipeline Execution
+function resetPipelineStages() {
+  [stage1, stage2, stage3, stage4].forEach((s) => {
+    s?.classList.remove("active", "done");
+  });
+}
+
 function setupExtractionPipeline() {
   extractMotionBtn?.addEventListener("click", async () => {
     extractMotionBtn.disabled = true;
-    pipelineStageText.textContent = "Stage: Initializing Motion2MixamoRig on Apple Silicon MPS...";
+    pipelineFill.style.background = "";
+    pipelineStageText.textContent = "Stage: Checking Motion2MixamoRig service (:8104)...";
     pipelineProgressPercent.textContent = "5%";
     pipelineFill.style.width = "5%";
-
     setStageActive(stage1);
+
+    const online = await checkServiceHealth();
+    if (!online) {
+      resetPipelineStages();
+      pipelineProgressPercent.textContent = "0%";
+      pipelineFill.style.width = "0%";
+      pipelineStageText.textContent =
+        "Motion service offline (:8104) — start core-x/scripts/motion_service.py to extract motion.";
+      extractMotionBtn.disabled = false;
+      return;
+    }
 
     const formData = new FormData();
     if (currentVideoFile) {
@@ -446,7 +466,14 @@ function setupExtractionPipeline() {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP error ${res.status}: ${await res.text()}`);
+        let detail = "";
+        try {
+          const errJson = await res.json();
+          detail = errJson?.detail || errJson?.error || "";
+        } catch {
+          detail = await res.text();
+        }
+        throw new Error(detail || `HTTP error ${res.status}`);
       }
 
       const initialData = await res.json();
@@ -505,9 +532,14 @@ function setupExtractionPipeline() {
       }, 600);
 
     } catch (err: any) {
-      console.error("Extraction start failed:", err);
+      resetPipelineStages();
+      pipelineProgressPercent.textContent = "0%";
+      pipelineFill.style.width = "0%";
       extractMotionBtn.disabled = false;
-      pipelineStageText.textContent = `Service error: ${err.message}`;
+      void checkServiceHealth();
+      const message = err instanceof Error ? err.message : String(err);
+      pipelineStageText.textContent = `Service error: ${message}`;
+      console.warn("Extraction start unavailable:", message);
     }
   });
 }
@@ -599,6 +631,17 @@ function setupExportButtons() {
     const origText = publishRiggingPortalBtn.textContent;
     publishRiggingPortalBtn.textContent = "Syncing to Rigging Portal Library...";
     try {
+      const online = await checkServiceHealth();
+      if (!online) {
+        if (riggingPortalSyncStatus) {
+          riggingPortalSyncStatus.style.display = "block";
+          riggingPortalSyncStatus.style.color = "var(--mocap-amber)";
+          riggingPortalSyncStatus.textContent =
+            "Motion service offline (:8104) — start core-x/scripts/motion_service.py before syncing.";
+        }
+        return;
+      }
+
       const formData = new FormData();
       const customStem = currentVideoFile
         ? currentVideoFile.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-")
@@ -637,27 +680,52 @@ function setupExportButtons() {
   });
 }
 
+function setMotionServiceBanner(online: boolean, deviceLabel = "MPS") {
+  if (videoServiceTag) {
+    videoServiceTag.textContent = online ? `Service: Online (${deviceLabel})` : "Service: Offline (8104)";
+    videoServiceTag.style.color = online ? "var(--mocap-green)" : "var(--mocap-amber)";
+  }
+  if (preflightStatusBadge) {
+    preflightStatusBadge.textContent = online ? "MPS_INFERENCE_ACTIVE" : "SERVICE_OFFLINE_8104";
+    preflightStatusBadge.className = online ? "badge badge-gate" : "badge badge-research";
+  }
+  if (blockerBanner) {
+    blockerBanner.style.background = online
+      ? "rgba(61, 122, 69, 0.12)"
+      : "rgba(154, 108, 36, 0.12)";
+    blockerBanner.style.borderColor = online
+      ? "rgba(61, 122, 69, 0.35)"
+      : "rgba(154, 108, 36, 0.35)";
+  }
+  if (blockerBannerTitle) {
+    blockerBannerTitle.style.color = online ? "var(--mocap-green)" : "var(--mocap-amber)";
+    blockerBannerTitle.textContent = online
+      ? "NEURAL WEIGHTS ACTIVE · APPLE SILICON MPS"
+      : "MOTION SERVICE OFFLINE · PORT 8104";
+  }
+  if (blockerBannerText) {
+    blockerBannerText.textContent = online
+      ? "Motion2MixamoRig v0.1.8 online on port 8104. Genuine GVHMR pose estimation and Blender retargeting ready."
+      : "Local Motion2MixamoRig daemon (:8104) is offline. Cached 3D previews work; start core-x/scripts/motion_service.py to extract motion.";
+  }
+}
+
 // 10. Check Motion Service Health
-async function checkServiceHealth() {
+async function checkServiceHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${MOTION_SERVICE_URL}/health`);
+    const res = await fetch(`${MOTION_SERVICE_URL}/health`, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      if (videoServiceTag) {
-        videoServiceTag.textContent = `Service: Online (${data.device.toUpperCase()})`;
-        videoServiceTag.style.color = "var(--mocap-green)";
-      }
-      if (preflightStatusBadge) {
-        preflightStatusBadge.textContent = "MPS_INFERENCE_ACTIVE";
-        preflightStatusBadge.className = "badge badge-gate";
+      if (data?.status === "healthy" || data?.ok === true) {
+        setMotionServiceBanner(true, String(data.device || "mps").toUpperCase());
+        return true;
       }
     }
   } catch {
-    if (videoServiceTag) {
-      videoServiceTag.textContent = "Service: Standby (8104)";
-      videoServiceTag.style.color = "var(--mocap-amber)";
-    }
+    // Handled via offline banner state below
   }
+  setMotionServiceBanner(false);
+  return false;
 }
 
 // Initialize Mocap Lab Workbench

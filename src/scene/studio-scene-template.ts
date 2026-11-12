@@ -31,7 +31,7 @@ import {
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   Object3D,
-  PCFSoftShadowMap,
+  PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
@@ -225,10 +225,18 @@ export function applyStudioMaterialRealism(root: Mesh | Group, isWebGPU: boolean
       // 5. Eyeballs / Cornea (wet clearcoat, keep authored diffuse colors)
       const isEye = matName.includes("eye") || meshName.includes("eye") || matName.includes("cornea");
       if (isEye) {
-        const eyeMat = source.clone() as MeshPhysicalMaterial;
+        const eyeMat = isWebGPU ? new MeshPhysicalNodeMaterial() : new MeshPhysicalMaterial();
         eyeMat.name = `${source.name || node.name}:corex-eyes`;
+        if (source.color) eyeMat.color.copy(source.color);
+        if (source.map) eyeMat.map = source.map;
+        if (source.normalMap) {
+          eyeMat.normalMap = source.normalMap;
+          if (source.normalScale) eyeMat.normalScale.copy(source.normalScale);
+        }
+        if (source.roughnessMap) eyeMat.roughnessMap = source.roughnessMap;
+        if (source.metalnessMap) eyeMat.metalnessMap = source.metalnessMap;
         eyeMat.side = FrontSide;
-        eyeMat.roughness = Math.min(eyeMat.roughness || 0.18, 0.18);
+        eyeMat.roughness = Math.min(source.roughness || 0.18, 0.18);
         eyeMat.metalness = 0;
         eyeMat.transparent = false;
         eyeMat.depthWrite = true;
@@ -237,10 +245,10 @@ export function applyStudioMaterialRealism(root: Mesh | Group, isWebGPU: boolean
         eyeMat.thickness = 0;
         eyeMat.sheen = 0;
         eyeMat.iridescence = 0;
-        eyeMat.clearcoat = Math.max(eyeMat.clearcoat || 0, 0.28);
-        eyeMat.clearcoatRoughness = Math.min(eyeMat.clearcoatRoughness || 0.08, 0.08);
-        eyeMat.specularIntensity = Math.max(eyeMat.specularIntensity || 0, 0.72);
-        eyeMat.envMapIntensity = Math.max(eyeMat.envMapIntensity || 0, 0.55);
+        eyeMat.clearcoat = Math.max(source.clearcoat || 0, 0.28);
+        eyeMat.clearcoatRoughness = Math.min(source.clearcoatRoughness || 0.08, 0.08);
+        eyeMat.specularIntensity = Math.max(source.specularIntensity || 0, 0.72);
+        eyeMat.envMapIntensity = Math.max(source.envMapIntensity || 0, 0.55);
         eyeMat.ior = 1.38;
         eyeMat.emissive = new Color(0, 0, 0);
         eyeMat.emissiveIntensity = 0;
@@ -375,7 +383,7 @@ export async function createStudioSceneTemplate(
 
   if (renderer instanceof WebGLRenderer) {
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFSoftShadowMap;
+    renderer.shadowMap.type = PCFShadowMap;
   }
 
   container.replaceChildren(renderer.domElement);
@@ -517,7 +525,7 @@ export interface TalkingHeadUpgradeOptions {
 /**
  * Upgrades an existing TalkingHead instance to studio-grade lighting, shadows, and materials:
  *  - ACESFilmic tone mapping with calibrated exposure (1.05)
- *  - PCFSoftShadowMap enabled on WebGLRenderer
+ *  - PCFShadowMap enabled on WebGLRenderer
  *  - Calibrated 3-point key/fill/ambient studio lighting with soft directional shadows
  *  - Neutral dark slate background (0x141516)
  *  - Physically-based material realism (SSS skin, wet cornea, anisotropic hair)
@@ -536,7 +544,7 @@ export function upgradeTalkingHeadScene(
     head.renderer.toneMapping = ACESFilmicToneMapping;
     head.renderer.toneMappingExposure = exposure;
     head.renderer.shadowMap.enabled = true;
-    head.renderer.shadowMap.type = PCFSoftShadowMap;
+    head.renderer.shadowMap.type = PCFShadowMap;
   }
 
   if (head.scene) {
