@@ -422,6 +422,7 @@ export default defineConfig({
         conversation: resolve(root, "mlx-conversation.html"),
         stage: resolve(root, "stage.html"),
         "engine-lab": resolve(root, "engine-lab.html"),
+        "character-gallery": resolve(root, "gallery.html"),
         "multi-modal": resolve(root, "multi-modal.html"),
         "gestures-lab": resolve(root, "gestures-lab.html"),
         "mocap-lab": resolve(root, "mocap-lab.html"),

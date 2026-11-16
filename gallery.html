@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#121315" />
+    <title>Character Gallery &amp; Armature Inspector / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
+    <style>
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #galleryApp {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.95fr);
+        gap: 12px;
+        height: calc(100vh - 40px);
+        padding: 12px;
+        overflow: hidden;
+      }
+
+      .gal-pane {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        background: var(--workbench-surface);
+        border: 1px dashed var(--workbench-line);
+        border-radius: 0;
+        overflow: hidden;
+      }
+
+      .gal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border-bottom: 1px dashed var(--workbench-line);
+      }
+
+      .gal-eyebrow {
+        display: block;
+        font-family: var(--workbench-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--workbench-blue);
+      }
+
+      .gal-head h1,
+      .gal-head h2 {
+        margin: 2px 0 0;
+        font-family: var(--workbench-heading);
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--workbench-ink);
+      }
+
+      .gal-stats {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 1px dashed var(--workbench-line-soft);
+      }
+
+      .gal-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 8px;
+        border: 1px dashed var(--workbench-line-soft);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .gal-stat span {
+        font-family: var(--workbench-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--workbench-muted);
+      }
+
+      .gal-stat strong {
+        font-family: var(--workbench-mono);
+        font-size: 16px;
+        color: var(--workbench-ink);
+      }
+
+      .gal-stat--ok strong { color: var(--workbench-green); }
+      .gal-stat--info strong { color: var(--workbench-blue); }
+
+      .gal-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 1px dashed var(--workbench-line-soft);
+      }
+
+      .gal-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .gal-btn {
+        padding: 5px 9px;
+        border: 1px dashed var(--workbench-line);
+        border-radius: 0;
+        background: transparent;
+        color: var(--workbench-muted);
+        font-family: var(--workbench-mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .gal-btn:hover,
+      .gal-btn.is-active {
+        border-style: solid;
+        border-color: var(--workbench-blue);
+        color: var(--workbench-ink);
+        background: rgba(61, 110, 150, 0.14);
+      }
+
+      .gal-search {
+        margin-left: auto;
+        min-width: 180px;
+        padding: 6px 8px;
+        border: 1px dashed var(--workbench-line);
+        border-radius: 0;
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--workbench-ink);
+        font-family: var(--workbench-mono);
+        font-size: 11px;
+      }
+
+      .gal-search:focus {
+        outline: none;
+        border-style: solid;
+        border-color: var(--workbench-blue);
+      }
+
+      .gal-grid {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 12px 14px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 10px;
+        align-content: start;
+      }
+
+      .gal-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 11px;
+        border: 1px dashed var(--workbench-line);
+        background: rgba(255, 255, 255, 0.02);
+        cursor: pointer;
+        text-align: left;
+        color: inherit;
+      }
+
+      .gal-card:hover {
+        border-style: solid;
+        border-color: var(--workbench-blue);
+      }
+
+      .gal-card.is-selected {
+        border-style: solid;
+        border-color: var(--workbench-green);
+        background: rgba(61, 122, 69, 0.12);
+      }
+
+      .gal-card__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+      }
+
+      .gal-card__kind {
+        font-family: var(--workbench-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--workbench-muted);
+      }
+
+      .gal-pill {
+        padding: 2px 6px;
+        border: 1px dashed currentColor;
+        font-family: var(--workbench-mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .gal-pill--ok { color: var(--workbench-green); border-style: solid; }
+      .gal-pill--blue { color: var(--workbench-blue); }
+      .gal-pill--warn { color: #eab308; }
+      .gal-pill--err { color: var(--workbench-red); border-style: solid; }
+
+      .gal-card__title {
+        font-family: var(--workbench-heading);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--workbench-ink);
+      }
+
+      .gal-card__meta {
+        font-family: var(--workbench-mono);
+        font-size: 10px;
+        color: var(--workbench-muted);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 8px;
+      }
+
+      .gal-card__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .gal-tag {
+        padding: 1px 5px;
+        border: 1px dashed var(--workbench-line-soft);
+        font-family: var(--workbench-mono);
+        font-size: 9px;
+        color: var(--workbench-muted);
+      }
+
+      .gal-inspector-stage {
+        position: relative;
+        height: 46%;
+        min-height: 240px;
+        background: #0c0e11;
+        border-bottom: 1px dashed var(--workbench-line);
+      }
+
+      .gal-inspector-stage canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .gal-stage-overlay {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .gal-stage-controls {
+        display: flex;
+        gap: 6px;
+        pointer-events: auto;
+      }
+
+      .gal-details {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .gal-kv {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .gal-kv > div {
+        padding: 6px 8px;
+        border: 1px dashed var(--workbench-line-soft);
+      }
+
+      .gal-kv span {
+        display: block;
+        font-family: var(--workbench-mono);
+        font-size: 9px;
+        text-transform: uppercase;
+        color: var(--workbench-muted);
+      }
+
+      .gal-kv strong {
+        font-family: var(--workbench-mono);
+        font-size: 12px;
+        color: var(--workbench-ink);
+      }
+
+      .gal-bones {
+        border: 1px dashed var(--workbench-line-soft);
+        padding: 8px 10px;
+        font-family: var(--workbench-mono);
+        font-size: 10px;
+        line-height: 1.5;
+        color: var(--workbench-muted);
+        max-height: 130px;
+        overflow-y: auto;
+      }
+
+      .gal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      @media (max-width: 1020px) {
+        #galleryApp {
+          grid-template-columns: 1fr;
+          grid-template-rows: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="galleryApp">
+      <section class="gal-pane" aria-label="Character gallery">
+        <header class="gal-head">
+          <div>
+            <span class="gal-eyebrow">GLB Binary + Runtime Verification</span>
+            <h1>Character Gallery</h1>
+          </div>
+          <span class="gal-pill gal-pill--blue" id="galStatusBadge">SCANNING</span>
+        </header>
+
+        <div class="gal-stats" id="galStats">
+          <div class="gal-stat"><span>Total</span><strong id="statTotal">0</strong></div>
+          <div class="gal-stat gal-stat--ok"><span>Armature</span><strong id="statRigged">0</strong></div>
+          <div class="gal-stat gal-stat--info"><span>Head Only</span><strong id="statHeadOnly">0</strong></div>
+          <div class="gal-stat"><span>With Clips</span><strong id="statClips">0</strong></div>
+          <div class="gal-stat"><span>Unavailable</span><strong id="statMissing">0</strong></div>
+        </div>
+
+        <div class="gal-toolbar">
+          <div class="gal-filters" role="group" aria-label="Rig filter">
+            <button type="button" class="gal-btn is-active" data-filter="all">All</button>
+            <button type="button" class="gal-btn" data-filter="rigged">Rigged + Armature</button>
+            <button type="button" class="gal-btn" data-filter="head-only">Head Only</button>
+            <button type="button" class="gal-btn" data-filter="clips">Embedded Clips</button>
+          </div>
+          <input
+            id="galSearch"
+            class="gal-search"
+            type="search"
+            placeholder="Search character, project, bone..."
+            aria-label="Search characters"
+          />
+        </div>
+
+        <div class="gal-grid" id="galGrid" data-testid="avatar-gallery-grid"></div>
+      </section>
+
+      <section class="gal-pane" aria-label="Live armature inspector">
+        <header class="gal-head">
+          <div>
+            <span class="gal-eyebrow">Live Three.js Skeleton &amp; Skin Audit</span>
+            <h2 id="inspectorTitle">Select an avatar</h2>
+          </div>
+          <span class="gal-pill" id="runtimeBadge">IDLE</span>
+        </header>
+
+        <div class="gal-inspector-stage">
+          <canvas id="galCanvas"></canvas>
+          <div class="gal-stage-overlay">
+            <span class="gal-pill gal-pill--blue" id="stageHint">SkeletonHelper</span>
+            <div class="gal-stage-controls">
+              <button type="button" class="gal-btn is-active" id="toggleSkeletonBtn">Bones ON</button>
+              <button type="button" class="gal-btn" id="toggleMeshBtn">Wireframe</button>
+              <button type="button" class="gal-btn" id="playClipBtn" disabled>Play Clip</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="gal-details">
+          <div class="gal-kv">
+            <div><span>Runtime Armature</span><strong id="kvArmature">-</strong></div>
+            <div><span>Skinned Meshes</span><strong id="kvSkins">-</strong></div>
+            <div><span>Skeleton Bones</span><strong id="kvBones">-</strong></div>
+            <div><span>Morph Targets</span><strong id="kvMorphs">-</strong></div>
+            <div><span>Embedded Clips</span><strong id="kvClips">-</strong></div>
+            <div><span>M2MR Paired FBX</span><strong id="kvFbx">-</strong></div>
+          </div>
+          <div class="gal-actions" id="galActions"></div>
+          <div>
+            <span class="gal-eyebrow" style="margin-bottom: 4px;">Detected Joint Hierarchy</span>
+            <div class="gal-bones" id="galBones">Select a character card to verify its armature joints in WebGL.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
+    <script type="module" src="/src/gallery.ts"></script>
+  </body>
+</html>
