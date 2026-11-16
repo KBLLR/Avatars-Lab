@@ -102,7 +102,9 @@ let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let controls: OrbitControls;
+let characterRoot: THREE.Group;
 let characterModel: THREE.Group | null = null;
+let characterLoadToken = 0;
 let mixer: THREE.AnimationMixer | null = null;
 let primaryAction: THREE.AnimationAction | null = null;
 const timer = new THREE.Timer();
@@ -175,6 +177,10 @@ function init3D() {
   floor.receiveShadow = true;
   scene.add(floor);
 
+  characterRoot = new THREE.Group();
+  characterRoot.name = "MocapCharacterRoot";
+  scene.add(characterRoot);
+
   const ro = new ResizeObserver(() => {
     if (!preview3dEl || !renderer || !camera) return;
     const w = preview3dEl.clientWidth;
@@ -185,8 +191,16 @@ function init3D() {
   });
   ro.observe(preview3dEl);
 
-  // Load default character GLB
-  loadCharacterGLB(activeGlbUrl, clipDuration);
+  // Load initial character GLB (use saved/requested Rigging Portal character if present
+  // so we do not trigger two concurrent GLB loads at boot).
+  const requestedAvatarId = new URLSearchParams(window.location.search).get("avatar");
+  const initialPortalChar = readSelectedRiggingCharacter();
+  if (initialPortalChar?.viewerUrl && (!requestedAvatarId || initialPortalChar.id === requestedAvatarId)) {
+    activeGlbUrl = initialPortalChar.viewerUrl;
+    loadCharacterGLB(activeGlbUrl, clipDuration);
+  } else if (!requestedAvatarId) {
+    loadCharacterGLB(activeGlbUrl, clipDuration);
+  }
 
   timer.connect(document);
 
@@ -216,17 +230,31 @@ function init3D() {
   animate();
 }
 
-// 2. Load Retargeted Character GLB
-function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 0) {
-  if (characterModel) {
-    scene.remove(characterModel);
-    characterModel = null;
-  }
+function clearActiveCharacterFromStage() {
   if (mixer) {
     mixer.stopAllAction();
+    if (characterModel) {
+      mixer.uncacheRoot(characterModel);
+    }
     mixer = null;
     primaryAction = null;
   }
+  if (characterRoot) {
+    while (characterRoot.children.length > 0) {
+      const child = characterRoot.children[0];
+      characterRoot.remove(child);
+    }
+  }
+  if (characterModel && scene) {
+    scene.remove(characterModel);
+  }
+  characterModel = null;
+}
+
+// 2. Load Retargeted Character GLB
+function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 0, existingToken?: number) {
+  const loadToken = existingToken ?? ++characterLoadToken;
+  clearActiveCharacterFromStage();
 
   activeGlbUrl = glbUrl;
   if (meshLoadStatusTag) meshLoadStatusTag.textContent = "GLB: Loading...";
@@ -236,6 +264,11 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 
   loader.load(
     targetUrl,
     (gltf) => {
+      if (loadToken !== characterLoadToken) {
+        return;
+      }
+      clearActiveCharacterFromStage();
+
       characterModel = gltf.scene;
       normalizeStandingBodyUpAxis(characterModel);
       characterModel.traverse((child) => {
@@ -245,7 +278,11 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 
         }
       });
       applyStudioMaterialRealism(characterModel, false);
-      scene.add(characterModel);
+      if (characterRoot) {
+        characterRoot.add(characterModel);
+      } else {
+        scene.add(characterModel);
+      }
 
       if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(characterModel);
@@ -261,11 +298,17 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 
         primaryAction.paused = !isPlaying;
       }
 
-      const isMia = glbUrl.includes("drive_char_1319") || targetRigSelect?.value === "drive_char_1319";
+      const selectedChar = targetRigSelect ? portalCharacterMap.get(targetRigSelect.value) : undefined;
+      const isMia =
+        Boolean(selectedChar) ||
+        glbUrl.includes("drive_char_") ||
+        targetRigSelect?.value === "drive_char_1319";
       const isBrunette = glbUrl.includes("brunette") || (!isMia && targetRigSelect?.value === "brunette");
       if (meshLoadStatusTag) meshLoadStatusTag.textContent = "GLB: Ready";
       if (rigStatusTag) {
-        rigStatusTag.textContent = isMia
+        rigStatusTag.textContent = selectedChar
+          ? `Rig: ${selectedChar.displayName} (${selectedChar.id} · Local MIA)`
+          : isMia
           ? "Rig: drive_char_1319 (Local MIA · 52J)"
           : isBrunette
           ? "Rig: Brunette (RPM · 73 Blendshapes)"
@@ -289,15 +332,20 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 
       updateTransportUI(0);
     },
     (xhr) => {
+      if (loadToken !== characterLoadToken) return;
       if (xhr.lengthComputable && meshLoadStatusTag) {
         const pct = Math.round((xhr.loaded / xhr.total) * 100);
         meshLoadStatusTag.textContent = `GLB: ${pct}%`;
       }
     },
     (err) => {
+      if (loadToken !== characterLoadToken) return;
       console.error("Retargeted GLB load error:", err);
       if (retryCount < 2) {
-        setTimeout(() => loadCharacterGLB(glbUrl, duration, retryCount + 1), 600);
+        setTimeout(() => {
+          if (loadToken !== characterLoadToken) return;
+          loadCharacterGLB(glbUrl, duration, retryCount + 1, loadToken);
+        }, 600);
       } else {
         if (meshLoadStatusTag) meshLoadStatusTag.textContent = "GLB: Error";
       }
@@ -568,7 +616,7 @@ function setAllStagesDone() {
 
 const portalCharacterMap = new Map<string, RiggingPortalCharacter>();
 
-function selectPortalTarget(char: RiggingPortalCharacter) {
+function selectPortalTarget(char: RiggingPortalCharacter, forceLoad = true) {
   portalCharacterMap.set(char.id, char);
   if (targetRigSelect) {
     let opt = Array.from(targetRigSelect.options).find((o) => o.value === char.id);
@@ -580,7 +628,9 @@ function selectPortalTarget(char: RiggingPortalCharacter) {
     }
     targetRigSelect.value = char.id;
   }
-  loadCharacterGLB(char.viewerUrl, 8.03);
+  if (forceLoad || activeGlbUrl !== char.viewerUrl || characterLoadToken === 0) {
+    loadCharacterGLB(char.viewerUrl, 8.03);
+  }
 }
 
 // 7. Rig Selection Change Handler + Rigging Portal Character Hydration
@@ -601,31 +651,37 @@ function setupRigSelection() {
 
   window.addEventListener(COREX_SELECT_CHARACTER_EVENT, (ev) => {
     const detail = (ev as CustomEvent<RiggingPortalCharacter>).detail;
-    if (detail?.id) selectPortalTarget(detail);
+    if (detail?.id) selectPortalTarget(detail, true);
   });
 
   void fetchRiggingPortalCharacters().then(({ characters }) => {
-    if (!targetRigSelect || characters.length === 0) return;
-    const group = document.createElement("optgroup");
-    group.label = "Rigging Portal · Verified Armatures (MIA / ActionForge)";
-    for (const c of characters) {
-      portalCharacterMap.set(c.id, c);
-      if (c.id === "drive_char_1319") continue;
-      const opt = document.createElement("option");
-      opt.value = c.id;
-      opt.textContent = `${c.displayName} (${c.id} · ${c.motionsCount}m${c.retargetTargetId ? " · M2MR" : ""})`;
-      group.appendChild(opt);
-    }
-    if (group.children.length > 0) targetRigSelect.appendChild(group);
-
     const requestedId = new URLSearchParams(window.location.search).get("avatar");
+    if (!targetRigSelect) return;
+    if (characters.length > 0) {
+      const group = document.createElement("optgroup");
+      group.label = "Rigging Portal · Verified Armatures (MIA / ActionForge)";
+      for (const c of characters) {
+        portalCharacterMap.set(c.id, c);
+        if (c.id === "drive_char_1319") continue;
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = `${c.displayName} (${c.id} · ${c.motionsCount}m${c.retargetTargetId ? " · M2MR" : ""})`;
+        group.appendChild(opt);
+      }
+      if (group.children.length > 0) targetRigSelect.appendChild(group);
+    }
+
     const preferred =
       (requestedId ? portalCharacterMap.get(requestedId) : undefined) ||
       (() => {
         const saved = readSelectedRiggingCharacter();
         return saved ? portalCharacterMap.get(saved.id) || saved : undefined;
       })();
-    if (preferred) selectPortalTarget(preferred);
+    if (preferred) {
+      selectPortalTarget(preferred, false);
+    } else if (characterLoadToken === 0) {
+      loadCharacterGLB(activeGlbUrl, clipDuration);
+    }
   });
 }
 
