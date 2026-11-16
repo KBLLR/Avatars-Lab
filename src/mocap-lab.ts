@@ -12,6 +12,13 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { applyStudioMaterialRealism } from "./scene/studio-scene-template";
+import { normalizeStandingBodyUpAxis } from "./scene/chat-avatar-head";
+import {
+  COREX_SELECT_CHARACTER_EVENT,
+  fetchRiggingPortalCharacters,
+  readSelectedRiggingCharacter,
+  type RiggingPortalCharacter,
+} from "./runtime/rigging-portal-roster";
 
 const MOTION_SERVICE_URL = (
   import.meta.env.VITE_AVATAR_LABS_MOTION_API_URL || "/api/motion"
@@ -230,6 +237,7 @@ function loadCharacterGLB(glbUrl: string, duration: number = 8.03, retryCount = 
     targetUrl,
     (gltf) => {
       characterModel = gltf.scene;
+      normalizeStandingBodyUpAxis(characterModel);
       characterModel.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           child.castShadow = true;
@@ -558,17 +566,66 @@ function setAllStagesDone() {
   });
 }
 
-// 7. Rig Selection Change Handler
+const portalCharacterMap = new Map<string, RiggingPortalCharacter>();
+
+function selectPortalTarget(char: RiggingPortalCharacter) {
+  portalCharacterMap.set(char.id, char);
+  if (targetRigSelect) {
+    let opt = Array.from(targetRigSelect.options).find((o) => o.value === char.id);
+    if (!opt) {
+      opt = document.createElement("option");
+      opt.value = char.id;
+      opt.textContent = `${char.displayName} (Rigging Portal · ${char.motionsCount}m)`;
+      targetRigSelect.appendChild(opt);
+    }
+    targetRigSelect.value = char.id;
+  }
+  loadCharacterGLB(char.viewerUrl, 8.03);
+}
+
+// 7. Rig Selection Change Handler + Rigging Portal Character Hydration
 function setupRigSelection() {
   targetRigSelect?.addEventListener("change", () => {
     const selected = targetRigSelect.value;
-    if (selected === "drive_char_1319") {
+    const portalChar = portalCharacterMap.get(selected);
+    if (portalChar) {
+      loadCharacterGLB(portalChar.viewerUrl, 8.03);
+    } else if (selected === "drive_char_1319") {
       loadCharacterGLB("/motion-proof/drive_char_1319-neural-extracted.retarget.glb", 8.03);
     } else if (selected === "brunette") {
       loadCharacterGLB("/motion-proof/brunette-neural-extracted.retarget.glb", 8.03);
     } else {
       loadCharacterGLB("/motion-proof/m2mr-neural-extracted.retarget.glb", 8.03);
     }
+  });
+
+  window.addEventListener(COREX_SELECT_CHARACTER_EVENT, (ev) => {
+    const detail = (ev as CustomEvent<RiggingPortalCharacter>).detail;
+    if (detail?.id) selectPortalTarget(detail);
+  });
+
+  void fetchRiggingPortalCharacters().then(({ characters }) => {
+    if (!targetRigSelect || characters.length === 0) return;
+    const group = document.createElement("optgroup");
+    group.label = "Rigging Portal · Verified Armatures (MIA / ActionForge)";
+    for (const c of characters) {
+      portalCharacterMap.set(c.id, c);
+      if (c.id === "drive_char_1319") continue;
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = `${c.displayName} (${c.id} · ${c.motionsCount}m${c.retargetTargetId ? " · M2MR" : ""})`;
+      group.appendChild(opt);
+    }
+    if (group.children.length > 0) targetRigSelect.appendChild(group);
+
+    const requestedId = new URLSearchParams(window.location.search).get("avatar");
+    const preferred =
+      (requestedId ? portalCharacterMap.get(requestedId) : undefined) ||
+      (() => {
+        const saved = readSelectedRiggingCharacter();
+        return saved ? portalCharacterMap.get(saved.id) || saved : undefined;
+      })();
+    if (preferred) selectPortalTarget(preferred);
   });
 }
 
