@@ -15,6 +15,7 @@ import {
   Settings,
   SlidersHorizontal,
   Stethoscope,
+  Users,
   Video,
   createIcons,
 } from "lucide";
@@ -67,6 +68,7 @@ createIcons({
     Settings,
     SlidersHorizontal,
     Stethoscope,
+    Users,
     Video,
   },
   attrs: { "stroke-width": 1.5 },

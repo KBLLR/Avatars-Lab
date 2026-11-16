@@ -1,6 +1,7 @@
 import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { inspectGlbFile } from "./lib/glb-rig-inspector.mjs";
 
 const houseRoot = resolve(import.meta.dirname, "..");
 const repoRoot = resolve(houseRoot, "../..");
@@ -86,7 +87,7 @@ for (const rawEntry of canonical.avatars || []) {
   }
   if (!isGlb(destination)) extractSnapshotAsset(file, destination);
 
-  // Also hydrate paired .m2mr.fbx if present in Rigging Palace staging
+  let m2mrFbxReady = false;
   if (entry.m2mr_fbx) {
     const fbxFile = basename(entry.m2mr_fbx);
     const fbxDest = join(avatarDir, fbxFile);
@@ -94,15 +95,52 @@ for (const rawEntry of canonical.avatars || []) {
     if (!existsSync(fbxDest) && existsSync(fbxSource)) {
       copyFileSync(fbxSource, fbxDest);
     }
+    m2mrFbxReady = existsSync(fbxDest) || existsSync(fbxSource);
   }
 
-  if (isGlb(destination)) available.push({ ...entry, file });
-  else missing.push(file);
+  if (isGlb(destination)) {
+    const inspected = inspectGlbFile(destination);
+    const rig = inspected
+      ? {
+          armatureVerified: inspected.armatureVerified,
+          rigStatus: inspected.rigStatus,
+          skinCount: inspected.skinCount,
+          jointCount: inspected.jointCount,
+          jointNamesSample: inspected.jointNamesSample,
+          morphTargetCount: inspected.morphTargetCount,
+          embeddedAnimationCount: inspected.embeddedAnimationCount,
+          embeddedAnimations: inspected.embeddedAnimations,
+          meshCount: inspected.meshCount,
+          m2mrFbxReady,
+        }
+      : {
+          armatureVerified: false,
+          rigStatus: "unknown",
+          skinCount: 0,
+          jointCount: 0,
+          jointNamesSample: [],
+          morphTargetCount: 0,
+          embeddedAnimationCount: 0,
+          embeddedAnimations: [],
+          meshCount: 0,
+          m2mrFbxReady,
+        };
+    available.push({
+      ...entry,
+      file,
+      sizeBytes: inspected?.sizeBytes ?? statSync(destination).size,
+      rig,
+    });
+  } else {
+    missing.push(file);
+  }
 }
 
 if (available.length === 0 && isGlb(fixturePath)) {
   const file = "preview.glb";
-  copyFileSync(fixturePath, join(avatarDir, file));
+  const dest = join(avatarDir, file);
+  copyFileSync(fixturePath, dest);
+  const inspected = inspectGlbFile(dest);
   available.push({
     id: "preview",
     file,
@@ -110,14 +148,38 @@ if (available.length === 0 && isGlb(fixturePath)) {
     body: "F",
     default_mood: "neutral",
     tags: ["fixture"],
+    sizeBytes: inspected?.sizeBytes ?? statSync(dest).size,
+    rig: inspected
+      ? {
+          armatureVerified: inspected.armatureVerified,
+          rigStatus: inspected.rigStatus,
+          skinCount: inspected.skinCount,
+          jointCount: inspected.jointCount,
+          jointNamesSample: inspected.jointNamesSample,
+          morphTargetCount: inspected.morphTargetCount,
+          embeddedAnimationCount: inspected.embeddedAnimationCount,
+          embeddedAnimations: inspected.embeddedAnimations,
+          meshCount: inspected.meshCount,
+          m2mrFbxReady: false,
+        }
+      : undefined,
   });
 }
 
+const summary = {
+  total: available.length,
+  riggedWithArmature: available.filter((a) => a.rig?.armatureVerified).length,
+  headOnly: available.filter((a) => a.rig?.rigStatus === "head-only").length,
+  staticOnly: available.filter((a) => a.rig?.rigStatus === "static").length,
+  m2mrFbxReady: available.filter((a) => a.rig?.m2mrFbxReady).length,
+};
+
 writeFileSync(runtimeManifestPath, `${JSON.stringify({
-  schema_version: "1.0",
+  schema_version: "1.1",
   generated_at: new Date().toISOString(),
   source: assetRoot ? "asset-root+git-snapshot" : "git-snapshot",
   source_snapshot: snapshot,
+  summary,
   avatars: available,
   unavailable: missing,
 }, null, 2)}\n`);

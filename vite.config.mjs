@@ -24,6 +24,11 @@ const corexMotionUrl = (
   process.env.VITE_AVATAR_LABS_MOTION_API_URL ||
   "http://127.0.0.1:8104"
 ).replace(/\/$/, "");
+const riggingPortalUrl = (
+  process.env.RIGGING_PORTAL_URL ||
+  process.env.VITE_RIGGING_PORTAL_URL ||
+  "http://127.0.0.1:5188"
+).replace(/\/$/, "");
 
 const createApiProxy = () => ({
   "/api/audio": {
@@ -62,6 +67,26 @@ const createApiProxy = () => ({
             service: "motion2mixamorig",
             port: 8104,
             detail: "Motion service (:8104) is offline. Start core-x/scripts/motion_service.py.",
+          }),
+        );
+      });
+    },
+  },
+  "/api/rigging-portal": {
+    target: riggingPortalUrl,
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/rigging-portal/, ""),
+    configure(proxy) {
+      proxy.on("error", (_err, _req, res) => {
+        if (!res || res.headersSent) return;
+        res.writeHead(503, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            ok: false,
+            offline: true,
+            service: "rigging-portal",
+            port: 5188,
+            detail: "Rigging Portal (:5188) is offline.",
           }),
         );
       });
@@ -422,6 +447,7 @@ export default defineConfig({
         conversation: resolve(root, "mlx-conversation.html"),
         stage: resolve(root, "stage.html"),
         "engine-lab": resolve(root, "engine-lab.html"),
+        "character-gallery": resolve(root, "gallery.html"),
         "multi-modal": resolve(root, "multi-modal.html"),
         "gestures-lab": resolve(root, "gestures-lab.html"),
         "mocap-lab": resolve(root, "mocap-lab.html"),

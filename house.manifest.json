@@ -128,6 +128,7 @@
     "cases": [
       { "id": "launcher", "label": "Avatar Labs", "path": "/" },
       { "id": "engine-lab", "label": "Performance Engine", "path": "/engine-lab.html" },
+      { "id": "character-gallery", "label": "Character Gallery", "path": "/gallery.html" },
       { "id": "mocap-lab", "label": "Mocap Lab", "path": "/mocap-lab.html" },
       { "id": "gemma-avatar", "label": "Gemma Speech", "path": "/gemma-avatar.html" },
       { "id": "corex-head", "label": "Core-X Head", "path": "/corex-head.html" },

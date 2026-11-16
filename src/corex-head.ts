@@ -39,9 +39,14 @@ import { PMREMGenerator } from "three";
 import {
   createArchitecturalPlinth,
   applyStudioMaterialRealism,
-  calibrateChatAvatarEyes,
   centerAndFrameCoreXHead,
 } from "./scene/studio-scene-template";
+import {
+  HEAD_ROSTER,
+  normalizeChatAvatarHead,
+  resolveHeadDefinition,
+  type HeadDefinition,
+} from "./scene/chat-avatar-head";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import headWorkletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
@@ -85,95 +90,7 @@ const els = {
   mQueue: document.getElementById("m-queue") as HTMLElement,
 };
 
-export interface HeadDefinition {
-  id: string;
-  label: string;
-  url: string;
-  hairUrl?: string;
-  voice: string;
-}
-
-/**
- * Canonical Core-X head roster and voice assignments (avatar-config.ts contract).
- */
-export const HEAD_ROSTER: Record<string, HeadDefinition> = {
-  kbllr: {
-    id: "kbllr",
-    label: "KBLLR",
-    url: "/corex-assets/avatars/heads/kbllr/kbllr.glb",
-    hairUrl: "/corex-assets/avatars/heads/kbllr/kbllr-hair.glb",
-    voice: "lullabot", // LOCKED
-  },
-  anja: {
-    id: "anja",
-    label: "Anja",
-    url: "/corex-assets/avatars/heads/anja/anja.glb",
-    hairUrl: "/corex-assets/avatars/heads/anja/anja-hair.glb",
-    voice: "katanja",
-  },
-  "susi-q": {
-    id: "susi-q",
-    label: "Susi-Q",
-    url: "/corex-assets/avatars/heads/susi-q/susi-q.glb",
-    hairUrl: "/corex-assets/avatars/heads/susi-q/susi-q-hair.glb",
-    voice: "katanja",
-  },
-  david: {
-    id: "david",
-    label: "David",
-    url: "/corex-assets/avatars/heads/david/david.glb",
-    voice: "davido",
-  },
-  eli: {
-    id: "eli",
-    label: "Eli",
-    url: "/corex-assets/avatars/heads/eli/eli.glb",
-    hairUrl: "/corex-assets/avatars/heads/eli/eli-hair.glb",
-    voice: "eli_luma",
-  },
-  sofia: {
-    id: "sofia",
-    label: "Sofia",
-    url: "/corex-assets/avatars/heads/sofia/sofia.glb",
-    hairUrl: "/corex-assets/avatars/heads/sofia/sofia-hair.glb",
-    voice: "sofi_v",
-  },
-  nyx: {
-    id: "nyx",
-    label: "Nyx",
-    url: "/corex-assets/avatars/heads/nyx/nyx.glb",
-    hairUrl: "/corex-assets/avatars/heads/nyx/nyx-hair.glb",
-    voice: "vicky_spice",
-  },
-  vee: {
-    id: "vee",
-    label: "Vee",
-    url: "/corex-assets/avatars/heads/vee/vee.glb",
-    voice: "princess_leia",
-  },
-  nino: {
-    id: "nino",
-    label: "Nino",
-    url: "/corex-assets/avatars/heads/nino/nino.glb",
-    voice: "ninoo",
-  },
-};
-
-export function resolveHeadDefinition(keyOrUrl: string): HeadDefinition {
-  if (HEAD_ROSTER[keyOrUrl]) {
-    return HEAD_ROSTER[keyOrUrl];
-  }
-  for (const def of Object.values(HEAD_ROSTER)) {
-    if (def.url === keyOrUrl || def.id === keyOrUrl) return def;
-  }
-  const filename = keyOrUrl.split("/").pop()?.replace(/\.glb$/i, "") || "custom";
-  return {
-    id: filename,
-    label: filename.charAt(0).toUpperCase() + filename.slice(1),
-    url: keyOrUrl,
-    voice: els.voice?.value || "lullabot",
-  };
-}
+export { HEAD_ROSTER, resolveHeadDefinition, type HeadDefinition };
 
 const result = {
   ready: false,
@@ -204,47 +121,6 @@ let micStream: MediaStream | null = null;
 let micSourceNode: MediaStreamAudioSourceNode | null = null;
 let micAnalyser: AnalyserNode | null = null;
 let micVuAnimId: number | null = null;
-
-// Normalizes ChatAvatar heads: eye scales, occlusion mesh hiding, frontside eyes
-function normalizeChatAvatarHead(headScene: Object3D) {
-  headScene.updateMatrixWorld(true);
-
-  let faceMesh: Mesh | null = null;
-  headScene.traverse((obj) => {
-    const mesh = obj as Mesh;
-    if (!faceMesh && mesh.isMesh && (mesh.morphTargetInfluences?.length ?? 0) > 0) {
-      faceMesh = mesh;
-    }
-  });
-  const faceWorldScale = faceMesh
-    ? (faceMesh as Mesh).getWorldScale(new Vector3()).x
-    : 1;
-
-  for (const name of ["eyeball_left", "eyeball_right"]) {
-    const node = headScene.getObjectByName(name);
-    if (!node) continue;
-    const eyeWorldScale = node.getWorldScale(new Vector3()).x;
-    const ratio = faceWorldScale / eyeWorldScale;
-    if (ratio < 0.5 || ratio > 2) {
-      node.scale.multiplyScalar(ratio);
-      node.position.multiplyScalar(ratio);
-    }
-  }
-  calibrateChatAvatarEyes(headScene);
-  headScene.updateMatrixWorld(true);
-
-  headScene.traverse((obj) => {
-    const mesh = obj as Mesh;
-    if (!mesh.isMesh) return;
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const mat of mats) {
-      if (!mat) continue;
-      const name = (mat.name || "").toLowerCase();
-      if (name.includes("occlusion")) mat.visible = false;
-      if (name === "eyes") (mat as any).side = FrontSide;
-    }
-  });
-}
 
 interface Stage {
   renderer: WebGLRenderer | WebGPURenderer;

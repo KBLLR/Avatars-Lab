@@ -25,6 +25,17 @@ export const AVATAR_LAB_CASES: AvatarLabCase[] = [
     services: ["warehouse", "rigging-portal"],
   },
   {
+    id: "character-gallery",
+    code: "GAL",
+    title: "Character Gallery",
+    description: "Verify authentic GLB armatures, skin joint counts, ARKit morph targets, and SkeletonHelper previews.",
+    href: "/gallery.html",
+    icon: "Users",
+    status: "new",
+    renderer: "webgl",
+    services: ["rigging-portal", "warehouse"],
+  },
+  {
     id: "mocap-lab",
     code: "MCP",
     title: "Mocap Lab",
