@@ -91,7 +91,7 @@ export async function fetchRiggingPortalCharacters(): Promise<{
       if (!id || seen.has(id)) continue;
 
       const binding = bindings.characters?.[id];
-      const hasActionforgeOwn = Boolean(binding?.viewerRuntimeUrl && !binding.actionforgeSource);
+      const hasActionforgeOwn = Boolean(binding?.viewerRuntimeUrl);
       const hasValidModel = Boolean(c.modelUrl && c.artifactState !== "qa-failed");
       const rawRuntime = c.viewerRuntimeUrl;
 
@@ -119,7 +119,7 @@ export async function fetchRiggingPortalCharacters(): Promise<{
 
     // Also include any verified binding keys not listed in dashboard.json.
     for (const [id, binding] of Object.entries(bindings.characters || {})) {
-      if (seen.has(id) || !binding?.viewerRuntimeUrl || binding.actionforgeSource) continue;
+      if (seen.has(id) || !binding?.viewerRuntimeUrl) continue;
       seen.add(id);
       results.push({
         id,
