@@ -62,5 +62,7 @@ const mocapSrc = readFileSync(join(houseRoot, "src/mocap-lab.ts"), "utf8");
 assert.match(mocapSrc, /fetchRiggingPortalCharacters/);
 assert.match(mocapSrc, /COREX_SELECT_CHARACTER_EVENT/);
 assert.match(mocapSrc, /normalizeStandingBodyUpAxis/);
+assert.match(mocapSrc, /clearActiveCharacterFromStage/);
+assert.match(mocapSrc, /loadToken !== characterLoadToken/);
 
 console.log("Gallery orientation, Core-X head & Rigging Vault contract tests passed.");
