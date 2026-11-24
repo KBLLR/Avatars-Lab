@@ -25,6 +25,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+import numpy as np
+
 from .contract import CropParams, LipSyncRequest, RunError, empty_result
 from . import media
 
@@ -55,6 +57,56 @@ def _musetalk_mlx_commit() -> str | None:
         return json.loads(raw).get("vcs_info", {}).get("commit_id") if raw else None
     except Exception:
         return None
+
+
+def _frames_needed(source_frames: int, n_out: int) -> int:
+    """Ping-pong cycling over n source frames visits only indices < min(n, n_out)."""
+    return max(1, min(source_frames, n_out))
+
+
+def _detect(frames: list, landmarker: str) -> tuple[list, np.ndarray]:
+    """Landmarks per frame; a gap after the first detection reuses the previous frame's landmarks."""
+    from . import face
+
+    lmk = face.Landmarker(landmarker)
+    try:
+        lms, flags, last = [], [], None
+        for fr in frames:
+            pts = lmk.detect(fr)
+            if pts is None:
+                if last is None:
+                    continue
+                pts, used_fallback = last, True
+            else:
+                used_fallback = False
+            last = pts
+            lms.append(pts)
+            flags.append(used_fallback)
+    finally:
+        lmk.close()
+    if len(lms) != len(frames):
+        raise RunError("detect", f"no face in {len(frames) - len(lms)} leading frame(s) of {len(frames)}")
+    return lms, np.array(flags, dtype=bool)
+
+
+def _encode_latents(pipe, crops: list, preprocess_img) -> np.ndarray:
+    """UNet input latents (masked ⊕ reference, posterior mean) with a compiled VAE encoder.
+
+    Same maths as `MuseTalkPipeline.get_latents_for_unet(deterministic=True)`; `mx.compile` fuses the
+    encoder's elementwise ops (measured 1.13x, max |diff| 1e-6). Batching was slower on M3 Max.
+    """
+    import mlx.core as mx
+
+    encode = mx.compile(lambda x: pipe.vae.encode(x).mean)
+    sf = pipe.scaling_factor
+    out = []
+    for c in crops:
+        masked = encode(mx.array(preprocess_img(c, half_mask=True)))
+        ref = encode(mx.array(preprocess_img(c, half_mask=False)))
+        lat = mx.concatenate([sf * masked, sf * ref], axis=1).astype(mx.float32)
+        mx.eval(lat)
+        out.append(np.array(lat))
+    return np.concatenate(out, axis=0)
 
 
 def _environment(weights: Path) -> dict:
@@ -106,36 +158,13 @@ def _render(req: LipSyncRequest, a: argparse.Namespace, run_dir: Path, result: d
     audio_dur = media.normalize_audio(Path(req.audio["path"]), wav)
     t_pre = time.perf_counter()
     frames = media.load_frames(Path(req.face_source["path"]), req.face_source["kind"], work, MAX_FRAMES)
+    source_frames = len(frames)
 
-    from . import face
+    from . import cache, face
 
-    lmk = face.Landmarker(a.landmarker)
-    try:
-        lms, raw_boxes, fallback = [], [], 0
-        last = None
-        for fr in frames:
-            pts = lmk.detect(fr)
-            if pts is None:
-                if last is None:
-                    continue
-                pts, fallback = last, fallback + 1
-            last = pts
-            lms.append(pts)
-            raw_boxes.append(face.crop_box(pts, fr.shape, req.crop.bbox_shift, req.crop.extra_margin))
-    finally:
-        lmk.close()
-    detected = len(lms) - fallback
-    result["detection"] = {"frames": len(frames), "faces_detected": detected, "fallback_frames": fallback}
-    if len(lms) != len(frames):
-        raise RunError("detect", f"no face in {len(frames) - len(lms)} leading frame(s) of {len(frames)}")
-    boxes = face.smooth_boxes(raw_boxes, req.crop.ema_alpha)
-    masks = [face.lower_face_mask(l, b, req.crop.extra_margin) for l, b in zip(lms, boxes)]
-    crops = [face.crop_face(fr, b) for fr, b in zip(frames, boxes)]
-    result["crop_boxes_sample"] = [b.as_list() for b in boxes[:3]]
-
-    # --- model ----------------------------------------------------------------
+    # --- model + audio features (first: they decide how many source frames are used) -----------
     import mlx.core as mx
-    from musetalk_mlx.pipeline_mlx import MuseTalkPipeline
+    from musetalk_mlx.pipeline_mlx import MuseTalkPipeline, preprocess_img
 
     t0 = time.perf_counter()
     try:
@@ -153,8 +182,49 @@ def _render(req: LipSyncRequest, a: argparse.Namespace, run_dir: Path, result: d
     n_out = int(chunks.shape[0])
     if n_out == 0:
         raise RunError("audio", "audio produced zero frames")
-    latents = mx.concatenate([pipe.get_latents_for_unet(c) for c in crops], axis=0)
+
+    # Ping-pong only visits frames[:n_out]; never detect or encode frames the audio cannot reach.
+    frames = frames[:_frames_needed(source_frames, n_out)]
+    need = len(frames)
+
+    cache_dir = None if a.no_cache else Path(a.cache_dir or Path(a.runs_root).parent / "cache" / "face-latents")
+    key, entry, status = None, None, "disabled"
+    if cache_dir is not None and req.face_source.get("sha256"):
+        key = cache.cache_key(
+            source_sha256=req.face_source["sha256"], kind=req.face_source["kind"],
+            crop={"bbox_shift": req.crop.bbox_shift, "extra_margin": req.crop.extra_margin},
+            landmarker=Path(a.landmarker), vae_weights=weights / "vae.safetensors",
+            backend=f"musetalk-mlx@{_musetalk_mlx_commit()}:{req.variant}:compiled-posterior-mean")
+        entry = cache.load(cache_dir, key, need)
+        status = "hit" if entry is not None else "miss"
+
+    if entry is None:
+        lms_list, flags = _detect(frames, a.landmarker)
+        lms = np.stack(lms_list)
+    else:
+        lms, flags = entry.landmarks, entry.fallback
+    fallback = int(flags.sum())
+    result["detection"] = {"frames": need, "source_frames": source_frames,
+                           "faces_detected": need - fallback, "fallback_frames": fallback}
+    raw_boxes = [face.crop_box(l, fr.shape, req.crop.bbox_shift, req.crop.extra_margin) for l, fr in zip(lms, frames)]
+    boxes = face.smooth_boxes(raw_boxes, req.crop.ema_alpha)
+    masks = [face.lower_face_mask(l, b, req.crop.extra_margin) for l, b in zip(lms, boxes)]
+    result["crop_boxes_sample"] = [b.as_list() for b in boxes[:3]]
+
+    if entry is None:
+        crops = [face.crop_face(fr, b) for fr, b in zip(frames, boxes)]
+        latents_np = _encode_latents(pipe, crops, preprocess_img)
+        if key is not None:
+            try:
+                cache.store(cache_dir, key, cache.Entry(lms.astype(np.float32), flags, latents_np))
+            except OSError as exc:
+                status = f"miss (store failed: {exc.__class__.__name__})"
+    else:
+        latents_np = entry.latents
+    latents = mx.array(latents_np)
     mx.eval(latents)
+    result["preprocess_cache"] = {"status": status, "key": key[:16] if key else None,
+                                  "dir": str(cache_dir) if cache_dir else None}
     result["timings_s"]["preprocess"] = round(time.perf_counter() - t_pre - result["timings_s"]["model_init"], 3)
 
     # --- generate + composite + mux -------------------------------------------
@@ -294,6 +364,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--landmarker", default=DEFAULT_LANDMARKER)
     r.add_argument("--runs-root", default=DEFAULT_RUNS_ROOT)
     r.add_argument("--keep-work", action="store_true")
+    r.add_argument("--cache-dir", help="face preprocessing cache (default: <runs-root>/../cache/face-latents)")
+    r.add_argument("--no-cache", action="store_true", help="always detect and encode; never read or write the cache")
     r.set_defaults(func=cmd_run)
     return p
 
