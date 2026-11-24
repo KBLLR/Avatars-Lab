@@ -119,6 +119,35 @@ def test_existing_run_dir_is_never_overwritten(tmp_path: Path):
     assert code == 2
 
 
+def test_video_round_trip_adds_no_colour_bias(tmp_path: Path):
+    """load_frames -> Mp4Writer -> load_frames must not shift colour (it used to darken up to 3/255).
+
+    Flat plates (the council background and a skin tone) isolate conversion rounding; saturated
+    test patterns would add content-dependent 4:2:0 chroma loss instead.
+    """
+    from musetalk_runner import media
+    src = tmp_path / "src.mp4"
+    subprocess.run(["ffmpeg", "-v", "error",
+                    "-f", "lavfi", "-i", "color=c=0x101415:s=64x96:r=25:d=1",
+                    "-f", "lavfi", "-i", "color=c=0xb07a5c:s=64x96:r=25:d=1",
+                    "-filter_complex", "hstack", "-c:v", "libx264", "-crf", "10", "-pix_fmt", "yuv420p",
+                    str(src)], check=True)
+    wav = tmp_path / "a.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-t", "1",
+                    str(wav)], check=True)
+    frames = media.load_frames(src, "video", tmp_path, 750)
+    assert len(frames) == 25 and frames[0].shape == (96, 128, 3)
+    out = tmp_path / "out.mp4"
+    w = media.Mp4Writer(out, 128, 96, wav)
+    for f in frames:
+        w.write(f)
+    w.close()
+    back = media.load_frames(out, "video", tmp_path, 750)
+    assert len(back) == len(frames)
+    bias = (np.stack(back).astype(np.float32) - np.stack(frames).astype(np.float32)).mean(axis=(0, 1, 2))
+    assert np.all(np.abs(bias) < 0.25), bias  # was [-2, -1, -3] on the dark plate before the fix
+
+
 def test_crop_params_defaults_match_upstream():
     c = CropParams()
     assert (c.bbox_shift, c.extra_margin) == (0, 10)
