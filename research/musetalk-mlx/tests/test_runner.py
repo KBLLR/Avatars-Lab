@@ -151,3 +151,50 @@ def test_video_round_trip_adds_no_colour_bias(tmp_path: Path):
 def test_crop_params_defaults_match_upstream():
     c = CropParams()
     assert (c.bbox_shift, c.extra_margin) == (0, 10)
+
+
+def test_frames_needed_matches_ping_pong_reach():
+    for n_src in (1, 3, 140, 268):
+        for n_out in (1, 2, 134, 250, 600):
+            reached = {cli._ping_pong(s, n_src) for s in range(n_out)}
+            need = cli._frames_needed(n_src, n_out)
+            assert max(reached) < need <= n_src
+            # truncating the source to `need` frames gives the same visit order
+            assert [cli._ping_pong(s, need) for s in range(n_out)] == [cli._ping_pong(s, n_src) for s in range(n_out)]
+
+
+def _cache_inputs(tmp_path: Path):
+    lmk, vae = tmp_path / "face_landmarker.task", tmp_path / "vae.safetensors"
+    lmk.write_bytes(b"l")
+    vae.write_bytes(b"v")
+    return dict(source_sha256="a" * 64, kind="video", crop={"bbox_shift": 0, "extra_margin": 10},
+                landmarker=lmk, vae_weights=vae, backend="b")
+
+
+def test_cache_key_changes_with_every_input(tmp_path: Path):
+    from musetalk_runner import cache
+    base = _cache_inputs(tmp_path)
+    k = cache.cache_key(**base)
+    assert cache.cache_key(**base) == k
+    for change in ({"source_sha256": "b" * 64}, {"kind": "still"}, {"crop": {"bbox_shift": 2, "extra_margin": 10}},
+                   {"backend": "other"}):
+        assert cache.cache_key(**{**base, **change}) != k
+    base["vae_weights"].write_bytes(b"vv")  # different size -> different fingerprint
+    assert cache.cache_key(**base) != k
+
+
+def test_cache_round_trip_prefix_and_misses(tmp_path: Path):
+    from musetalk_runner import cache
+    rng = np.random.default_rng(0)
+    e = cache.Entry(rng.random((6, 478, 2), dtype=np.float32), np.array([0, 0, 1, 0, 0, 0], bool),
+                    rng.random((6, 8, 32, 32), dtype=np.float32))
+    d = tmp_path / "c"
+    cache.store(d, "k", e)
+    assert not list(d.glob(".*tmp*"))  # atomic write leaves no temp file
+    got = cache.load(d, "k", 4)
+    assert got is not None and got.frames == 4
+    assert np.array_equal(got.latents, e.latents[:4]) and np.array_equal(got.fallback, e.fallback[:4])
+    assert cache.load(d, "k", 7) is None  # entry too short
+    assert cache.load(d, "missing", 1) is None
+    (d / "bad.npz").write_bytes(b"not a zip")
+    assert cache.load(d, "bad", 1) is None  # corrupt entry is a miss, not a crash
