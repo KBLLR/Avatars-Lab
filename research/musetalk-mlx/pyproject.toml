@@ -1,0 +1,36 @@
+[project]
+name = "avatar-labs-musetalk-runner"
+version = "0.1.0"
+description = "Avatar Labs offline MuseTalk 1.5 (MLX) lip-sync runner — research case, not a service"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+dependencies = [
+    # Neural core: MLX port of MuseTalk 1.5. Pinned to an audited commit.
+    "musetalk-mlx",
+    "mlx>=0.31,<0.32",
+    "mediapipe==0.10.35",
+    "opencv-python>=4.10",
+    "numpy<2",
+    "librosa>=0.10",
+    "soundfile>=0.12",
+]
+
+[project.scripts]
+musetalk-runner = "musetalk_runner.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+# librosa -> numba; keep the resolver off numba releases without py3.12 wheels.
+constraint-dependencies = ["numba>=0.60"]
+
+[tool.uv.sources]
+musetalk-mlx = { git = "https://github.com/xocialize/musetalk-mlx.git", rev = "c6eb30ebd1ed4d043983209813370153de9346bf" }
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["musetalk_runner*"]
