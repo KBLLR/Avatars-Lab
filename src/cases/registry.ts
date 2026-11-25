@@ -91,6 +91,17 @@ export const AVATAR_LAB_CASES: AvatarLabCase[] = [
     services: ["gateway", "said", "mlx-services"],
   },
   {
+    id: "talking-portrait",
+    code: "TP",
+    title: "Talking Portrait",
+    description: "Compare kbllr’s B3 driving clip with the saved offline MuseTalk render.",
+    href: "/talking-portrait.html",
+    icon: "Film",
+    status: "experimental",
+    renderer: "dom",
+    services: [],
+  },
+  {
     id: "face-mirror",
     code: "FMR",
     title: "Face Mirror",

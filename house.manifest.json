@@ -134,6 +134,7 @@
       { "id": "corex-head", "label": "Core-X Head", "path": "/corex-head.html" },
       { "id": "said-face", "label": "SAiD Face", "path": "/said-face.html" },
       { "id": "audio2face", "label": "Audio2Face Lab", "path": "/audio2face.html" },
+      { "id": "talking-portrait", "label": "Talking Portrait", "path": "/talking-portrait.html" },
       { "id": "face-mirror", "label": "Face Mirror", "path": "/face-mirror.html" },
       { "id": "stage", "label": "Stage Director", "path": "/stage.html" },
       { "id": "dance-studio", "label": "Dance Studio", "path": "/dance-studio.html" },

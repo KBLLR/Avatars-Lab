@@ -142,7 +142,7 @@ const contentTypes = {
   ".webp": "image/webp",
 };
 
-const registerStaticRoot = (middlewares, route, staticRoot) => {
+const registerStaticRoot = (middlewares, route, staticRoot, selectPath = null) => {
   middlewares.use(route, (req, res, next) => {
     let urlPath;
     try {
@@ -152,6 +152,13 @@ const registerStaticRoot = (middlewares, route, staticRoot) => {
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.end(JSON.stringify({ error: "invalid_asset_path", route }));
       return;
+    }
+    if (selectPath) {
+      urlPath = selectPath(req, urlPath);
+      if (!urlPath) {
+        res.writeHead(404).end();
+        return;
+      }
     }
     const filePath = resolve(staticRoot, `.${urlPath}`);
     const relativePath = relative(staticRoot, filePath);
@@ -353,12 +360,29 @@ const registerHealthCheck = (middlewares) => {
   });
 };
 
+const registerB3Preview = (middlewares) => {
+  const researchRoot = process.env.AVATAR_LABS_B3_RESEARCH_ROOT;
+  if (!researchRoot) return;
+  const clips = new Map([
+    ["/driving.mp4", "/inputs/kbllr/b3-driving.mp4"],
+    ["/talking.mp4", "/runs/P-B3-hit1/output.mp4"],
+  ]);
+  registerStaticRoot(middlewares, "/b3-preview", resolve(researchRoot), (req, path) => {
+    if (req.socket.remoteAddress !== "127.0.0.1" ||
+        !/^127\.0\.0\.1(?::\d+)?$/.test(req.headers.host ?? "") ||
+        !["GET", "HEAD"].includes(req.method) ||
+        req.headers["sec-fetch-site"] === "cross-site") return null;
+    return clips.get(path);
+  });
+};
+
 // Large canonical binaries stay in their owning surfaces. Avatar Labs exposes
 // read-only local bridges in dev/preview rather than copying them into this repo.
 const ecosystemAssetsPlugin = () => ({
   name: "ecosystem-assets",
   configureServer(server) {
     registerHealthCheck(server.middlewares);
+    registerB3Preview(server.middlewares);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -375,6 +399,7 @@ const ecosystemAssetsPlugin = () => ({
   },
   configurePreviewServer(server) {
     registerHealthCheck(server.middlewares);
+    registerB3Preview(server.middlewares);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -453,6 +478,7 @@ export default defineConfig({
         "mocap-lab": resolve(root, "mocap-lab.html"),
         "said-face": resolve(root, "said-face.html"),
         audio2face: resolve(root, "audio2face.html"),
+        "talking-portrait": resolve(root, "talking-portrait.html"),
         "face-mirror": resolve(root, "face-mirror.html"),
         "dance-studio": resolve(root, "dance-studio.html"),
         info: resolve(root, "info.html"),
