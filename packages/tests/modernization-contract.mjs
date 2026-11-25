@@ -33,7 +33,7 @@ assert.equal(manifest.agents.orchestrator_id, "orchestrator:avatar-labs:avara");
 assert.equal(manifest.agents.persona_name, "AVARA");
 assert.equal(manifest.agents.default_agent, "avatar-labs:avatar-director");
 assert.equal(functionsManifest.items[0].id, manifest.agents.default_agent);
-assert.equal(manifest.surface.cases.length, 14); // launcher + 13 curated cases
+assert.equal(manifest.surface.cases.length, 13); // launcher + 12 curated cases
 
 for (const item of manifest.surface.cases) {
   if (item.path === "/") continue;

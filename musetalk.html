@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MuseTalk MLX / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
+    <style>
+      .portrait-review {
+        box-sizing: border-box;
+        max-width: 75rem;
+        margin: auto;
+        padding: clamp(1rem, 3vw, 2rem);
+        overflow-y: auto;
+      }
+      .portrait-clips { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1rem; }
+      .portrait-clips figure { margin: 0; }
+      .portrait-clips video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #111; }
+      .portrait-clips figcaption { margin-bottom: .5rem; }
+      .portrait-gallery { margin-bottom: 3rem; }
+      .portrait-gallery select { font: inherit; margin: .5rem 0; }
+      .portrait-gallery fieldset { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+      .portrait-gallery fieldset label { display: grid; }
+      .portrait-clips p:empty { display: none; }
+    </style>
+  </head>
+  <body>
+    <main class="portrait-review">
+      <h1>MuseTalk MLX</h1>
+      <h2>kbllr B3 reference</h2>
+      <p>B3 compares a mouth-closed 3D driving clip with a saved MuseTalk MLX FP16 render.</p>
+      <div class="portrait-clips">
+        <figure>
+          <figcaption>Driving clip</figcaption>
+          <video aria-label="kbllr B3 driving clip" controls playsinline preload="metadata" src="/b3-preview/driving.mp4"></video>
+          <p role="status"></p>
+        </figure>
+        <figure>
+          <figcaption>Talking render</figcaption>
+          <video aria-label="kbllr B3 talking render" controls playsinline preload="metadata" src="/b3-preview/talking.mp4"></video>
+          <p role="status"></p>
+        </figure>
+      </div>
+      <h2>Reviewed run</h2>
+      <dl>
+        <dt>Output</dt><dd>5.36 s · 800 × 450 · 25 fps</dd>
+        <dt>Render time</dt><dd>14.03 s with cached face preprocessing</dd>
+        <dt>Operator review</dt><dd>4/5 each for identity, lip sync, and visible flaws</dd>
+      </dl>
+    </main>
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
+    <script type="module" src="/src/talking-portrait.ts"></script>
+  </body>
+</html>

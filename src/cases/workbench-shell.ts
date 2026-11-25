@@ -1,4 +1,4 @@
-import { ChevronDown, Grid3X3, Users, X, createElement } from "lucide";
+import { ChevronDown, Grid3X3, Images, Users, X, createElement } from "lucide";
 import { AVATAR_LAB_CASES } from "./registry";
 import {
   fetchRiggingPortalCharacters,
@@ -8,6 +8,13 @@ import {
 
 const currentPath = window.location.pathname.replace(/\/$/, "") || "/";
 const currentCase = AVATAR_LAB_CASES.find((item) => item.href === currentPath);
+const galleries = [
+  { caseId: "musetalk", href: "/talking-portrait.html", title: "Talking Portrait Gallery" },
+  { caseId: "mocap-lab", href: "/gallery.html", title: "Rigged Character Gallery" },
+];
+const currentGallery = galleries.find((item) => item.href === currentPath);
+const gallery = galleries.find((item) => item.caseId === currentCase?.id);
+const parentCase = AVATAR_LAB_CASES.find((item) => item.id === currentGallery?.caseId);
 
 document.body.dataset.avatarLabsWorkbench = "true";
 if (currentCase) document.body.dataset.avatarLabsCase = currentCase.id;
@@ -27,8 +34,18 @@ const identity = document.createElement("div");
 identity.className = "case-workbench-bar__identity";
 identity.innerHTML = `
   <span>Core-X / Avatar Labs</span>
-  <strong>${currentCase?.title || document.title}</strong>
+  <strong>${currentCase?.title || currentGallery?.title || document.title}</strong>
 `;
+
+if (gallery || parentCase) {
+  const link = document.createElement("a");
+  link.className = "case-workbench-bar__gallery-link";
+  link.href = gallery?.href ?? parentCase!.href;
+  link.title = gallery ? `Open ${gallery.title}` : `Back to ${parentCase!.title}`;
+  link.setAttribute("aria-label", link.title);
+  link.appendChild(createElement(gallery ? Images : Grid3X3, { width: 16, height: 16 }));
+  identity.appendChild(link);
+}
 
 const routePicker = document.createElement("label");
 routePicker.className = "case-workbench-bar__picker";
@@ -39,10 +56,10 @@ for (const item of AVATAR_LAB_CASES) {
   const option = document.createElement("option");
   option.value = item.href;
   option.textContent = `${item.code} / ${item.title}`;
-  option.selected = item.href === currentPath;
+  option.selected = item.href === currentPath || item.id === parentCase?.id;
   routeSelect.appendChild(option);
 }
-if (!currentCase && currentPath !== "/") {
+if (!currentCase && !currentGallery && currentPath !== "/") {
   const fallbackOption = document.createElement("option");
   fallbackOption.value = currentPath;
   fallbackOption.textContent = document.title || currentPath;
@@ -170,7 +187,7 @@ document.getElementById("caseVaultList")?.addEventListener("click", (event) => {
   saveSelectedRiggingCharacter(char);
   vaultDrawer.hidden = true;
   vaultBtn.classList.remove("is-active");
-  if (!["mocap-lab", "character-gallery"].includes(currentCase?.id || "")) {
+  if (currentCase?.id !== "mocap-lab" && currentGallery?.href !== "/gallery.html") {
     window.location.assign(`/mocap-lab.html?avatar=${encodeURIComponent(char.id)}`);
   }
 });

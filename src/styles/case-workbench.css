@@ -123,6 +123,20 @@ body[data-avatar-labs-workbench="true"] > main {
   white-space: nowrap;
 }
 
+.case-workbench-bar__gallery-link {
+  display: inline-grid;
+  flex: 0 0 32px;
+  place-items: center;
+  height: 32px;
+  color: var(--workbench-ink);
+}
+
+.case-workbench-bar__gallery-link:hover,
+.case-workbench-bar__gallery-link:focus-visible {
+  color: var(--workbench-blue);
+  outline: 1px solid currentColor;
+}
+
 .case-workbench-bar__picker {
   position: relative;
   display: grid;

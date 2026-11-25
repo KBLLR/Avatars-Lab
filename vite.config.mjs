@@ -360,6 +360,35 @@ const registerHealthCheck = (middlewares) => {
   });
 };
 
+const isLocalReviewRequest = (req) =>
+  req.socket.remoteAddress === "127.0.0.1" &&
+  /^127\.0\.0\.1(?::\d+)?$/.test(req.headers.host ?? "") &&
+  ["GET", "HEAD"].includes(req.method) &&
+  req.headers["sec-fetch-site"] !== "cross-site";
+
+const registerPortraitReview = (middlewares, mode) => {
+  const key = "AVATAR_LABS_PORTRAIT_REVIEW_ROOT";
+  const configured = process.env[key] ?? loadEnv(mode, root, key)[key];
+  if (!configured) return;
+  const reviewRoot = resolve(configured);
+  const catalogPath = "/review.json";
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(resolve(reviewRoot, "review.json"), "utf8"));
+  } catch {
+    return;
+  }
+  if (!Array.isArray(entries)) return;
+  const paths = new Set([catalogPath]);
+  for (const entry of entries) {
+    if (typeof entry?.id !== "string" || !/^[a-z][a-z0-9-]*$/.test(entry.id)) continue;
+    paths.add(`/${entry.id}-driver.mp4`);
+    paths.add(`/${entry.id}-render.mp4`);
+  }
+  registerStaticRoot(middlewares, "/portrait-review", reviewRoot, (req, path) =>
+    isLocalReviewRequest(req) && paths.has(path) ? path : null);
+};
+
 const registerB3Preview = (middlewares, mode) => {
   const key = "AVATAR_LABS_B3_RESEARCH_ROOT";
   const researchRoot = process.env[key] ?? loadEnv(mode, root, key)[key];
@@ -369,10 +398,7 @@ const registerB3Preview = (middlewares, mode) => {
     ["/talking.mp4", "/runs/P-B3-hit1/output.mp4"],
   ]);
   registerStaticRoot(middlewares, "/b3-preview", resolve(researchRoot), (req, path) => {
-    if (req.socket.remoteAddress !== "127.0.0.1" ||
-        !/^127\.0\.0\.1(?::\d+)?$/.test(req.headers.host ?? "") ||
-        !["GET", "HEAD"].includes(req.method) ||
-        req.headers["sec-fetch-site"] === "cross-site") return null;
+    if (!isLocalReviewRequest(req)) return null;
     return clips.get(path);
   });
 };
@@ -384,6 +410,7 @@ const ecosystemAssetsPlugin = () => ({
   configureServer(server) {
     registerHealthCheck(server.middlewares);
     registerB3Preview(server.middlewares, server.config.mode);
+    registerPortraitReview(server.middlewares, server.config.mode);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -401,6 +428,7 @@ const ecosystemAssetsPlugin = () => ({
   configurePreviewServer(server) {
     registerHealthCheck(server.middlewares);
     registerB3Preview(server.middlewares, server.config.mode);
+    registerPortraitReview(server.middlewares, server.config.mode);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -479,6 +507,7 @@ export default defineConfig({
         "mocap-lab": resolve(root, "mocap-lab.html"),
         "said-face": resolve(root, "said-face.html"),
         audio2face: resolve(root, "audio2face.html"),
+        musetalk: resolve(root, "musetalk.html"),
         "talking-portrait": resolve(root, "talking-portrait.html"),
         "face-mirror": resolve(root, "face-mirror.html"),
         "dance-studio": resolve(root, "dance-studio.html"),
