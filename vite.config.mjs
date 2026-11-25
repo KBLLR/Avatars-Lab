@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { createReadStream, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
@@ -360,8 +360,9 @@ const registerHealthCheck = (middlewares) => {
   });
 };
 
-const registerB3Preview = (middlewares) => {
-  const researchRoot = process.env.AVATAR_LABS_B3_RESEARCH_ROOT;
+const registerB3Preview = (middlewares, mode) => {
+  const key = "AVATAR_LABS_B3_RESEARCH_ROOT";
+  const researchRoot = process.env[key] ?? loadEnv(mode, root, key)[key];
   if (!researchRoot) return;
   const clips = new Map([
     ["/driving.mp4", "/inputs/kbllr/b3-driving.mp4"],
@@ -382,7 +383,7 @@ const ecosystemAssetsPlugin = () => ({
   name: "ecosystem-assets",
   configureServer(server) {
     registerHealthCheck(server.middlewares);
-    registerB3Preview(server.middlewares);
+    registerB3Preview(server.middlewares, server.config.mode);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
@@ -399,7 +400,7 @@ const ecosystemAssetsPlugin = () => ({
   },
   configurePreviewServer(server) {
     registerHealthCheck(server.middlewares);
-    registerB3Preview(server.middlewares);
+    registerB3Preview(server.middlewares, server.config.mode);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
     registerStaticRoot(
