@@ -47,6 +47,12 @@ export const HEAD_ROSTER: Record<string, HeadDefinition> = {
     hairUrl: "/corex-assets/avatars/heads/sofia/sofia-hair.glb",
     voice: "sofi_v",
   },
+  rosalia: {
+    id: "rosalia",
+    label: "Rosalia",
+    url: "/corex-assets/avatars/heads/rosalia/rosalia.glb",
+    voice: "lullabot",
+  },
   nyx: {
     id: "nyx",
     label: "Nyx",
