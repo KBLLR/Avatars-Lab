@@ -40,11 +40,12 @@ if (caseGrid) {
       </span>
       <span class="case-tile__identity">
         <strong>${item.title}</strong>
-        <span>${item.code}</span>
       </span>
       <span class="case-tile__description">${item.description}</span>
-      <span class="case-tile__runtime">${item.renderer} &middot; ${item.services.join(" + ") || "browser"}</span>
-      <i class="case-tile__open" data-lucide="ArrowUpRight" aria-hidden="true"></i>
+      <span class="case-tile__footer">
+        <span class="case-tile__runtime">${item.renderer} &middot; ${item.services.join(" + ") || "browser"}</span>
+        <i class="case-tile__open" data-lucide="ArrowUpRight" aria-hidden="true"></i>
+      </span>
     </a>
   `).join("");
 }

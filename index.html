@@ -3,37 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#d1d1d0" />
+    <meta name="theme-color" content="#121315" />
     <title>Avatar Labs / Core-X</title>
   </head>
   <body>
     <main class="launcher-shell">
       <header class="launcher-header">
-        <div class="wordmark">Avatar Labs <span>/ harnesses</span></div>
+        <div class="wordmark"><span>Core-X</span> Avatar Labs</div>
         <div class="telemetry-cluster">
           <span id="renderer-state" class="telemetry">renderer: detecting</span>
           <span id="gateway-state" class="telemetry service-state" data-state="checking">gateway: checking</span>
         </div>
       </header>
 
-      <div class="launcher-subheader">
-        <span class="section-label">Modules</span>
-        <span id="case-count" class="telemetry">loading harnesses</span>
-      </div>
-
-      <section class="launcher-content" aria-label="Avatar Labs harnesses">
-        <div class="launcher-intro">
-          <h1>Make characters move, speak, and perform.</h1>
-          <p>Choose a workspace for performance, motion capture, speech, or character control.</p>
+      <section class="launcher-content" aria-labelledby="harness-heading">
+        <div class="launcher-subheader">
+          <h1 id="harness-heading">Harnesses</h1>
+          <span id="case-count" class="telemetry"></span>
         </div>
         <div id="case-grid" class="case-grid"></div>
       </section>
 
       <footer class="launcher-footer">
-        <span>AVARA &middot; houses/avatar-labs &middot; 127.0.0.1:5185</span>
-        <nav class="footer-links" aria-label="Documentation">
-          <a href="/info.html">info</a>
-          <a href="/settings.html">settings</a>
+        <span>Orchestrator · AVARA</span>
+        <nav class="footer-links" aria-label="Avatar Labs links">
+          <a href="/info.html">Info</a>
+          <a href="/settings.html">Settings</a>
         </nav>
       </footer>
     </main>
