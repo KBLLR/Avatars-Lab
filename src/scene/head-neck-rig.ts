@@ -3,17 +3,20 @@ import {
   SkinnedMesh, Uint16BufferAttribute, Vector3,
 } from "three";
 
-export type NeckMotion = "turn" | "yes" | "no";
-export const NECK_MOTION_MS = 2400;
+import type { HeadPose } from "./head-expression-motion";
+
+export const HEAD_MOTION_LIMITS = { pitch: 0.22, yaw: 0.46, roll: 0.14 };
+export const EYE_GAZE_LIMITS = { pitch: 0.11, yaw: 0.16 };
 
 export function createHeadNeckRig(root: Object3D) {
   root.updateWorldMatrix(true, true);
   const worldToRoot = root.matrixWorld.clone().invert();
   const bounds = new Box3();
-  const parts: { mesh: Mesh; toRoot: Matrix4; followsHead: boolean }[] = [];
+  const parts: { mesh: Mesh; toRoot: Matrix4; followsHead: boolean; isEye: boolean }[] = [];
   root.traverse((node) => {
     if (!(node instanceof Mesh) || !node.geometry.attributes.position || !node.parent) return;
     const materials = Array.isArray(node.material) ? node.material : [node.material];
+    const isEye = materials.every((mat) => /^eyes?(?:[.:]|$)/i.test(mat.name));
     let followsHead = materials.every((mat) => /eye|lash|teeth|mouth_interior|fluid/i.test(mat.name));
     for (let parent: Object3D | null = node; parent && parent !== root; parent = parent.parent) {
       followsHead ||= Boolean(parent.userData.corexHairFor || /eyeball/i.test(parent.name));
@@ -25,7 +28,7 @@ export function createHeadNeckRig(root: Object3D) {
         bounds.expandByPoint(point.fromBufferAttribute(position, i).applyMatrix4(toRoot));
       }
     }
-    parts.push({ mesh: node, toRoot, followsHead });
+    parts.push({ mesh: node, toRoot, followsHead, isEye });
   });
   const size = bounds.getSize(new Vector3());
   if (!Number.isFinite(size.y) || size.y <= 0) throw new Error("Head has no usable neck bounds");
@@ -43,16 +46,44 @@ export function createHeadNeckRig(root: Object3D) {
   root.add(chest);
   chest.add(neck);
   neck.add(head);
+  // A single eye primitive may contain two globes. Split spatially and fit
+  // each pivot to its own vertices so gaze also works on those exports.
+  const eyeBounds = [new Box3(), new Box3()];
+  const eyeIndex = (x: number) => x < center.x ? 0 : 1;
+  for (const { mesh, toRoot, isEye } of parts) {
+    if (!isEye) continue;
+    const position = mesh.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      point.fromBufferAttribute(position, i).applyMatrix4(toRoot);
+      eyeBounds[eyeIndex(point.x)].expandByPoint(point);
+    }
+  }
+  const headPivot = chest.position.clone().add(neck.position).add(head.position);
+  const eyes = eyeBounds.map((box, index) => {
+    const eye = new Bone();
+    eye.name = index === 0 ? "EyeNegativeX" : "EyePositiveX";
+    eye.position.copy(box.isEmpty() ? headPivot : box.getCenter(new Vector3())).sub(headPivot);
+    head.add(eye);
+    return eye;
+  });
   root.updateWorldMatrix(true, true);
-  const skeleton = new Skeleton([chest, neck, head]);
+  const skeleton = new Skeleton([chest, neck, head, ...eyes]);
 
-  for (const { mesh, toRoot, followsHead } of parts) {
+  const geometries: Mesh["geometry"][] = [];
+  for (const { mesh, toRoot, followsHead, isEye } of parts) {
     const geometry = mesh.geometry.clone();
+    geometries.push(geometry);
     const position = geometry.attributes.position;
     const indices = new Uint16Array(position.count * 4);
     const weights = new Float32Array(position.count * 4);
     for (let i = 0; i < position.count; i++) {
-      const y = (point.fromBufferAttribute(position, i).applyMatrix4(toRoot).y - bounds.min.y) / size.y;
+      point.fromBufferAttribute(position, i).applyMatrix4(toRoot);
+      if (isEye) {
+        indices[i * 4] = 3 + eyeIndex(point.x);
+        weights[i * 4] = 1;
+        continue;
+      }
+      const y = (point.y - bounds.min.y) / size.y;
       const neckWeight = followsHead ? 1 : smoothstep(y, 0.08, 0.28);
       const headWeight = followsHead ? 1 : smoothstep(y, 0.25, 0.47);
       indices.set([0, 1, 2, 0], i * 4);
@@ -73,14 +104,20 @@ export function createHeadNeckRig(root: Object3D) {
   }
 
   return {
-    pose(motion: NeckMotion, progress: number) {
-      const phase = Math.max(0, Math.min(1, progress));
-      const envelope = Math.sin(Math.PI * phase) ** 2;
-      const yaw = motion === "turn" ? envelope * 0.45
-        : motion === "no" ? envelope * Math.sin(4 * Math.PI * phase) * 0.38 : 0;
-      const pitch = motion === "yes" ? envelope * Math.sin(4 * Math.PI * phase) * 0.32 : 0;
-      neck.rotation.set(pitch * 0.35, yaw * 0.35, 0);
-      head.rotation.set(pitch * 0.65, yaw * 0.65, 0);
+    pose(pose: HeadPose, gaze: Pick<HeadPose, "pitch" | "yaw">) {
+      const pitch = bounded(pose.pitch, HEAD_MOTION_LIMITS.pitch);
+      const yaw = bounded(pose.yaw, HEAD_MOTION_LIMITS.yaw);
+      const roll = bounded(pose.roll, HEAD_MOTION_LIMITS.roll);
+      neck.rotation.set(pitch * 0.35, yaw * 0.35, roll * 0.35, "YXZ");
+      head.rotation.set(pitch * 0.65, yaw * 0.65, roll * 0.65, "YXZ");
+      for (const eye of eyes) {
+        eye.rotation.set(bounded(gaze.pitch, EYE_GAZE_LIMITS.pitch),
+          bounded(gaze.yaw, EYE_GAZE_LIMITS.yaw), 0, "YXZ");
+      }
+    },
+    dispose() {
+      skeleton.dispose();
+      for (const geometry of geometries) geometry.dispose();
     },
   };
 }
@@ -89,4 +126,8 @@ const point = new Vector3();
 function smoothstep(value: number, low: number, high: number): number {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
   return t * t * (3 - 2 * t);
+}
+
+function bounded(value: number, limit: number): number {
+  return Math.max(-limit, Math.min(limit, value));
 }

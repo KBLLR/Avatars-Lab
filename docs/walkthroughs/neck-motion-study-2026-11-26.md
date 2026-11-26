@@ -6,3 +6,7 @@
 4. Switch back to a different head and confirm the study controls disable.
 
 The browser check inspects the generated skeleton, verifies that per-vertex weights sum to one, and checks that each motion reaches a non-neutral pose and returns to rest. The static captures are pose evidence. They do not establish quality at wider angles or validate a portable Blender rig.
+
+## Full-roster follow-up
+
+Repeat the rig check for each head in the picker. Turn should leave the bust base anchored. Enable Follow pointer and move toward opposite corners of the stage. Look for eyes leading the turn, a bounded neck angle, and a smooth return after leaving the stage. Toggle Expressive speech gestures and try a text prompt starting with “Yes” or tagged “[Thinking]”. The local pre-analysis can select a nod or a thinking tilt. Pick an alternate Gateway voice, switch heads, then switch back to check session recall. Microphone and chat are outside this check.

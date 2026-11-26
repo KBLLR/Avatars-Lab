@@ -49,11 +49,15 @@ import {
   resolveHeadDefinition,
   type HeadDefinition,
 } from "./scene/chat-avatar-head";
-import { createHeadNeckRig, NECK_MOTION_MS, type NeckMotion } from "./scene/head-neck-rig";
+import { createHeadNeckRig } from "./scene/head-neck-rig";
+import {
+  NECK_MOTIONS, motionForEmotion, planSpeechMotions, sampleNeckMotion, type NeckMotion, type SpeechMotionCue,
+} from "./scene/head-expression-motion";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import headWorkletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
 import { streamSpeech } from "./runtime/audio-stream";
+import { corexClient } from "./runtime/corex-client";
 import { SpeechArticulationEngine } from "./facial/phoneme-articulation";
 import {
   DynamicEmotionEngine,
@@ -66,7 +70,8 @@ const els = {
   status: document.getElementById("status") as HTMLElement,
   log: document.getElementById("log") as HTMLElement,
   text: document.getElementById("text") as HTMLTextAreaElement,
-  voice: document.getElementById("voice") as HTMLInputElement,
+  voice: document.getElementById("voice") as HTMLSelectElement,
+  voiceStatus: document.getElementById("voice-status") as HTMLParagraphElement,
   headSelect: document.getElementById("head-select") as HTMLSelectElement,
   headUrl: document.getElementById("head-url") as HTMLInputElement,
   service: document.getElementById("service") as HTMLInputElement,
@@ -125,19 +130,63 @@ let micSourceNode: MediaStreamAudioSourceNode | null = null;
 let micAnalyser: AnalyserNode | null = null;
 let micVuAnimId: number | null = null;
 
+const voiceOverrides = new Map<string, string>();
+let activeVoiceHead = resolveHeadDefinition(els.headSelect.value);
+let availableVoices: string[] = [];
+let voiceCatalogRequest: AbortController | undefined;
+
+function updateVoiceOptions(): void {
+  const defaultVoice = activeVoiceHead.voice;
+  const choices = availableVoices.filter((voice) => voice !== defaultVoice);
+  els.voice.replaceChildren(new Option(`${defaultVoice} (head default)`, defaultVoice),
+    ...choices.map((voice) => new Option(voice, voice)));
+  const override = voiceOverrides.get(activeVoiceHead.id);
+  els.voice.value = override && choices.includes(override) ? override : defaultVoice;
+}
+
+async function refreshVoiceCatalog(): Promise<void> {
+  voiceCatalogRequest?.abort();
+  const request = new AbortController();
+  voiceCatalogRequest = request;
+  availableVoices = [];
+  updateVoiceOptions();
+  els.voiceStatus.textContent = "Loading Gateway voices.";
+  const timeout = window.setTimeout(() => request.abort(), 4000);
+  try {
+    const voices = await corexClient.voices(request.signal, els.service.value.trim() || corexClient.gatewayUrl);
+    if (request !== voiceCatalogRequest) return;
+    availableVoices = [...new Set(voices.map((voice) => voice.name).filter(Boolean))].sort();
+    updateVoiceOptions();
+    els.voiceStatus.textContent = availableVoices.length ? "" : "No Gateway voices listed. The head default is available to select.";
+  } catch {
+    if (request === voiceCatalogRequest) {
+      els.voiceStatus.textContent = "Gateway voice list unavailable. Showing the head default.";
+    }
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 const neckControls = document.querySelector<HTMLFieldSetElement>("#neck-motion")!;
 const neckStudyStatus = document.querySelector<HTMLParagraphElement>("#neck-study-status")!;
+const pointerGaze = document.querySelector<HTMLInputElement>("#pointer-gaze")!;
+const speechGestures = document.querySelector<HTMLInputElement>("#speech-gestures")!;
+const pointerTarget = new Vector3();
+const eyeAim = new Vector3();
+const headAim = new Vector3();
+let speechMotionCues: SpeechMotionCue[] = [];
+let nextSpeechCue = 0;
 
 function setNeckStudyAvailable(available: boolean): void {
   neckControls.disabled = !available;
   neckStudyStatus.textContent = available
     ? "Choose a motion. The head returns to neutral."
-    : "Select Rosalia or Nyx to preview the neck rig.";
+    : "Loading neck rig.";
 }
 let neckMotion: { kind: NeckMotion; start: number } | undefined;
 
 interface LoadedHead {
-  neckRig?: ReturnType<typeof createHeadNeckRig>;
+  neckRig: ReturnType<typeof createHeadNeckRig>;
   morphMeshes: Mesh[];
   applyBlinkClearance?: (blink: number) => void;
 }
@@ -162,6 +211,8 @@ let abort: AbortController | null = null;
 let blobSource: AudioBufferSourceNode | null = null;
 let playbackStartTime = 0;
 let playbackDurationSec = 0;
+let estimatedSpeechDurationSec = 0;
+let speechProgress = 0;
 let isAudioPlaying = false;
 
 const visemeState: Record<string, number> = {};
@@ -187,7 +238,7 @@ function blinkLevel(): number {
  *  2. Speech lip & jaw articulation (SpeechArticulationEngine)
  *  3. Natural blink cycle
  */
-function applyFaceKinematics(head: LoadedHead, dtMs: number) {
+function applyFaceKinematics(head: LoadedHead, dtMs: number, blink: number) {
   // 1. Advance speech articulation
   articulationEngine.updateTargets(visemeState);
   const speechMorphs = articulationEngine.step(dtMs);
@@ -201,8 +252,6 @@ function applyFaceKinematics(head: LoadedHead, dtMs: number) {
   }
 
   // 3. Composite into ARKit dictionary
-  const blink = blinkLevel();
-
   head.applyBlinkClearance?.(blink);
 
   for (const mesh of head.morphMeshes) {
@@ -340,7 +389,8 @@ async function initStage(): Promise<Stage> {
   // Load initial GLTF head
   const initialHeadKey = els.headSelect.value || "kbllr";
   const initialHeadDef = resolveHeadDefinition(initialHeadKey);
-  els.voice.value = initialHeadDef.voice;
+  activeVoiceHead = initialHeadDef;
+  updateVoiceOptions();
   els.headUrl.value = initialHeadDef.url;
   setStatus(`Loading head GLB… (${initialHeadDef.label})`);
   setHeadLighting(initialHeadDef.id);
@@ -390,26 +440,44 @@ async function initStage(): Promise<Stage> {
     headaudio.update(now - lastPumpAt);
     lastPumpAt = now;
 
-    // Advance emotion progress if speech is playing
-    if (isAudioPlaying && playbackDurationSec > 0) {
-      const elapsed = (performance.now() - playbackStartTime) / 1000;
-      const progress = Math.min(1.0, elapsed / playbackDurationSec);
-      emotionEngine.updateProgress(progress);
-    }
-
     const currentHead = stage?.head ?? head;
-    if (currentHead.neckRig) {
-      if (neckMotion) {
-        const progress = (now - neckMotion.start) / NECK_MOTION_MS;
-        currentHead.neckRig.pose(neckMotion.kind, progress);
-        if (progress >= 1) neckMotion = undefined;
+    if (isAudioPlaying) {
+      const elapsedSec = (now - playbackStartTime) / 1000;
+      const duration = playbackDurationSec || estimatedSpeechDurationSec;
+      const progress = Math.max(speechProgress, Math.min(1, duration > 0 ? elapsedSec / duration : 0));
+      speechProgress = progress;
+      emotionEngine.updateProgress(progress);
+      while (nextSpeechCue < speechMotionCues.length && speechMotionCues[nextSpeechCue].ratio <= progress) {
+        const cue = speechMotionCues[nextSpeechCue++];
+        if (speechGestures.checked && !neckMotion && progress - cue.ratio <= 0.16) {
+          neckMotion = { kind: cue.motion, start: now };
+        }
       }
-    } else {
-      headGroup.rotation.y = Math.sin(now / 4200) * 0.025;
-      headGroup.rotation.x = Math.sin(now / 5600) * 0.012;
+      if (playbackDurationSec > 0 && elapsedSec >= playbackDurationSec) isAudioPlaying = false;
     }
 
-    applyFaceKinematics(currentHead, dt);
+    const motionProgress = neckMotion ? (now - neckMotion.start) / NECK_MOTIONS[neckMotion.kind].durationMs : 0;
+    const pose = neckMotion ? sampleNeckMotion(neckMotion.kind, motionProgress) : { pitch: 0, yaw: 0, roll: 0 };
+    const anticipatoryPose = neckMotion ? sampleNeckMotion(neckMotion.kind, motionProgress + 0.06) : pose;
+    if (motionProgress >= 1) neckMotion = undefined;
+    const targetX = pointerGaze.checked ? pointerTarget.x : 0;
+    const targetY = pointerGaze.checked ? pointerTarget.y : 0;
+    const eyeBlend = 1 - Math.exp(-Math.max(0, dt) / 72);
+    const headBlend = 1 - Math.exp(-Math.max(0, dt) / 225);
+    eyeAim.x += (targetX - eyeAim.x) * eyeBlend;
+    eyeAim.y += (targetY - eyeAim.y) * eyeBlend;
+    headAim.x += (targetX - headAim.x) * headBlend;
+    headAim.y += (targetY - headAim.y) * headBlend;
+    const blink = blinkLevel();
+    const gazeVisibility = 1 - blink;
+    currentHead.neckRig.pose(
+      { pitch: pose.pitch + headAim.y * 0.14, yaw: pose.yaw + headAim.x * 0.26, roll: pose.roll },
+      {
+        pitch: (eyeAim.y * 0.12 - headAim.y * 0.05 + anticipatoryPose.pitch * 0.28) * gazeVisibility,
+        yaw: (eyeAim.x * 0.20 - headAim.x * 0.065 + anticipatoryPose.yaw * 0.28) * gazeVisibility,
+      },
+    );
+    applyFaceKinematics(currentHead, dt, blink);
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
@@ -456,20 +524,14 @@ async function loadHeadModel(
   controls: OrbitControls
 ): Promise<LoadedHead> {
   const headDef = typeof headDefOrUrl === "string" ? resolveHeadDefinition(headDefOrUrl) : headDefOrUrl;
-  headGroup.clear();
-  headGroup.position.set(0, 0, 0);
-  headGroup.rotation.set(0, 0, 0);
-  headGroup.scale.setScalar(1);
 
   const loader = new GLTFLoader();
   const gltf = await loader.loadAsync(headDef.url);
-  (window as any).__headScene = gltf.scene;
 
   normalizeChatAvatarHead(gltf.scene, headDef.id);
   applyStudioMaterialRealism(gltf.scene, isWebGpu);
   applyCoreXHeadFinish(gltf.scene, headDef.id);
 
-  headGroup.add(gltf.scene);
 
   // Load companion hair if available
   if (headDef.hairUrl) {
@@ -484,12 +546,18 @@ async function loadHeadModel(
     }
   }
 
-  const neckRig = ["rosalia", "nyx"].includes(headDef.id) ? createHeadNeckRig(gltf.scene) : undefined;
+  const neckRig = createHeadNeckRig(gltf.scene);
+  stage?.head.neckRig.dispose();
+  headGroup.clear();
+  headGroup.position.set(0, 0, 0);
+  headGroup.scale.setScalar(1);
+  headGroup.add(gltf.scene);
+  (window as any).__headScene = gltf.scene;
 
   // Clear any idle rotation accumulated while the assets were loading.
   headGroup.rotation.set(0, 0, 0);
   // Canonical VoiceScene centering
-  centerAndFrameCoreXHead(headGroup, camera, controls, usesCoreXHeadFinish(headDef.id));
+  centerAndFrameCoreXHead(headGroup, camera, controls, true);
 
   const morphMeshes: Mesh[] = [];
   headGroup.traverse((obj) => {
@@ -514,6 +582,7 @@ async function loadHeadModel(
   });
   return {
     morphMeshes,
+    neckRig,
     applyBlinkClearance(blink) {
       // Preserve Core-X's open-eye calibration. As the lids close, ease the
       // globes back so the authored blink shapes cover the iris surfaces.
@@ -630,6 +699,12 @@ const stopPlayback = () => {
   abort?.abort();
   abort = null;
   isAudioPlaying = false;
+  playbackDurationSec = 0;
+  estimatedSpeechDurationSec = 0;
+  speechProgress = 0;
+  neckMotion = undefined;
+  speechMotionCues = [];
+  nextSpeechCue = 0;
   if (stage) stage.player.port.postMessage({ type: "clear" });
   if (blobSource) {
     try {
@@ -668,6 +743,10 @@ async function speakStreaming() {
   log(`Pre-speech emotion analysis: dominant=[${promptAnalysis.dominantEmotion}], keyframes=${promptAnalysis.timeline.length}`);
   renderEmotionTimeline(promptAnalysis);
   emotionEngine.loadTimeline(promptAnalysis.timeline);
+  speechMotionCues = planSpeechMotions(promptAnalysis);
+  // Total PCM length is known only when the stream ends. Use a coarse
+  // speech-rate estimate while receiving audio so later cues can still fire.
+  estimatedSpeechDurationSec = Math.max(1.2, promptAnalysis.cleanText.split(/\s+/).length / 2.5);
 
   try {
     await stage.audioCtx.resume();
@@ -718,6 +797,7 @@ async function speakBlob() {
   log(`Pre-speech emotion analysis: dominant=[${promptAnalysis.dominantEmotion}], keyframes=${promptAnalysis.timeline.length}`);
   renderEmotionTimeline(promptAnalysis);
   emotionEngine.loadTimeline(promptAnalysis.timeline);
+  speechMotionCues = planSpeechMotions(promptAnalysis);
 
   try {
     await stage.audioCtx.resume();
@@ -770,6 +850,10 @@ async function speakBlob() {
 
 // ── Main UI Event Listeners ────────────────────────────────────────────────
 async function run() {
+  els.service.value = corexClient.gatewayUrl;
+  void refreshVoiceCatalog();
+  els.service.addEventListener("change", () => void refreshVoiceCatalog());
+  els.voice.addEventListener("change", () => voiceOverrides.set(activeVoiceHead.id, els.voice.value));
   try {
     stage = await initStage();
   } catch (error) {
@@ -806,9 +890,25 @@ async function run() {
     els.mArticulation.textContent = `${gain.toFixed(2)}x (Active)`;
   });
 
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) speechGestures.checked = false;
+  const resetPointer = () => pointerTarget.set(0, 0, 0);
+  els.stage.addEventListener("pointermove", (event) => {
+    if (!pointerGaze.checked || event.pointerType !== "mouse" || event.buttons !== 0) return;
+    const rect = els.stage.getBoundingClientRect();
+    pointerTarget.set(
+      Math.max(-1, Math.min(1, 2 * (event.clientX - rect.left) / rect.width - 1)),
+      Math.max(-1, Math.min(1, 2 * (event.clientY - rect.top) / rect.height - 1)), 0,
+    );
+  });
+  for (const event of ["pointerleave", "pointerdown", "pointercancel"]) {
+    els.stage.addEventListener(event, resetPointer);
+  }
+  window.addEventListener("blur", resetPointer);
+  pointerGaze.addEventListener("change", resetPointer);
+
   neckControls.querySelectorAll<HTMLButtonElement>("[data-neck-motion]").forEach((button) => {
     button.addEventListener("click", () => {
-      if (stage?.head.neckRig) {
+      if (stage) {
         neckMotion = { kind: button.dataset.neckMotion as NeckMotion, start: performance.now() };
       }
     });
@@ -820,25 +920,29 @@ async function run() {
     const headKey = els.headSelect.value;
     const headDef = resolveHeadDefinition(headKey);
 
-    // 1. Update canonical voice for this character
-    els.voice.value = headDef.voice;
-    els.headUrl.value = headDef.url;
-
-    neckMotion = undefined;
+    stopPlayback();
+    els.headSelect.disabled = true;
     setNeckStudyAvailable(false);
     setStatus(`Switching performer head: ${headDef.label} (voice: ${headDef.voice})…`);
-    log(`Performer switched to ${headDef.label} — voice assigned to "${headDef.voice}"`);
+    log(`Loading performer ${headDef.label}`);
 
     try {
       const isWebGpu = result.renderer === "webgpu";
       stage.head = await loadHeadModel(headDef, stage.headGroup, isWebGpu, stage.camera, stage.controls);
+      activeVoiceHead = headDef;
+      updateVoiceOptions();
+      els.headUrl.value = headDef.url;
       setNeckStudyAvailable(Boolean(stage.head.neckRig));
       stage.setHeadLighting(headDef.id);
       setStatus(`Performer ${headDef.label} ready.`);
-      log(`Performer ${headDef.label} active (${stage.head.morphMeshes.length} morph mesh, voice: "${headDef.voice}")`);
+      log(`Performer ${headDef.label} active (${stage.head.morphMeshes.length} morph mesh, voice: "${els.voice.value}")`);
     } catch (err) {
       log(`ERROR loading head ${headDef.label}: ${String(err)}`);
+      els.headSelect.value = activeVoiceHead.id;
       setStatus(`Head load failed: ${String(err)}`);
+      setNeckStudyAvailable(true);
+    } finally {
+      els.headSelect.disabled = false;
     }
   });
 
@@ -861,6 +965,10 @@ async function run() {
       els.liveEmotionPills.querySelectorAll("button").forEach((b) => b.classList.remove("is-active"));
       btn.classList.add("is-active");
       emotionEngine.setEmotion(em, 0.85);
+      const gesture = motionForEmotion(em);
+      if (speechGestures.checked && gesture && !neckMotion) {
+        neckMotion = { kind: gesture, start: performance.now() };
+      }
       log(`Live emotion overridden to: [${em}]`);
     });
   });

@@ -18,6 +18,9 @@
       .corex-head-case .control-panel :is(select, input, textarea):focus-visible {
         outline: 1px solid var(--ink);
       }
+      .corex-head-case .control-panel select { width: 100%; padding: 8px; }
+      .voice-status { margin: 0; color: var(--muted); font: 11px var(--font-mono); }
+      .voice-status:empty { display: none; }
       .emotion-pills {
         display: flex;
         flex-wrap: wrap;
@@ -60,6 +63,20 @@
       }
       .neck-study .command-row {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .neck-study .command-row + .command-row { margin-top: 6px; }
+      .corex-head-case .neck-study .neck-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        color: var(--ink);
+      }
+      .corex-head-case .neck-study .neck-toggle input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: var(--ink);
       }
       .neck-study button:focus-visible {
         outline: 2px solid var(--ink);
@@ -162,12 +179,19 @@
 
           <fieldset id="neck-motion" class="neck-study" aria-describedby="neck-study-status" disabled>
             <legend>Neck motion study</legend>
-            <p id="neck-study-status" role="status">Select Rosalia or Nyx to preview the neck rig.</p>
+            <p id="neck-study-status" role="status">Loading neck rig.</p>
             <div class="command-row">
               <button type="button" class="command-button command-button--secondary" data-neck-motion="turn">Turn</button>
               <button type="button" class="command-button command-button--secondary" data-neck-motion="yes">Nod yes</button>
               <button type="button" class="command-button command-button--secondary" data-neck-motion="no">Shake no</button>
             </div>
+            <div class="command-row">
+              <button type="button" class="command-button command-button--secondary" data-neck-motion="acknowledge">Acknowledge</button>
+              <button type="button" class="command-button command-button--secondary" data-neck-motion="consider">Consider</button>
+              <button type="button" class="command-button command-button--secondary" data-neck-motion="brighten">Brighten</button>
+            </div>
+            <label class="neck-toggle"><input id="speech-gestures" type="checkbox" checked /> Expressive speech gestures</label>
+            <label class="neck-toggle"><input id="pointer-gaze" type="checkbox" /> Follow pointer with eyes and head</label>
           </fieldset>
 
           <label>
@@ -219,7 +243,12 @@
             </div>
           </div>
 
-          <label>Voice<input id="voice" value="lullabot" /></label>
+          <label>Voice
+            <select id="voice" aria-describedby="voice-status">
+              <option value="lullabot">lullabot (head default)</option>
+            </select>
+          </label>
+          <p id="voice-status" class="voice-status" role="status"></p>
           <label>Core-X Gateway<input id="service" value="http://127.0.0.1:8090" /></label>
 
           <div class="command-row" style="grid-template-columns: 1fr 1fr 1fr 48px;">

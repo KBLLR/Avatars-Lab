@@ -14,3 +14,13 @@ For a reusable rig, author and inspect the armature in Blender, then export a se
 ## Shared asset
 
 Rosalia resolves from the standard Core-X head root at `avatars/heads/rosalia/rosalia.glb`. The file is the existing ChatAvatar bakery preview derivative with invalid oral primitives excluded. SHA-256 is `145b961e98ea533302f9d9531863c85b5d4c05b14dfa9e0ee4b534ae0285a7b9`. Use the single shared GLB. Keep the source export pack and textures out of the house repository. The asset and roster changes are local pending repository promotion.
+
+## Full roster, expressive gestures, and eye tracking
+
+The Core-X Head case now binds every head in its roster at load time. Eye geometry gets one pivot per globe, including exports that pack both eyes into one primitive. Neck and skull rotations share pitch, yaw, and roll. The head/neck totals are bounded to roughly 13°, 26°, and 8° respectively. Eye pitch and yaw are bounded to roughly 6° and 9° relative to the head. During a blink, gaze offsets fade toward neutral to reduce iris clipping. Rosalia’s centered iris has a 25% larger nominal diameter in the preview via a diffuse UV adjustment. Her source GLB and eye geometry stay intact.
+
+The case offers Turn, Nod yes, Shake no, Acknowledge, Consider, and Brighten. Existing local speech pre-analysis chooses at most three distinct, spaced cues from the text and emotion timeline. WAV playback uses the decoded duration. Streaming estimates duration from text until the PCM length is known. Cues therefore have sentence-level timing. Emotion override controls use the same gesture library. Expressive speech gestures can be switched off and default off when reduced motion is requested.
+
+Follow pointer is an opt-in mode. The eyes respond ahead of the neck, ease back to neutral when the pointer leaves, and yield during camera dragging. This is a bounded stage-relative target. It does not use a webcam or a model. The controls and speech integration are specific to Core-X Head.
+
+Voice selection reads the configured Gateway’s voice list. The dropdown marks the head’s default and remembers per-head overrides for the open page. Stream and WAV playback use the selected voice. If the voice list is unavailable, the dropdown shows the head default and an explicit status.

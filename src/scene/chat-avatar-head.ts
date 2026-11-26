@@ -100,7 +100,21 @@ export function normalizeChatAvatarHead(headScene: Object3D, headId?: string): v
       if (!mat) continue;
       const name = (mat.name || "").toLowerCase();
       if (name.includes("occlusion")) mat.visible = false;
-      if (name === "eyes") mat.side = FrontSide;
+      if (name === "eyes") {
+        mat.side = FrontSide;
+        if (headId === "rosalia" && mat instanceof MeshStandardMaterial
+            && mat.map && !mat.map.userData.rosaliaIrisCalibrated) {
+          const map = mat.map.clone();
+          // Rosalia's iris is centered in the baked diffuse map. Resample the
+          // center at 80% UV span to enlarge it without scaling the eyeball.
+          map.offset.x += map.repeat.x * 0.1;
+          map.offset.y += map.repeat.y * 0.1;
+          map.repeat.multiplyScalar(0.8);
+          map.userData.rosaliaIrisCalibrated = true;
+          mat.map = map;
+          mat.needsUpdate = true;
+        }
+      }
     }
   });
 }
