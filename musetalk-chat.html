@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MuseTalk Live Chat / Avatar Labs</title>
+    <link rel="stylesheet" href="/src/styles/case-workbench.css" />
+    <link rel="stylesheet" href="/src/styles/musetalk-chat.css" />
+  </head>
+  <body data-theme="macos">
+    <main class="musetalk-chat">
+      <section class="musetalk-chat__window" aria-labelledby="chat-title">
+        <header class="musetalk-chat__header">
+          <button id="open-characters" class="musetalk-chat__choice" type="button"
+            aria-label="Open character gallery" aria-describedby="active-driver-name"
+            aria-haspopup="dialog" aria-controls="character-gallery" disabled>
+            <span id="active-driver-thumb" class="musetalk-chat__choice-portrait" aria-hidden="true" hidden></span>
+            <span class="musetalk-chat__choice-copy">
+              <small>Character</small>
+              <strong id="active-driver-name">Choose character</strong>
+            </span>
+          </button>
+          <h1 id="chat-title">MuseTalk Live Chat</h1>
+          <button id="open-voices" class="musetalk-chat__choice musetalk-chat__choice--voice" type="button"
+            aria-label="Open voice gallery" aria-describedby="active-voice-name"
+            aria-haspopup="dialog" aria-controls="voice-gallery" disabled>
+            <span class="musetalk-chat__choice-copy">
+              <small>Voice</small>
+              <strong id="active-voice-name">Lullabot</strong>
+            </span>
+          </button>
+        </header>
+        <section class="musetalk-chat__stage" aria-label="Talking portrait">
+          <div class="musetalk-chat__screen">
+            <div id="stage-empty" class="musetalk-chat__idle">
+              <span id="stage-portrait" class="musetalk-chat__idle-portrait" aria-hidden="true" hidden></span>
+              <p id="stage-placeholder">Choose a character to begin.</p>
+            </div>
+            <video id="portrait" controls playsinline preload="metadata" hidden></video>
+          </div>
+          <div class="musetalk-chat__stage-meta">
+            <p id="render-status" role="status"></p>
+            <p id="playback-timing" class="musetalk-chat__timing" hidden></p>
+            <button id="retry" type="button" hidden>Retry video</button>
+            <details class="musetalk-chat__playback">
+              <summary>Playback options</summary>
+              <label><input id="progressive" type="checkbox" checked /> Play video as frames arrive</label>
+              <label><input id="interpolate" type="checkbox" /> Blend alternate mouth frames (experimental)</label>
+            </details>
+          </div>
+        </section>
+        <section class="musetalk-chat__conversation" aria-label="Conversation">
+          <p id="thread-empty">No messages yet.</p>
+          <div id="turns" role="log" aria-label="Chat messages"></div>
+        </section>
+        <form id="chat-form" class="musetalk-chat__composer">
+          <label for="prompt">Message</label>
+          <textarea id="prompt" required maxlength="800" rows="2"></textarea>
+          <button id="send" type="submit" disabled>Send</button>
+          <p id="voice-status" role="status"></p>
+          <p id="chat-status" role="status">Checking local runtime.</p>
+        </form>
+      </section>
+    </main>
+    <dialog id="character-gallery" class="musetalk-gallery" aria-labelledby="character-gallery-title">
+      <div class="musetalk-gallery__header">
+        <h2 id="character-gallery-title">Choose a character</h2>
+        <button id="close-characters" type="button" aria-label="Close character gallery" autofocus></button>
+      </div>
+      <div class="musetalk-gallery__toolbar">
+        <div id="character-groups" role="group" aria-label="Character collections">
+          <button type="button" data-group="Reviewed drivers" aria-pressed="true">Characters</button>
+          <button type="button" data-group="Matched comparisons" aria-pressed="false">Matched takes</button>
+          <button type="button" data-group="Local uploads" aria-pressed="false">Uploads</button>
+        </div>
+        <button id="upload-driver" class="musetalk-gallery__upload" type="button">Upload video</button>
+        <input id="driver-file" type="file" accept=".mp4,.mov,video/mp4,video/quicktime" hidden />
+      </div>
+      <p id="driver-status" role="status"></p>
+      <div id="character-gallery-scroll" class="musetalk-gallery__scroll">
+        <div id="character-cards" class="musetalk-gallery__grid" role="group" aria-label="Available characters"></div>
+        <p id="character-gallery-empty" hidden></p>
+      </div>
+    </dialog>
+    <dialog id="voice-gallery" class="musetalk-gallery musetalk-gallery--voices" aria-labelledby="voice-gallery-title">
+      <div class="musetalk-gallery__header">
+        <h2 id="voice-gallery-title">Choose a voice</h2>
+        <button id="close-voices" type="button" aria-label="Close voice gallery" autofocus></button>
+      </div>
+      <p id="voice-gallery-character"></p>
+      <div class="musetalk-gallery__scroll">
+        <div id="voice-cards" class="musetalk-gallery__grid" role="group" aria-label="Local TTS voices"></div>
+      </div>
+    </dialog>
+    <script type="module" src="/src/cases/workbench-shell.ts"></script>
+    <script type="module" src="/src/musetalk-chat.ts"></script>
+  </body>
+</html>

@@ -10,6 +10,7 @@ export interface CorexHealth {
 export interface VoiceRecord {
   name: string;
   description?: string;
+  has_sample?: boolean;
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit, baseUrl = COREX_GATEWAY_URL): Promise<T> {

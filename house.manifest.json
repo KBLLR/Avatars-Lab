@@ -134,6 +134,7 @@
       { "id": "said-face", "label": "SAiD Face", "path": "/said-face.html" },
       { "id": "audio2face", "label": "Audio2Face Lab", "path": "/audio2face.html" },
       { "id": "musetalk", "label": "MuseTalk MLX", "path": "/musetalk.html" },
+      { "id": "musetalk-chat", "label": "MuseTalk Live Chat", "path": "/musetalk-chat.html" },
       { "id": "face-mirror", "label": "Face Mirror", "path": "/face-mirror.html" },
       { "id": "stage", "label": "Stage Director", "path": "/stage.html" },
       { "id": "dance-studio", "label": "Dance Studio", "path": "/dance-studio.html" },

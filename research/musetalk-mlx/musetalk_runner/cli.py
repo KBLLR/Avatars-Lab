@@ -230,7 +230,7 @@ def _render(req: LipSyncRequest, a: argparse.Namespace, run_dir: Path, result: d
     # --- generate + composite + mux -------------------------------------------
     h, w = frames[0].shape[:2]
     partial = run_dir / "output.partial.mp4"
-    writer = media.Mp4Writer(partial, w, h, wav)
+    writer = media.Mp4Writer(partial, w, h, wav, fragmented=a.fragmented)
     batch = int(req.render["batch_size"])
     neural_t, first = 0.0, None
     order = [_ping_pong(s, len(frames)) for s in range(n_out)]
@@ -361,6 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--extra-margin", type=int, default=10)
     r.add_argument("--ema-alpha", type=float, default=0.5)
     r.add_argument("--batch", type=int, default=8)
+    r.add_argument("--fragmented", action="store_true", help="emit playable MP4 fragments during generation")
     r.add_argument("--landmarker", default=DEFAULT_LANDMARKER)
     r.add_argument("--runs-root", default=DEFAULT_RUNS_ROOT)
     r.add_argument("--keep-work", action="store_true")

@@ -91,6 +91,17 @@ export const AVATAR_LAB_CASES: AvatarLabCase[] = [
     services: [],
   },
   {
+    id: "musetalk-chat",
+    code: "MCH",
+    title: "MuseTalk Live Chat",
+    description: "Choose a character and voice, then watch spoken replies rendered locally with MuseTalk MLX.",
+    href: "/musetalk-chat.html",
+    icon: "Film",
+    status: "experimental",
+    renderer: "dom",
+    services: ["gateway", "mlx-audio"],
+  },
+  {
     id: "face-mirror",
     code: "FMR",
     title: "Face Mirror",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import os
 import subprocess
 from pathlib import Path
 
@@ -74,7 +75,8 @@ def _display_size(stream: dict) -> tuple[int, int]:
     return (h, w) if abs(rotation) % 180 == 90 else (w, h)
 
 
-def load_frames(src: Path, kind: str, work: Path, max_frames: int) -> list[np.ndarray]:
+def load_frames(src: Path, kind: str, work: Path, max_frames: int, *,
+                max_side: int | None = None, max_pixels: int | None = None) -> list[np.ndarray]:
     """Return BGR frames at 25 fps. A still image becomes a single frame.
 
     Video is decoded straight to bgr24 by ffmpeg with the same `SWS_FLAGS` that `Mp4Writer` encodes with,
@@ -98,7 +100,14 @@ def load_frames(src: Path, kind: str, work: Path, max_frames: int) -> list[np.nd
     if not streams:
         raise RunError("probe", f"no video stream in {src.name}")
     width, height = _display_size(streams[0])
-    proc = subprocess.run(["ffmpeg", "-v", "error", "-i", str(src), "-sws_flags", SWS_FLAGS, "-an", "-r", str(FPS),
+    filters = []
+    scale = min(1, (max_side or max(width, height)) / max(width, height),
+                ((max_pixels or width * height) / (width * height)) ** 0.5)
+    if scale < 1:
+        width, height = (max(2, int(value * scale) // 2 * 2) for value in (width, height))
+        filters = ["-vf", f"scale={width}:{height}"]
+    proc = subprocess.run(["ffmpeg", "-v", "error", "-protocol_whitelist", "file,pipe", "-i", str(src),
+                           "-sws_flags", SWS_FLAGS, *filters, "-an", "-r", str(FPS),
                            "-frames:v", str(max_frames), "-f", "rawvideo", "-pix_fmt", "bgr24", "-"],
                           capture_output=True)
     if proc.returncode != 0:
@@ -114,17 +123,43 @@ def load_frames(src: Path, kind: str, work: Path, max_frames: int) -> list[np.nd
 class Mp4Writer:
     """Streams BGR frames into ffmpeg (H.264 yuv420p) and muxes the wav (AAC)."""
 
-    def __init__(self, out: Path, width: int, height: int, wav: Path):
+    def __init__(self, out: Path, width: int, height: int, wav: Path | None, *, fragmented: bool = False, pcm_rate: int | None = None):
         self.out = out
-        self.proc = subprocess.Popen(
+        video = ["-preset", "medium"]
+        format_flags = ["-movflags", "+faststart"]
+        if fragmented:
+            video = ["-preset", "ultrafast", "-tune", "zerolatency", "-profile:v", "baseline",
+                     "-level:v", "3.1", "-g", "6", "-sc_threshold", "0"]
+            format_flags = ["-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+                            "-frag_duration", "240000", "-flush_packets", "1"]
+        self.audio_input = None
+        audio_read = audio_write = None
+        if pcm_rate:
+            audio_read, audio_write = os.pipe()
+            audio = ["-thread_queue_size", "32", "-f", "s16le", "-ar", str(pcm_rate),
+                     "-ac", "1", "-probesize", "32", "-analyzeduration", "0", "-i", f"pipe:{audio_read}"]
+        else:
+            audio = ["-i", str(wav)]
+        try:
+            self.proc = subprocess.Popen(
             ["ffmpeg", "-v", "error", "-y",
              "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{width}x{height}", "-r", str(FPS), "-i", "-",
-             "-i", str(wav),
+             *audio,
              "-sws_flags", SWS_FLAGS,
              "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
-             "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
-             "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", str(out)],
-            stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+             "-c:v", "libx264", *video, "-crf", "18", "-pix_fmt", "yuv420p",
+             "-c:a", "aac", "-b:a", "160k", "-shortest", *format_flags, str(out)],
+                stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+                pass_fds=(audio_read,) if audio_read is not None else ())
+        except BaseException:
+            if audio_write is not None:
+                os.close(audio_write)
+            raise
+        finally:
+            if audio_read is not None:
+                os.close(audio_read)
+        if audio_write is not None:
+            self.audio_input = os.fdopen(audio_write, "wb", buffering=0)
 
     def write(self, frame_bgr: np.ndarray) -> None:
         assert self.proc.stdin is not None
