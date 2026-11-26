@@ -21,6 +21,7 @@
       .portrait-gallery select { font: inherit; margin: .5rem 0; }
       .portrait-gallery fieldset { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
       .portrait-gallery fieldset label { display: grid; }
+      .portrait-pair { margin-block: 1rem 2rem; }
       .portrait-clips p:empty { display: none; }
     </style>
   </head>
@@ -28,7 +29,7 @@
     <main class="portrait-review">
       <h1>Talking Portrait Gallery</h1>
       <section class="portrait-gallery" aria-labelledby="reviewTitle">
-        <h2 id="reviewTitle">Review the 15 talking portraits</h2>
+        <h2 id="reviewTitle">Review talking portraits</h2>
         <p id="reviewStatus" role="status"></p>
         <div id="reviewBody" hidden>
           <label for="reviewCast">Proposed cast</label>
@@ -46,6 +47,22 @@
               <p role="status"></p>
             </figure>
           </div>
+          <section id="matchedPair" class="portrait-pair" aria-labelledby="pairTitle" hidden>
+            <h3 id="pairTitle">Matched comparison</h3>
+            <p id="pairNotes"></p>
+            <div class="portrait-clips">
+              <figure>
+                <figcaption>Control render</figcaption>
+                <video id="pairControl" aria-label="Control render" controls playsinline preload="metadata"></video>
+                <p role="status"></p>
+              </figure>
+              <figure>
+                <figcaption>Test render</figcaption>
+                <video id="pairTest" aria-label="Test render" controls playsinline preload="metadata"></video>
+                <p role="status"></p>
+              </figure>
+            </div>
+          </section>
           <p>Score from 1 to 5. For visible flaws, 5 means few or no distracting flaws. Scores stay in this browser.</p>
           <fieldset id="reviewScores">
             <legend>Review scores</legend>
