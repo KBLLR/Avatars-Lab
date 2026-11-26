@@ -6,6 +6,18 @@
     <title>Core-X Head / Avatar Labs</title>
     <link rel="stylesheet" href="/src/styles/avatar-labs.css" />
     <style>
+      .corex-head-case .control-panel {
+        background: var(--surface);
+      }
+      .corex-head-case .control-panel :is(select, input, textarea) {
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px dashed var(--line);
+        border-radius: 0;
+      }
+      .corex-head-case .control-panel :is(select, input, textarea):focus-visible {
+        outline: 1px solid var(--ink);
+      }
       .emotion-pills {
         display: flex;
         flex-wrap: wrap;
@@ -17,7 +29,7 @@
         font-family: var(--font-mono);
         font-size: 9px;
         text-transform: uppercase;
-        background: rgba(255, 255, 255, 0.4);
+        background: transparent;
         border: 1px dashed var(--line);
         cursor: pointer;
       }
@@ -30,14 +42,32 @@
         color: #fff;
         border-style: solid;
       }
-      .command-button--live {
-        background: #9c27b0;
-        border-color: #9c27b0;
-        color: #fff;
+      .neck-study {
+        min-width: 0;
+        margin: 0;
+        padding: 12px;
+        border: 1px dashed var(--line);
+      }
+      .neck-study legend {
+        padding: 0 5px;
+        font: 600 12px var(--font-heading);
+        text-transform: uppercase;
+      }
+      .neck-study p {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font: 11px var(--font-mono);
+      }
+      .neck-study .command-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .neck-study button:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: 2px;
       }
       .command-button--live.is-recording {
-        background: #e91e63;
-        border-color: #e91e63;
+        background: var(--red);
+        border-color: var(--red);
         animation: pulse-live 1.2s infinite;
       }
       @keyframes pulse-live {
@@ -84,7 +114,7 @@
       .timeline-segment--excited { background: #e91e63; }
     </style>
   </head>
-  <body class="case-page">
+  <body class="case-page corex-head-case">
     <main class="runtime-shell">
       <nav class="runtime-nav" aria-label="Case navigation">
         <a class="runtime-nav__brand" href="/" title="Avatar Labs">AL</a>
@@ -116,18 +146,29 @@
 
           <label>
             Performer Head & Canonical Voice
-            <select id="head-select" style="width: 100%; padding: 8px; border: 1px dashed var(--line); background: rgba(255,255,255,0.4);">
+            <select id="head-select" style="width: 100%; padding: 8px;">
               <option value="kbllr" selected>KBLLR (Curator / voice: lullabot)</option>
               <option value="anja">Anja (Speaker / voice: katanja)</option>
               <option value="susi-q">Susi-Q (Balanced / voice: katanja)</option>
               <option value="eli">Eli (Hyperhuman / voice: eli_luma)</option>
               <option value="sofia">Sofia (Hyperhuman / voice: sofi_v)</option>
+              <option value="rosalia">Rosalia (ChatAvatar)</option>
               <option value="nyx">Nyx (Hyperhuman / voice: vicky_spice)</option>
               <option value="vee">Vee (ChatAvatar / voice: princess_leia)</option>
               <option value="nino">Nino (Generalist / voice: ninoo)</option>
             </select>
           </label>
           <input id="head-url" type="hidden" value="/corex-assets/avatars/heads/kbllr/kbllr.glb" />
+
+          <fieldset id="neck-motion" class="neck-study" aria-describedby="neck-study-status" disabled>
+            <legend>Neck motion study</legend>
+            <p id="neck-study-status" role="status">Select Rosalia or Nyx to preview the neck rig.</p>
+            <div class="command-row">
+              <button type="button" class="command-button command-button--secondary" data-neck-motion="turn">Turn</button>
+              <button type="button" class="command-button command-button--secondary" data-neck-motion="yes">Nod yes</button>
+              <button type="button" class="command-button command-button--secondary" data-neck-motion="no">Shake no</button>
+            </div>
+          </fieldset>
 
           <label>
             Speech Prompt (Supports [Happy], [Angry], [Surprised], [Thinking], [Empathic], [Excited])
@@ -154,7 +195,7 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <label>
               Plinth Display
-              <select id="plinth-mode" style="width: 100%; padding: 6px; border: 1px dashed var(--line); background: rgba(255,255,255,0.4);">
+              <select id="plinth-mode" style="width: 100%; padding: 6px;">
                 <option value="none" selected>Core-X Float (Canonical)</option>
                 <option value="plinth">Studio Plinth</option>
               </select>
@@ -184,7 +225,7 @@
           <div class="command-row" style="grid-template-columns: 1fr 1fr 1fr 48px;">
             <button id="speak-stream" class="command-button">Stream</button>
             <button id="speak-blob" class="command-button command-button--secondary">Blob</button>
-            <button id="btn-live-mic" class="command-button command-button--live" title="Speak through microphone in real time">🎤 Live Mic</button>
+            <button id="btn-live-mic" class="command-button command-button--secondary command-button--live" title="Speak through microphone in real time">Live Mic</button>
             <button id="stop" class="command-button command-button--stop" title="Stop playback">Stop</button>
           </div>
 

@@ -50,7 +50,7 @@ export const AVATAR_LAB_CASES: AvatarLabCase[] = [
     id: "corex-head",
     code: "CXH",
     title: "Core-X Head",
-    description: "WebGPU-first operator bust with real-time ARKit 51 speech animation.",
+    description: "WebGPU bust preview with ARKit facial animation and a weighted neck-motion study.",
     href: "/corex-head.html",
     icon: "ScanFace",
     status: "verified",

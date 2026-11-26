@@ -49,6 +49,7 @@ import {
   resolveHeadDefinition,
   type HeadDefinition,
 } from "./scene/chat-avatar-head";
+import { createHeadNeckRig, NECK_MOTION_MS, type NeckMotion } from "./scene/head-neck-rig";
 import { HeadAudio } from "@met4citizen/headaudio/dist/headaudio.min.mjs";
 import headWorkletUrl from "@met4citizen/headaudio/dist/headworklet.min.mjs?url";
 import headModelUrl from "@met4citizen/headaudio/dist/model-en-mixed.bin?url";
@@ -124,7 +125,19 @@ let micSourceNode: MediaStreamAudioSourceNode | null = null;
 let micAnalyser: AnalyserNode | null = null;
 let micVuAnimId: number | null = null;
 
+const neckControls = document.querySelector<HTMLFieldSetElement>("#neck-motion")!;
+const neckStudyStatus = document.querySelector<HTMLParagraphElement>("#neck-study-status")!;
+
+function setNeckStudyAvailable(available: boolean): void {
+  neckControls.disabled = !available;
+  neckStudyStatus.textContent = available
+    ? "Choose a motion. The head returns to neutral."
+    : "Select Rosalia or Nyx to preview the neck rig.";
+}
+let neckMotion: { kind: NeckMotion; start: number } | undefined;
+
 interface LoadedHead {
+  neckRig?: ReturnType<typeof createHeadNeckRig>;
   morphMeshes: Mesh[];
   applyBlinkClearance?: (blink: number) => void;
 }
@@ -333,6 +346,7 @@ async function initStage(): Promise<Stage> {
   setHeadLighting(initialHeadDef.id);
   const head = await loadHeadModel(initialHeadDef, headGroup, isWebGpu, camera, controls);
 
+  setNeckStudyAvailable(Boolean(head.neckRig));
   setStatus("Wiring audio worklets…");
   const audioCtx = new AudioContext();
   await audioCtx.audioWorklet.addModule(headWorkletUrl);
@@ -383,11 +397,19 @@ async function initStage(): Promise<Stage> {
       emotionEngine.updateProgress(progress);
     }
 
-    // Subtle breathing / idle sway
-    headGroup.rotation.y = Math.sin(now / 4200) * 0.025;
-    headGroup.rotation.x = Math.sin(now / 5600) * 0.012;
+    const currentHead = stage?.head ?? head;
+    if (currentHead.neckRig) {
+      if (neckMotion) {
+        const progress = (now - neckMotion.start) / NECK_MOTION_MS;
+        currentHead.neckRig.pose(neckMotion.kind, progress);
+        if (progress >= 1) neckMotion = undefined;
+      }
+    } else {
+      headGroup.rotation.y = Math.sin(now / 4200) * 0.025;
+      headGroup.rotation.x = Math.sin(now / 5600) * 0.012;
+    }
 
-    applyFaceKinematics(stage?.head ?? head, dt);
+    applyFaceKinematics(currentHead, dt);
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
@@ -462,6 +484,8 @@ async function loadHeadModel(
     }
   }
 
+  const neckRig = ["rosalia", "nyx"].includes(headDef.id) ? createHeadNeckRig(gltf.scene) : undefined;
+
   // Clear any idle rotation accumulated while the assets were loading.
   headGroup.rotation.set(0, 0, 0);
   // Canonical VoiceScene centering
@@ -483,7 +507,7 @@ async function loadHeadModel(
     log(`Loaded head: ${headDef.label} (${morphMeshes.length} morph mesh, ${count} ARKit shapes, voice: "${headDef.voice}")`);
   }
 
-  if (headDef.id !== "susi-q") return { morphMeshes };
+  if (headDef.id !== "susi-q") return { morphMeshes, neckRig };
   const eyes = ["eyeball_left", "eyeball_right"].flatMap((name) => {
     const eye = gltf.scene.getObjectByName(name);
     return eye ? [{ eye, openZ: eye.position.z }] : [];
@@ -509,7 +533,7 @@ async function toggleLiveMic() {
     // Stop live mic
     liveMicActive = false;
     els.btnLiveMic.classList.remove("is-recording");
-    els.btnLiveMic.textContent = "🎤 Live Mic";
+    els.btnLiveMic.textContent = "Live Mic";
     els.micMeterBox.style.display = "none";
     if (micVuAnimId) cancelAnimationFrame(micVuAnimId);
 
@@ -550,7 +574,7 @@ async function toggleLiveMic() {
 
     liveMicActive = true;
     els.btnLiveMic.classList.add("is-recording");
-    els.btnLiveMic.textContent = "🔴 Mic Active";
+    els.btnLiveMic.textContent = "Mic active";
     els.micMeterBox.style.display = "block";
     setStatus("Live Mic Active — speak into your microphone!");
     log("Real-time Live Mic connected to HeadAudio neural worklet (< 15ms latency)");
@@ -571,7 +595,7 @@ async function toggleLiveMic() {
   } catch (err) {
     liveMicActive = false;
     els.btnLiveMic.classList.remove("is-recording");
-    els.btnLiveMic.textContent = "🎤 Live Mic";
+    els.btnLiveMic.textContent = "Live Mic";
     setStatus(`Mic error: ${String(err)}`);
     log(`ERROR opening mic: ${String(err)}`);
   }
@@ -782,6 +806,14 @@ async function run() {
     els.mArticulation.textContent = `${gain.toFixed(2)}x (Active)`;
   });
 
+  neckControls.querySelectorAll<HTMLButtonElement>("[data-neck-motion]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (stage?.head.neckRig) {
+        neckMotion = { kind: button.dataset.neckMotion as NeckMotion, start: performance.now() };
+      }
+    });
+  });
+
   // Head selection dropdown
   els.headSelect.addEventListener("change", async () => {
     if (!stage) return;
@@ -792,12 +824,15 @@ async function run() {
     els.voice.value = headDef.voice;
     els.headUrl.value = headDef.url;
 
+    neckMotion = undefined;
+    setNeckStudyAvailable(false);
     setStatus(`Switching performer head: ${headDef.label} (voice: ${headDef.voice})…`);
     log(`Performer switched to ${headDef.label} — voice assigned to "${headDef.voice}"`);
 
     try {
       const isWebGpu = result.renderer === "webgpu";
       stage.head = await loadHeadModel(headDef, stage.headGroup, isWebGpu, stage.camera, stage.controls);
+      setNeckStudyAvailable(Boolean(stage.head.neckRig));
       stage.setHeadLighting(headDef.id);
       setStatus(`Performer ${headDef.label} ready.`);
       log(`Performer ${headDef.label} active (${stage.head.morphMeshes.length} morph mesh, voice: "${headDef.voice}")`);
