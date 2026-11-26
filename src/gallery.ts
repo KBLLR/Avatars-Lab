@@ -30,6 +30,8 @@ import {
 } from "./scene/studio-scene-template";
 import {
   HEAD_ROSTER,
+  applyCoreXHeadFinish,
+  usesCoreXHeadFinish,
   normalizeChatAvatarHead,
   normalizeStandingBodyUpAxis,
 } from "./scene/chat-avatar-head";
@@ -345,8 +347,9 @@ async function inspectEntry(item: ManifestAvatar) {
       camera.fov = 55;
       camera.updateProjectionMatrix();
 
-      normalizeChatAvatarHead(modelRoot);
+      normalizeChatAvatarHead(modelRoot, item.id.replace(/^head:/, ""));
       applyStudioMaterialRealism(modelRoot, false);
+      applyCoreXHeadFinish(modelRoot, item.id.replace(/^head:/, ""));
 
       if (item.hairUrl) {
         try {
@@ -359,7 +362,7 @@ async function inspectEntry(item: ManifestAvatar) {
           // Companion hair optional when missing for this head.
         }
       }
-      centerAndFrameCoreXHead(rootGroup, camera, controls);
+      centerAndFrameCoreXHead(rootGroup, camera, controls, usesCoreXHeadFinish(item.id.replace(/^head:/, "")));
     } else {
       grid.visible = true;
       camera.fov = 38;

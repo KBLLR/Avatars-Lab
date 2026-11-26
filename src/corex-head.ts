@@ -43,6 +43,8 @@ import {
 } from "./scene/studio-scene-template";
 import {
   HEAD_ROSTER,
+  applyCoreXHeadFinish,
+  usesCoreXHeadFinish,
   normalizeChatAvatarHead,
   resolveHeadDefinition,
   type HeadDefinition,
@@ -122,7 +124,13 @@ let micSourceNode: MediaStreamAudioSourceNode | null = null;
 let micAnalyser: AnalyserNode | null = null;
 let micVuAnimId: number | null = null;
 
+interface LoadedHead {
+  morphMeshes: Mesh[];
+  applyBlinkClearance?: (blink: number) => void;
+}
+
 interface Stage {
+  setHeadLighting: (headId: string) => void;
   renderer: WebGLRenderer | WebGPURenderer;
   scene: Scene;
   camera: PerspectiveCamera;
@@ -131,7 +139,7 @@ interface Stage {
   player: AudioWorkletNode;
   sink: GainNode;
   headaudio: HeadAudio;
-  morphMeshes: Mesh[];
+  head: LoadedHead;
   headGroup: Group;
   plinthGroup: Group;
 }
@@ -166,7 +174,7 @@ function blinkLevel(): number {
  *  2. Speech lip & jaw articulation (SpeechArticulationEngine)
  *  3. Natural blink cycle
  */
-function applyFaceKinematics(meshes: Mesh[], dtMs: number) {
+function applyFaceKinematics(head: LoadedHead, dtMs: number) {
   // 1. Advance speech articulation
   articulationEngine.updateTargets(visemeState);
   const speechMorphs = articulationEngine.step(dtMs);
@@ -182,7 +190,9 @@ function applyFaceKinematics(meshes: Mesh[], dtMs: number) {
   // 3. Composite into ARKit dictionary
   const blink = blinkLevel();
 
-  for (const mesh of meshes) {
+  head.applyBlinkClearance?.(blink);
+
+  for (const mesh of head.morphMeshes) {
     const dict = mesh.morphTargetDictionary as Record<string, number> | undefined;
     const influences = mesh.morphTargetInfluences;
     if (!dict || !influences) continue;
@@ -275,6 +285,12 @@ async function initStage(): Promise<Stage> {
   rim.position.set(0, 2.2, -2.2);
 
   scene.add(amb, key, fill, rim);
+  const studioEnvironment = scene.environment;
+  const setHeadLighting = (headId: string) => {
+    const useCoreXLighting = usesCoreXHeadFinish(headId);
+    scene.environment = useCoreXLighting ? null : studioEnvironment;
+    rim.visible = !useCoreXLighting;
+  };
 
   // Soft shadow catcher floor placed at canonical y = -0.78
   const floorGeo = new PlaneGeometry(12, 12);
@@ -314,7 +330,8 @@ async function initStage(): Promise<Stage> {
   els.voice.value = initialHeadDef.voice;
   els.headUrl.value = initialHeadDef.url;
   setStatus(`Loading head GLB… (${initialHeadDef.label})`);
-  const morphMeshes = await loadHeadModel(initialHeadDef, headGroup, isWebGpu, camera, controls);
+  setHeadLighting(initialHeadDef.id);
+  const head = await loadHeadModel(initialHeadDef, headGroup, isWebGpu, camera, controls);
 
   setStatus("Wiring audio worklets…");
   const audioCtx = new AudioContext();
@@ -370,8 +387,7 @@ async function initStage(): Promise<Stage> {
     headGroup.rotation.y = Math.sin(now / 4200) * 0.025;
     headGroup.rotation.x = Math.sin(now / 5600) * 0.012;
 
-    const currentMeshes = stage ? stage.morphMeshes : morphMeshes;
-    applyFaceKinematics(currentMeshes, dt);
+    applyFaceKinematics(stage?.head ?? head, dt);
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
@@ -397,7 +413,8 @@ async function initStage(): Promise<Stage> {
     player,
     sink,
     headaudio,
-    morphMeshes,
+    head,
+    setHeadLighting,
     headGroup,
     plinthGroup,
   };
@@ -415,16 +432,20 @@ async function loadHeadModel(
   isWebGpu: boolean,
   camera: PerspectiveCamera,
   controls: OrbitControls
-): Promise<Mesh[]> {
+): Promise<LoadedHead> {
   const headDef = typeof headDefOrUrl === "string" ? resolveHeadDefinition(headDefOrUrl) : headDefOrUrl;
   headGroup.clear();
+  headGroup.position.set(0, 0, 0);
+  headGroup.rotation.set(0, 0, 0);
+  headGroup.scale.setScalar(1);
 
   const loader = new GLTFLoader();
   const gltf = await loader.loadAsync(headDef.url);
   (window as any).__headScene = gltf.scene;
 
-  normalizeChatAvatarHead(gltf.scene);
+  normalizeChatAvatarHead(gltf.scene, headDef.id);
   applyStudioMaterialRealism(gltf.scene, isWebGpu);
+  applyCoreXHeadFinish(gltf.scene, headDef.id);
 
   headGroup.add(gltf.scene);
 
@@ -441,8 +462,10 @@ async function loadHeadModel(
     }
   }
 
+  // Clear any idle rotation accumulated while the assets were loading.
+  headGroup.rotation.set(0, 0, 0);
   // Canonical VoiceScene centering
-  centerAndFrameCoreXHead(headGroup, camera, controls);
+  centerAndFrameCoreXHead(headGroup, camera, controls, usesCoreXHeadFinish(headDef.id));
 
   const morphMeshes: Mesh[] = [];
   headGroup.traverse((obj) => {
@@ -460,7 +483,21 @@ async function loadHeadModel(
     log(`Loaded head: ${headDef.label} (${morphMeshes.length} morph mesh, ${count} ARKit shapes, voice: "${headDef.voice}")`);
   }
 
-  return morphMeshes;
+  if (headDef.id !== "susi-q") return { morphMeshes };
+  const eyes = ["eyeball_left", "eyeball_right"].flatMap((name) => {
+    const eye = gltf.scene.getObjectByName(name);
+    return eye ? [{ eye, openZ: eye.position.z }] : [];
+  });
+  return {
+    morphMeshes,
+    applyBlinkClearance(blink) {
+      // Preserve Core-X's open-eye calibration. As the lids close, ease the
+      // globes back so the authored blink shapes cover the iris surfaces.
+      const t = Math.max(0, Math.min(1, (blink - 0.5) / 0.5));
+      const clearance = 1.2 * t * t * (3 - 2 * t);
+      for (const { eye, openZ } of eyes) eye.position.z = openZ - clearance;
+    },
+  };
 }
 
 // ── Real-Time Live Mic Mode ────────────────────────────────────────────────
@@ -760,9 +797,10 @@ async function run() {
 
     try {
       const isWebGpu = result.renderer === "webgpu";
-      stage.morphMeshes = await loadHeadModel(headDef, stage.headGroup, isWebGpu, stage.camera, stage.controls);
+      stage.head = await loadHeadModel(headDef, stage.headGroup, isWebGpu, stage.camera, stage.controls);
+      stage.setHeadLighting(headDef.id);
       setStatus(`Performer ${headDef.label} ready.`);
-      log(`Performer ${headDef.label} active (${stage.morphMeshes.length} morph mesh, voice: "${headDef.voice}")`);
+      log(`Performer ${headDef.label} active (${stage.head.morphMeshes.length} morph mesh, voice: "${headDef.voice}")`);
     } catch (err) {
       log(`ERROR loading head ${headDef.label}: ${String(err)}`);
       setStatus(`Head load failed: ${String(err)}`);
