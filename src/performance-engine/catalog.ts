@@ -3,28 +3,17 @@ import type {
   PerformanceCatalog,
   PerformanceEnvironment
 } from "./types";
+import { HEAD_ROSTER } from "../scene/avatar-orientation";
 import sampleAvatarUrl from "../../fixtures/avatars/brunette.glb?url";
-
-const COREX_HEADS = [
-  "kbllr",
-  "anja",
-  "david",
-  "eli",
-  "nino",
-  "nyx",
-  "sofia",
-  "susi-q",
-  "vee"
-] as const;
 
 const headLabel = (id: string): string =>
   id.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 
-const HEAD_ASSETS: ActorAsset[] = COREX_HEADS.map((id) => ({
-  id: `head:${id}`,
-  label: `${headLabel(id)} / Head`,
+const HEAD_ASSETS: ActorAsset[] = Object.values(HEAD_ROSTER).map((head) => ({
+  id: `head:${head.id}`,
+  label: `${head.label} / Head`,
   kind: "head",
-  url: `/corex-assets/avatars/heads/${id}/${id}.glb`
+  url: head.url
 }));
 
 const ENVIRONMENTS: PerformanceEnvironment[] = [

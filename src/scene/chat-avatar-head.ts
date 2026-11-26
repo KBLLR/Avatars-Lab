@@ -1,4 +1,5 @@
-import { FrontSide, Mesh, Object3D, Vector3 } from "three";
+import { MeshPhysicalNodeMaterial } from "three/webgpu";
+import { FrontSide, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, Object3D, Vector3 } from "three";
 import { calibrateChatAvatarEyes } from "./studio-scene-template";
 export {
   HEAD_ROSTER,
@@ -11,7 +12,58 @@ export {
  * Normalizes ChatAvatar heads: raw eyeball scale adoption, eye alignment calibration,
  * hiding occlusion shells, and FrontSide eye rendering.
  */
-export function normalizeChatAvatarHead(headScene: Object3D): void {
+const COREX_CALIBRATED_HEADS = new Set(["vee", "sofia", "eli", "susi-q"]);
+
+export function usesCoreXHeadFinish(headId: string): boolean {
+  return COREX_CALIBRATED_HEADS.has(headId);
+}
+
+/** Apply the Core-X canonical skin policy after any preview material upgrade. */
+export function applyCoreXHeadFinish(scene: Object3D, headId: string): void {
+  if (!usesCoreXHeadFinish(headId)) return;
+  scene.traverse((node) => {
+    if (!(node instanceof Mesh)) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    for (const mat of materials) {
+      if (!(mat instanceof MeshStandardMaterial || mat instanceof MeshPhysicalNodeMaterial)) continue;
+      const role = mat.name.toLowerCase().split(/[.:]/, 1)[0];
+      if (role === "face" || role === "backhead") {
+        // Core-X avatar-loader skinRoughnessFor preserves the authored map.
+        mat.roughness = mat.roughnessMap ? 1 : 0.52;
+        // Core-X's WebGPU node-skin upgrade copies the factor without the map.
+        if (mat instanceof MeshPhysicalNodeMaterial) mat.roughnessMap = null;
+        mat.metalness = 0;
+        mat.aoMap = null;
+        mat.side = FrontSide;
+        mat.transparent = false;
+        mat.depthWrite = true;
+        mat.depthTest = true;
+        if (mat instanceof MeshPhysicalMaterial || "transmission" in mat) {
+          const skin = mat as MeshPhysicalMaterial | MeshPhysicalNodeMaterial;
+          skin.transmission = 0;
+          skin.thickness = 0;
+          skin.sheen = 0;
+          skin.clearcoat = 0;
+          skin.iridescence = 0;
+          skin.ior = 1.5;
+        }
+        mat.needsUpdate = true;
+      } else if (headId === "susi-q" && /^eyes?$/.test(role) && mat instanceof MeshPhysicalMaterial) {
+        // Core-X chatavatar-eye-calibration.ts settings.
+        mat.side = FrontSide;
+        mat.roughness = 0.18;
+        mat.clearcoat = 0.28;
+        mat.clearcoatRoughness = 0.08;
+        mat.specularIntensity = 0.72;
+        mat.envMapIntensity = 0.55;
+        mat.ior = 1.38;
+        mat.needsUpdate = true;
+      }
+    }
+  });
+}
+
+export function normalizeChatAvatarHead(headScene: Object3D, headId?: string): void {
   headScene.updateMatrixWorld(true);
 
   let faceMesh: Mesh | null = null;
@@ -25,15 +77,19 @@ export function normalizeChatAvatarHead(headScene: Object3D): void {
 
   for (const name of ["eyeball_left", "eyeball_right"]) {
     const node = headScene.getObjectByName(name);
-    if (!node) continue;
+    if (!node || node.userData.eyeCalibrated) continue;
     const eyeWorldScale = node.getWorldScale(new Vector3()).x;
     const ratio = faceWorldScale / eyeWorldScale;
-    if (ratio < 0.5 || ratio > 2) {
+    if (Number.isFinite(ratio) && ratio > 0 && (ratio < 0.5 || ratio > 2)) {
       node.scale.multiplyScalar(ratio);
       node.position.multiplyScalar(ratio);
     }
   }
-  calibrateChatAvatarEyes(headScene);
+  if (headId === "susi-q") {
+    calibrateChatAvatarEyes(headScene, { scale: 1.28, depthOffset: -0.52 });
+  } else if (!headId || !COREX_CALIBRATED_HEADS.has(headId)) {
+    calibrateChatAvatarEyes(headScene);
+  }
   headScene.updateMatrixWorld(true);
 
   headScene.traverse((obj) => {
@@ -44,7 +100,7 @@ export function normalizeChatAvatarHead(headScene: Object3D): void {
       if (!mat) continue;
       const name = (mat.name || "").toLowerCase();
       if (name.includes("occlusion")) mat.visible = false;
-      if (name === "eyes") (mat as { side: number }).side = FrontSide;
+      if (name === "eyes") mat.side = FrontSide;
     }
   });
 }

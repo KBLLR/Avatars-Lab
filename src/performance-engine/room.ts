@@ -50,7 +50,7 @@ import type {
   ShaderPresetId
 } from "./types";
 import { StageEffectsController, type StageEffectCue } from "./stage-effects";
-import { calibrateChatAvatarEyes } from "../scene/studio-scene-template";
+import { applyCoreXHeadFinish, normalizeChatAvatarHead } from "../scene/chat-avatar-head";
 
 interface CinematicCameraCue {
   preset: CameraPresetId;
@@ -107,39 +107,6 @@ export interface RoomStats {
   frameCount: number;
   averageFps: number;
 }
-
-const normalizeHeadAssembly = (headScene: Object3D): void => {
-  headScene.updateMatrixWorld(true);
-  let faceMesh: Mesh | null = null;
-  headScene.traverse((object) => {
-    const mesh = object as Mesh;
-    if (!faceMesh && mesh.isMesh && (mesh.morphTargetInfluences?.length ?? 0) > 0) {
-      faceMesh = mesh;
-    }
-  });
-  const faceScale = faceMesh ? faceMesh.getWorldScale(new Vector3()).x : 1;
-  for (const name of ["eyeball_left", "eyeball_right"]) {
-    const eye = headScene.getObjectByName(name);
-    if (!eye) continue;
-    const eyeScale = eye.getWorldScale(new Vector3()).x;
-    const ratio = faceScale / eyeScale;
-    if (ratio < 0.5 || ratio > 2) {
-      eye.scale.multiplyScalar(ratio);
-      eye.position.multiplyScalar(ratio);
-    }
-  }
-  calibrateChatAvatarEyes(headScene);
-  headScene.traverse((object) => {
-    const mesh = object as Mesh;
-    if (!mesh.isMesh) return;
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const material of materials) {
-      const name = (material?.name || "").toLowerCase();
-      if (name.includes("occlusion")) material.visible = false;
-      if (name === "eyes") material.side = FrontSide;
-    }
-  });
-};
 
 const HEAD_CENTER_Y = 1.20;
 const HEAD_MODEL_HEIGHT = 1.08;
@@ -837,7 +804,7 @@ export class PerformanceRoom {
       return null;
     }
     if (this.rendererLabel === "webgpu") normalizeWebGpuActorGeometry(gltf.scene);
-    if (definition.asset.kind === "head") normalizeHeadAssembly(gltf.scene);
+    if (definition.asset.kind === "head") normalizeChatAvatarHead(gltf.scene, definition.asset.id.replace(/^head:/, ""));
 
     const root = new Group();
     const model = gltf.scene;
@@ -985,6 +952,10 @@ export class PerformanceRoom {
           ? original.map(() => createNodeMaterial(preset))
           : createNodeMaterial(preset);
       }
+    }
+    const asset = runtime.definition.asset;
+    if (asset.kind === "head" && (preset === "original" || preset === "realismus")) {
+      applyCoreXHeadFinish(runtime.root, asset.id.replace(/^head:/, ""));
     }
   }
 

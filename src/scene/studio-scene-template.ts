@@ -319,10 +319,20 @@ export function applyStudioMaterialRealism(root: Mesh | Group, isWebGPU: boolean
 export function centerAndFrameCoreXHead(
   scene: Object3D,
   camera: PerspectiveCamera,
-  controls: OrbitControls
+  controls: OrbitControls,
+  normalizeRadius = false,
 ): void {
   scene.updateMatrixWorld(true);
   const box = new Box3().setFromObject(scene);
+  if (normalizeRadius && !box.isEmpty()) {
+    // VoiceScene normalizes outlier assets to a 0.7 bounding sphere radius.
+    const radius = box.getSize(new Vector3()).length() / 2;
+    if (Number.isFinite(radius) && radius > 0 && (radius < 0.55 || radius > 0.9)) {
+      scene.scale.multiplyScalar(0.7 / radius);
+      scene.updateMatrixWorld(true);
+      box.setFromObject(scene);
+    }
+  }
   const center = box.getCenter(new Vector3());
 
   // Center model bounding box around origin (0, 0, 0)
