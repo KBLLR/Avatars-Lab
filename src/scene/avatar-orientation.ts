@@ -8,6 +8,17 @@ export interface HeadDefinition {
   voice: string;
 }
 
+const LIBRARY_HEAD_NAMES = [
+  ["raffaella", "Raffaella"],
+  ["evren", "Evren"],
+  ["malina", "Malina"],
+  ["trunks", "Trunks"],
+  ["mystery-girl", "Mystery Girl"],
+  ["mystery-girl-2", "Mystery Girl 2"],
+  ["me", "Me"],
+  ["me-kid", "Me (Kid)"],
+] as const;
+
 /**
  * Canonical Core-X head roster and voice assignments.
  */
@@ -51,7 +62,7 @@ export const HEAD_ROSTER: Record<string, HeadDefinition> = {
     id: "rosalia",
     label: "Rosalia",
     url: "/corex-assets/avatars/heads/rosalia/rosalia.glb",
-    voice: "lullabot",
+    voice: "rosa_lia",
   },
   nyx: {
     id: "nyx",
@@ -72,6 +83,12 @@ export const HEAD_ROSTER: Record<string, HeadDefinition> = {
     url: "/corex-assets/avatars/heads/nino/nino.glb",
     voice: "ninoo",
   },
+  ...Object.fromEntries(LIBRARY_HEAD_NAMES.map(([id, label]) => [id, {
+    id,
+    label,
+    url: `/corex-assets/avatars/heads/${id}/${id}.glb`,
+    voice: "katanja",
+  }])),
 };
 
 export function resolveHeadDefinition(keyOrUrl: string): HeadDefinition {
