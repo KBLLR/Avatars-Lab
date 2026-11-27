@@ -14,7 +14,7 @@ export {
  */
 const COREX_CALIBRATED_HEADS = new Set([
   "vee", "sofia", "eli", "susi-q",
-  "raffaella", "evren", "malina", "trunks", "mystery-girl", "mystery-girl-2", "me", "me-kid",
+  "raffaella", "evren", "malina", "trunks", "mystery-girl", "mystery-girl-2",
 ]);
 
 export function usesCoreXHeadFinish(headId: string): boolean {
