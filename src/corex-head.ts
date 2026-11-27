@@ -100,6 +100,12 @@ const els = {
 
 export { HEAD_ROSTER, resolveHeadDefinition, type HeadDefinition };
 
+for (const head of Object.values(HEAD_ROSTER)) {
+  if (!Array.from(els.headSelect.options).some((option) => option.value === head.id)) {
+    els.headSelect.add(new Option(head.label, head.id));
+  }
+}
+
 const result = {
   ready: false,
   renderer: "pending",

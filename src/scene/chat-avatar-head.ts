@@ -12,7 +12,10 @@ export {
  * Normalizes ChatAvatar heads: raw eyeball scale adoption, eye alignment calibration,
  * hiding occlusion shells, and FrontSide eye rendering.
  */
-const COREX_CALIBRATED_HEADS = new Set(["vee", "sofia", "eli", "susi-q"]);
+const COREX_CALIBRATED_HEADS = new Set([
+  "vee", "sofia", "eli", "susi-q",
+  "raffaella", "evren", "malina", "trunks", "mystery-girl", "mystery-girl-2", "me", "me-kid",
+]);
 
 export function usesCoreXHeadFinish(headId: string): boolean {
   return COREX_CALIBRATED_HEADS.has(headId);
