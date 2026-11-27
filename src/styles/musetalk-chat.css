@@ -1,0 +1,330 @@
+/* MACOS and regular-glass tokens from KBLLR/core-x-design-system, b4e805d. */
+body[data-avatar-labs-workbench="true"][data-avatar-labs-case="musetalk-chat"][data-theme="macos"] {
+  --workbench-bg: #111110;
+  --workbench-surface: #1a1a18;
+  --workbench-ink: #e6e4df;
+  --workbench-muted: rgba(230, 228, 223, 0.55);
+  --workbench-line: rgba(230, 228, 223, 0.22);
+  --workbench-blue: #8fb6ff;
+  --gallery-hover: rgba(230, 228, 223, 0.08);
+  --glass-regular: rgba(26, 26, 24, 0.72);
+  --glass-rim: rgba(255, 255, 255, 0.22);
+  --glass-shade: rgba(0, 0, 0, 0.38);
+  --glass-blur: 18px;
+  --glass-saturate: 1.6;
+  --glass-scrim: rgba(6, 8, 8, 0.62);
+  --glass-shadow: 0 4px 10px rgba(0, 0, 0, 0.38);
+  --radius: 0;
+  --radius-glass: 16px;
+}
+
+
+.musetalk-chat {
+  box-sizing: border-box;
+  display: grid;
+  place-items: safe center;
+  overflow: auto;
+  padding: clamp(0.75rem, 3dvh, 1.75rem) clamp(0.75rem, 3vw, 1.75rem);
+}
+
+.musetalk-chat__window {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto auto minmax(4rem, 1fr) auto;
+  width: min(100%, 42rem);
+  height: min(100%, 51rem);
+  min-height: 32rem;
+  padding: 1px;
+  overflow: hidden;
+  border-radius: var(--radius-glass);
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: inset 0 1px var(--glass-rim), inset 1px 0 var(--glass-rim),
+    inset 0 -1px var(--glass-shade), inset -1px 0 var(--glass-shade), var(--glass-shadow);
+}
+
+.musetalk-chat__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.625rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+.musetalk-chat h1, .musetalk-gallery h2 {
+  font-family: var(--workbench-heading);
+  font-weight: 600;
+  margin: 0;
+}
+.musetalk-chat h1 { font-size: clamp(0.875rem, 2.65vw, 1.25rem); text-align: center; }
+
+.musetalk-chat input, .musetalk-chat textarea, .musetalk-chat button, .musetalk-gallery button {
+  box-sizing: border-box;
+  background: var(--workbench-bg);
+  color: var(--workbench-ink);
+  border: 1px dashed var(--workbench-line);
+  border-radius: var(--radius);
+  font: inherit;
+}
+.musetalk-chat button, .musetalk-gallery button { padding: 0.6rem; cursor: pointer; }
+.musetalk-chat button:disabled, .musetalk-gallery button:disabled { opacity: 0.4; cursor: not-allowed; }
+.musetalk-chat button:hover:not(:disabled), .musetalk-gallery button:hover:not(:disabled) { background: var(--gallery-hover); }
+.musetalk-chat :focus-visible, .musetalk-gallery :focus-visible { outline: 1px solid var(--workbench-blue); outline-offset: 2px; }
+
+.musetalk-chat button.musetalk-chat__choice {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  text-align: start;
+}
+.musetalk-chat button.musetalk-chat__choice--voice { justify-self: end; text-align: end; }
+.musetalk-chat__choice--voice svg { order: 1; }
+.musetalk-chat__choice svg { flex: none; color: var(--workbench-muted); }
+.musetalk-chat__choice-copy { display: grid; gap: 0.125rem; min-width: 0; }
+.musetalk-chat__choice-copy small, .musetalk-chat__composer label {
+  font: 0.625rem var(--workbench-mono);
+  color: var(--workbench-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.musetalk-chat__choice-copy strong {
+  overflow: hidden;
+  font: 600 0.875rem/1.2 var(--workbench-heading);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.musetalk-chat__stage { padding: 0 1rem; background: var(--workbench-surface); }
+.musetalk-chat__screen {
+  position: relative;
+  block-size: clamp(8rem, 33dvh, 18rem);
+  overflow: hidden;
+  background: var(--workbench-bg);
+  border: 1px dashed var(--workbench-line);
+}
+.musetalk-chat__screen > video, .musetalk-chat__idle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.musetalk-chat__screen > video { object-fit: contain; }
+.musetalk-chat__idle:not([hidden]) {
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  background: var(--workbench-bg);
+  pointer-events: none;
+}
+.musetalk-chat__idle-portrait:not([hidden]),
+.musetalk-chat__choice-portrait:not([hidden]),
+.musetalk-gallery__thumbnail {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--workbench-bg);
+  color: var(--workbench-muted);
+  font-family: var(--workbench-mono);
+}
+.musetalk-chat__idle-portrait { height: 100%; max-width: 100%; aspect-ratio: 1; }
+.musetalk-chat__choice-portrait { flex: none; width: 1.875rem; aspect-ratio: 1; }
+.musetalk-chat__idle-portrait img, .musetalk-chat__choice-portrait img, .musetalk-gallery__thumbnail img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.musetalk-chat__stage-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; padding: 0.4rem 0; }
+.musetalk-chat__stage-meta p { margin: 0; }
+.musetalk-chat__playback { margin-inline-start: auto; }
+.musetalk-chat__playback summary { cursor: pointer; }
+.musetalk-chat__playback label { display: block; }
+.musetalk-chat p[role="status"], .musetalk-gallery p[role="status"],
+.musetalk-chat__timing, .musetalk-chat__playback, #stage-placeholder, #thread-empty, #voice-gallery-character {
+  color: var(--workbench-muted);
+  font: 0.75rem/1.45 var(--workbench-mono);
+}
+.musetalk-chat [role="status"]:empty, .musetalk-gallery [role="status"]:empty { display: none; }
+
+.musetalk-chat__conversation {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  background: var(--workbench-bg);
+  border-block: 1px dashed var(--workbench-line);
+}
+#thread-empty:not([hidden]) { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; pointer-events: none; }
+#turns { overflow: auto; overflow-wrap: anywhere; overscroll-behavior: contain; padding: 0.75rem 1rem; }
+#turns article {
+  border: 1px dashed var(--workbench-line);
+  background: var(--workbench-surface);
+  padding: 0.5rem 0.75rem;
+}
+#turns article + article { margin-top: 0.5rem; }
+#turns article.musetalk-chat__turn--user { background: var(--gallery-hover); }
+#turns strong { font: 600 0.875rem/1.2 var(--workbench-heading); }
+#turns p { margin: 0.25rem 0 0; white-space: pre-wrap; }
+
+.musetalk-chat__composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.4rem 0.625rem;
+  padding: 0.75rem 1rem 0.875rem;
+  background: var(--workbench-surface);
+}
+.musetalk-chat__composer label, .musetalk-chat__composer p { grid-column: 1 / -1; margin: 0; }
+.musetalk-chat__composer textarea { display: block; width: 100%; padding: 0.5rem; resize: none; }
+.musetalk-chat__composer button#send {
+  background: var(--workbench-ink);
+  color: var(--workbench-bg);
+  border-color: transparent;
+  font: 600 0.875rem var(--workbench-heading);
+}
+.musetalk-chat__composer button#send:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--workbench-ink) 85%, var(--workbench-blue));
+}
+
+.musetalk-gallery {
+  box-sizing: border-box;
+  width: min(54rem, calc(100% - 2rem));
+  max-width: none;
+  max-height: min(48rem, calc(100dvh - 4rem));
+  padding: 1.25rem;
+  overflow: hidden;
+  border: 1px dashed var(--workbench-line);
+  border-radius: var(--radius);
+  background: var(--workbench-surface);
+  color: var(--workbench-ink);
+  box-shadow: var(--glass-shadow);
+}
+.musetalk-gallery[open] { display: flex; flex-direction: column; gap: 0.75rem; }
+.musetalk-gallery::backdrop { background: var(--glass-scrim); }
+.musetalk-gallery__header, .musetalk-gallery__toolbar {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+.musetalk-gallery h2 { font-size: 1.5rem; }
+.musetalk-gallery button:is(#close-characters, #close-voices) {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.musetalk-gallery button:is(#close-characters, #close-voices):hover { background: var(--gallery-hover); }
+.musetalk-gallery__toolbar { flex-wrap: wrap; }
+#character-groups { display: flex; flex-wrap: wrap; gap: 0.375rem 0.75rem; }
+.musetalk-gallery #character-groups button {
+  padding: 0.55rem 0.125rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--workbench-muted);
+}
+.musetalk-gallery #character-groups button:hover,
+.musetalk-gallery #character-groups button[aria-pressed="true"] { color: var(--workbench-ink); }
+.musetalk-gallery #character-groups button[aria-pressed="true"] { border-bottom-color: var(--workbench-blue); }
+.musetalk-gallery button.musetalk-gallery__upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  font: 600 0.8rem var(--workbench-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.musetalk-gallery p[role="status"] { margin: 0; }
+.musetalk-gallery__scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem;
+  margin: -0.25rem;
+}
+.musetalk-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+.musetalk-gallery button.musetalk-gallery__card {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 0;
+  text-align: start;
+  background: var(--workbench-surface);
+}
+.musetalk-gallery button.musetalk-gallery__card:hover,
+.musetalk-gallery button.musetalk-gallery__card[aria-pressed="true"] { border-style: solid; }
+.musetalk-gallery button.musetalk-gallery__card[aria-pressed="true"] {
+  border-color: var(--workbench-blue);
+  background: color-mix(in srgb, var(--workbench-blue) 12%, var(--workbench-surface));
+}
+.musetalk-gallery__thumbnail { aspect-ratio: 1; }
+.musetalk-gallery__card-copy { display: grid; gap: 0.125rem; min-width: 0; padding: 0.5rem; }
+.musetalk-gallery__card-copy strong { font: 600 1rem/1.2 var(--workbench-heading); overflow-wrap: anywhere; }
+.musetalk-gallery__card-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 2.8em;
+  color: var(--workbench-muted);
+  font: 0.625rem/1.4 var(--workbench-mono);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+#character-gallery-empty { margin: 0; padding: 1rem 0; color: var(--workbench-muted); }
+
+#voice-gallery-character { margin: 0; }
+.musetalk-gallery--voices { width: min(38rem, calc(100% - 2rem)); }
+.musetalk-gallery--voices .musetalk-gallery__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.musetalk-gallery button.musetalk-gallery__voice-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.75rem;
+}
+.musetalk-gallery__voice-card svg { color: var(--workbench-muted); }
+.musetalk-gallery__voice-card[aria-pressed="true"] svg { color: var(--workbench-blue); }
+.musetalk-gallery__voice-card .musetalk-gallery__card-copy { padding: 0; }
+.musetalk-gallery__voice-card .musetalk-gallery__card-copy small { min-height: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 819px) {
+  .musetalk-gallery__grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .musetalk-gallery__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 440px) {
+  .musetalk-gallery { padding: 0.75rem; }
+  .musetalk-gallery__grid, .musetalk-gallery--voices .musetalk-gallery__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .musetalk-chat__header, .musetalk-chat__composer { padding-inline: 0.625rem; }
+  .musetalk-chat__header { grid-template-columns: minmax(0, 1fr) minmax(0, 6rem) minmax(0, 1fr); gap: 0.25rem; }
+  .musetalk-chat button.musetalk-chat__choice { gap: 0.25rem; padding-inline: 0.375rem; }
+  .musetalk-chat__choice svg { width: 0.875rem; }
+  .musetalk-chat__choice-portrait { width: 1.375rem; }
+  .musetalk-chat__stage, #turns { padding-inline: 0.625rem; }
+  .musetalk-chat__screen { block-size: clamp(8rem, 28dvh, 13rem); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .musetalk-chat__window {
+    background: var(--workbench-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

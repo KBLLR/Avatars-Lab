@@ -1,3 +1,4 @@
+import { registerMuseTalkChat } from "./scripts/musetalk/live-chat.mjs";
 import { defineConfig, loadEnv } from "vite";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { createReadStream, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -410,6 +411,14 @@ const ecosystemAssetsPlugin = () => ({
   configureServer(server) {
     registerHealthCheck(server.middlewares);
     registerB3Preview(server.middlewares, server.config.mode);
+    const stopMuseTalkChat = registerMuseTalkChat(server.middlewares, {
+      env: (key) => process.env[key] ?? loadEnv(server.config.mode, root, key)[key],
+      gateway: corexGatewayUrl,
+      modelRoot: MEDIAPIPE_MODEL_ROOT,
+      runnerSource: resolve(root, "research/musetalk-mlx"),
+      serveStatic: registerStaticRoot,
+    });
+    server.httpServer?.once("close", stopMuseTalkChat);
     registerPortraitReview(server.middlewares, server.config.mode);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
@@ -428,6 +437,14 @@ const ecosystemAssetsPlugin = () => ({
   configurePreviewServer(server) {
     registerHealthCheck(server.middlewares);
     registerB3Preview(server.middlewares, server.config.mode);
+    const stopMuseTalkChat = registerMuseTalkChat(server.middlewares, {
+      env: (key) => process.env[key] ?? loadEnv(server.config.mode, root, key)[key],
+      gateway: corexGatewayUrl,
+      modelRoot: MEDIAPIPE_MODEL_ROOT,
+      runnerSource: resolve(root, "research/musetalk-mlx"),
+      serveStatic: registerStaticRoot,
+    });
+    server.httpServer?.once("close", stopMuseTalkChat);
     registerPortraitReview(server.middlewares, server.config.mode);
     registerAnimationCatalog(server.middlewares);
     registerStaticRoot(server.middlewares, "/corex-assets", COREX_PUBLIC);
@@ -508,6 +525,7 @@ export default defineConfig({
         "said-face": resolve(root, "said-face.html"),
         audio2face: resolve(root, "audio2face.html"),
         musetalk: resolve(root, "musetalk.html"),
+        "musetalk-chat": resolve(root, "musetalk-chat.html"),
         "talking-portrait": resolve(root, "talking-portrait.html"),
         "face-mirror": resolve(root, "face-mirror.html"),
         "dance-studio": resolve(root, "dance-studio.html"),
