@@ -32,7 +32,9 @@ export function applyCoreXHeadFinish(scene: Object3D, headId: string): void {
       const role = mat.name.toLowerCase().split(/[.:]/, 1)[0];
       if (role === "face" || role === "backhead") {
         // Core-X avatar-loader skinRoughnessFor preserves the authored map.
-        mat.roughness = mat.roughnessMap ? 1 : 0.52;
+        if (mat.userData.corexSkinFinish !== true) {
+          mat.roughness = mat.roughnessMap ? 1 : 0.52;
+        }
         // Core-X's WebGPU node-skin upgrade copies the factor without the map.
         if (mat instanceof MeshPhysicalNodeMaterial) mat.roughnessMap = null;
         mat.metalness = 0;

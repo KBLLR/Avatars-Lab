@@ -285,6 +285,12 @@ export function applyStudioMaterialRealism(root: Mesh | Group, isWebGPU: boolean
 
         skinMat.side = FrontSide;
         skinMat.roughness = 0.58;
+        if (source.userData.corexSkinFinish === true) {
+          skinMat.userData.corexSkinFinish = true;
+          skinMat.roughness = source.roughness;
+          skinMat.specularIntensity = source.specularIntensity ?? 1;
+          skinMat.specularIntensityMap = source.specularIntensityMap ?? null;
+        }
         skinMat.metalness = 0;
         skinMat.transparent = false;
         skinMat.depthWrite = true;
