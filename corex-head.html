@@ -6,6 +6,7 @@
     <title>Core-X Head / Avatar Labs</title>
     <link rel="stylesheet" href="/src/styles/avatar-labs.css" />
     <style>
+      .corex-head-case .runtime-nav { overflow-y: auto; }
       .corex-head-case .control-panel {
         background: var(--surface);
       }
@@ -133,49 +134,27 @@
   </head>
   <body class="case-page corex-head-case">
     <main class="runtime-shell">
-      <nav class="runtime-nav" aria-label="Case navigation">
+      <nav id="case-nav" class="runtime-nav" aria-label="Case navigation">
         <a class="runtime-nav__brand" href="/" title="Avatar Labs">AL</a>
-        <a class="runtime-nav__item" href="/engine-lab.html" title="Performance Engine">ENG</a>
-        <a class="runtime-nav__item" href="/mocap-lab.html" title="Mocap Lab">MCP</a>
-        <a class="runtime-nav__item" href="/gemma-avatar.html" title="Gemma Speech">GEM</a>
-        <a class="runtime-nav__item" href="/corex-head.html" aria-current="page" title="Core-X Head">CXH</a>
-        <a class="runtime-nav__item" href="/audio2face.html" title="Audio2Face Lab">A2F</a>
-        <a class="runtime-nav__item" href="/said-face.html" title="SAiD Face">SAI</a>
-        <a class="runtime-nav__item" href="/face-mirror.html" title="Face Mirror">FMR</a>
-        <a class="runtime-nav__item" href="/stage.html" title="Stage Director">STG</a>
-        <a class="runtime-nav__item" href="/dance-studio.html" title="Dance Studio">DNC</a>
-        <a class="runtime-nav__item" href="/gestures-lab.html" title="Gesture Library">GST</a>
-        <a class="runtime-nav__item" href="/multi-modal.html" title="Multimodal Chat">MLT</a>
       </nav>
 
       <section id="stage" class="runtime-stage" aria-label="Core-X head stage">
-        <span class="runtime-stage__badge">Core-X Canonical Render (WebGPU / ACES / PCFSoft)</span>
+        <span id="renderer-status" class="runtime-stage__badge">Initializing renderer</span>
       </section>
 
       <aside class="control-panel">
         <header class="control-panel__header">
           <h1>Core-X Head</h1>
-          <p>Canonical Core-X ChatAvatar rendering with real-time talk & dynamic emotion states.</p>
+          <p>Shared Core-X heads with local speech, facial animation, and neck motion.</p>
         </header>
 
         <section class="control-panel__section control-stack">
           <div id="status" class="runtime-status">booting</div>
 
           <label>
-            Performer Head & Canonical Voice
-            <select id="head-select" style="width: 100%; padding: 8px;">
-              <option value="kbllr" selected>KBLLR (Curator / voice: lullabot)</option>
-              <option value="anja">Anja (Speaker / voice: katanja)</option>
-              <option value="susi-q">Susi-Q (Balanced / voice: katanja)</option>
-              <option value="eli">Eli (Hyperhuman / voice: eli_luma)</option>
-              <option value="sofia">Sofia (Hyperhuman / voice: sofi_v)</option>
-              <option value="rosalia">Rosalia (ChatAvatar)</option>
-              <option value="nyx">Nyx (Hyperhuman / voice: vicky_spice)</option>
-              <option value="vee">Vee (ChatAvatar / voice: princess_leia)</option>
-              <option value="nino">Nino (Generalist / voice: ninoo)</option>
-            </select>
+            Performer head
+            <select id="head-select" disabled></select>
           </label>
-          <input id="head-url" type="hidden" value="/corex-assets/avatars/heads/kbllr/kbllr.glb" />
 
           <fieldset id="neck-motion" class="neck-study" aria-describedby="neck-study-status" disabled>
             <legend>Neck motion study</legend>
@@ -196,7 +175,7 @@
 
           <label>
             Speech Prompt (Supports [Happy], [Angry], [Surprised], [Thinking], [Empathic], [Excited])
-            <textarea id="text">[Happy] Hello operator! [Surprised] Real-time talk and lip articulation are fully calibrated. [Thinking] Watch how my lips pucker, stretch, and expose upper teeth, [Excited] all synchronized live at sixty frames per second!</textarea>
+            <textarea id="text">[Happy] Hello, operator. [Thinking] Let’s try a short line with a different expression.</textarea>
           </label>
 
           <div style="font-size: 10px; color: var(--muted); text-transform: uppercase;">
@@ -278,7 +257,7 @@
         </section>
 
         <section class="control-panel__section"><pre id="log" class="runtime-log"></pre></section>
-        <footer class="control-panel__footer">Asset source: Core-X canonical head library. Pure diffuse + GGX physical realism.</footer>
+        <footer class="control-panel__footer">Assets from the shared Core-X head library</footer>
       </aside>
     </main>
     <script type="module" src="/src/corex-head.ts"></script>

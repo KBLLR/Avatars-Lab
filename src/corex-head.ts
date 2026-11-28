@@ -36,6 +36,7 @@ import { GLTFLoader } from "three-stdlib";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { PMREMGenerator } from "three";
+import { AVATAR_LAB_CASES } from "./cases/registry";
 import {
   createArchitecturalPlinth,
   applyStudioMaterialRealism,
@@ -67,13 +68,13 @@ import {
 
 const els = {
   stage: document.getElementById("stage") as HTMLElement,
+  rendererStatus: document.getElementById("renderer-status") as HTMLElement,
   status: document.getElementById("status") as HTMLElement,
   log: document.getElementById("log") as HTMLElement,
   text: document.getElementById("text") as HTMLTextAreaElement,
   voice: document.getElementById("voice") as HTMLSelectElement,
   voiceStatus: document.getElementById("voice-status") as HTMLParagraphElement,
   headSelect: document.getElementById("head-select") as HTMLSelectElement,
-  headUrl: document.getElementById("head-url") as HTMLInputElement,
   service: document.getElementById("service") as HTMLInputElement,
   plinthMode: document.getElementById("plinth-mode") as HTMLSelectElement,
   lipGain: document.getElementById("lip-gain") as HTMLInputElement,
@@ -100,11 +101,17 @@ const els = {
 
 export { HEAD_ROSTER, resolveHeadDefinition, type HeadDefinition };
 
-for (const head of Object.values(HEAD_ROSTER)) {
-  if (!Array.from(els.headSelect.options).some((option) => option.value === head.id)) {
-    els.headSelect.add(new Option(head.label, head.id));
-  }
+const caseNav = document.getElementById("case-nav")!;
+for (const item of AVATAR_LAB_CASES) {
+  const link = document.createElement("a");
+  link.className = "runtime-nav__item";
+  link.href = item.href;
+  link.title = item.title;
+  link.textContent = item.code;
+  if (item.id === "corex-head") link.setAttribute("aria-current", "page");
+  caseNav.appendChild(link);
 }
+for (const head of Object.values(HEAD_ROSTER)) els.headSelect.add(new Option(head.label, head.id));
 
 const result = {
   ready: false,
@@ -131,6 +138,8 @@ const articulationEngine = new SpeechArticulationEngine({ lipGain: 1.35, jawGain
 const emotionEngine = new DynamicEmotionEngine("neutral", 0.8);
 
 let liveMicActive = false;
+let headSwitching = false;
+let performerRevision = 0;
 let micStream: MediaStream | null = null;
 let micSourceNode: MediaStreamAudioSourceNode | null = null;
 let micAnalyser: AnalyserNode | null = null;
@@ -302,6 +311,10 @@ async function initStage(): Promise<Stage> {
     try {
       const webgpu = new WebGPURenderer({ antialias: true, alpha: true });
       await webgpu.init();
+      if (!("isWebGPUBackend" in webgpu.backend) || webgpu.backend.isWebGPUBackend !== true) {
+        webgpu.dispose();
+        throw new Error("Three.js selected a fallback backend");
+      }
       renderer = webgpu;
       result.renderer = "webgpu";
       log("renderer: WebGPU initialized");
@@ -315,6 +328,7 @@ async function initStage(): Promise<Stage> {
     result.renderer = forceWebGl ? "webgl-forced" : "webgl-fallback";
   }
 
+  els.rendererStatus.textContent = result.renderer === "webgpu" ? "WebGPU" : "WebGL2";
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(els.stage.clientWidth, els.stage.clientHeight);
   renderer.outputColorSpace = SRGBColorSpace;
@@ -397,7 +411,6 @@ async function initStage(): Promise<Stage> {
   const initialHeadDef = resolveHeadDefinition(initialHeadKey);
   activeVoiceHead = initialHeadDef;
   updateVoiceOptions();
-  els.headUrl.value = initialHeadDef.url;
   setStatus(`Loading head GLB… (${initialHeadDef.label})`);
   setHeadLighting(initialHeadDef.id);
   const head = await loadHeadModel(initialHeadDef, headGroup, isWebGpu, camera, controls);
@@ -625,11 +638,12 @@ async function toggleLiveMic() {
     return;
   }
 
+  const requestedRevision = performerRevision;
   try {
     setStatus("Requesting microphone…");
     await stage.audioCtx.resume();
 
-    micStream = await navigator.mediaDevices.getUserMedia({
+    const acquiredStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
@@ -637,6 +651,11 @@ async function toggleLiveMic() {
       },
     });
 
+    if (headSwitching || performerRevision !== requestedRevision) {
+      acquiredStream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    micStream = acquiredStream;
     micSourceNode = stage.audioCtx.createMediaStreamSource(micStream);
 
     // VU meter analyser
@@ -652,7 +671,7 @@ async function toggleLiveMic() {
     els.btnLiveMic.textContent = "Mic active";
     els.micMeterBox.style.display = "block";
     setStatus("Live Mic Active — speak into your microphone!");
-    log("Real-time Live Mic connected to HeadAudio neural worklet (< 15ms latency)");
+    log("Live mic connected to HeadAudio");
 
     // Update VU meter loop
     const dataArray = new Uint8Array(micAnalyser.frequencyBinCount);
@@ -668,6 +687,7 @@ async function toggleLiveMic() {
     };
     updateVu();
   } catch (err) {
+    if (performerRevision !== requestedRevision) return;
     liveMicActive = false;
     els.btnLiveMic.classList.remove("is-recording");
     els.btnLiveMic.textContent = "Live Mic";
@@ -726,8 +746,8 @@ const stopPlayback = () => {
 };
 
 const setBusy = (busy: boolean) => {
-  els.speakStream.disabled = busy;
-  els.speakBlob.disabled = busy;
+  els.speakStream.disabled = busy || headSwitching;
+  els.speakBlob.disabled = busy || headSwitching;
 };
 
 const resetMetrics = () => {
@@ -738,11 +758,15 @@ const resetMetrics = () => {
 
 // ── Streaming Speech (Text -> Analyze Emotion -> TTS -> Worklet) ───────────
 async function speakStreaming() {
-  if (!stage) return;
+  if (!stage || headSwitching) return;
+  const revision = performerRevision;
   if (liveMicActive) await toggleLiveMic();
+  if (headSwitching || performerRevision !== revision) return;
   stopPlayback();
   setBusy(true);
   resetMetrics();
+  const request = new AbortController();
+  abort = request;
 
   // 1. Analyze prompt emotions before speech
   const promptAnalysis = analyzeSpeechPrompt(els.text.value);
@@ -756,14 +780,14 @@ async function speakStreaming() {
 
   try {
     await stage.audioCtx.resume();
-    abort = new AbortController();
+    request.signal.throwIfAborted();
 
     const stream = await streamSpeech({
       baseUrl: els.service.value,
       input: promptAnalysis.cleanText,
       voice: els.voice.value,
       destinationSampleRate: stage.audioCtx.sampleRate,
-      signal: abort.signal,
+      signal: request.signal,
       onFirstChunk: (firstAudioAt) => {
         result.lastTtfaMs = firstAudioAt;
         els.mTtfa.textContent = `${(firstAudioAt / 1000).toFixed(2)}s`;
@@ -787,17 +811,21 @@ async function speakStreaming() {
       setStatus(`Error: ${String(error)}`);
     }
   } finally {
-    setBusy(false);
+    if (!abort || abort === request) setBusy(false);
   }
 }
 
 // ── Full WAV Blob Speech ───────────────────────────────────────────────────
 async function speakBlob() {
-  if (!stage) return;
+  if (!stage || headSwitching) return;
+  const revision = performerRevision;
   if (liveMicActive) await toggleLiveMic();
+  if (headSwitching || performerRevision !== revision) return;
   stopPlayback();
   setBusy(true);
   resetMetrics();
+  const request = new AbortController();
+  abort = request;
 
   const promptAnalysis = analyzeSpeechPrompt(els.text.value);
   log(`Pre-speech emotion analysis: dominant=[${promptAnalysis.dominantEmotion}], keyframes=${promptAnalysis.timeline.length}`);
@@ -807,7 +835,7 @@ async function speakBlob() {
 
   try {
     await stage.audioCtx.resume();
-    abort = new AbortController();
+    request.signal.throwIfAborted();
     const t0 = performance.now();
 
     const response = await fetch(`${els.service.value}/v1/audio/speech`, {
@@ -818,12 +846,13 @@ async function speakBlob() {
         voice: els.voice.value,
         model: "qwen",
       }),
-      signal: abort.signal,
+      signal: request.signal,
     });
     if (!response.ok) throw new Error(`blob request failed (HTTP ${response.status})`);
 
     const bytes = await response.arrayBuffer();
     const buffer = await stage.audioCtx.decodeAudioData(bytes);
+    request.signal.throwIfAborted();
     const ttfa = performance.now() - t0;
 
     result.lastTtfaMs = ttfa;
@@ -850,7 +879,7 @@ async function speakBlob() {
       setStatus(`Error: ${String(error)}`);
     }
   } finally {
-    setBusy(false);
+    if (!abort || abort === request) setBusy(false);
   }
 }
 
@@ -866,9 +895,11 @@ async function run() {
     const message = error instanceof Error ? error.message : String(error);
     result.errors.push(message);
     setStatus(`Error: ${message}`);
+    if (result.renderer === "pending") els.rendererStatus.textContent = "Renderer unavailable";
     log(`ERROR ${message}`);
     return;
   }
+  els.headSelect.disabled = false;
 
   els.speakStream.addEventListener("click", () => void speakStreaming());
   els.speakBlob.addEventListener("click", () => void speakBlob());
@@ -922,22 +953,27 @@ async function run() {
 
   // Head selection dropdown
   els.headSelect.addEventListener("change", async () => {
-    if (!stage) return;
+    if (!stage || headSwitching) return;
     const headKey = els.headSelect.value;
     const headDef = resolveHeadDefinition(headKey);
 
-    stopPlayback();
+    performerRevision++;
+    headSwitching = true;
     els.headSelect.disabled = true;
+    els.btnLiveMic.disabled = true;
+    els.voice.disabled = true;
+    setBusy(false);
     setNeckStudyAvailable(false);
-    setStatus(`Switching performer head: ${headDef.label} (voice: ${headDef.voice})…`);
-    log(`Loading performer ${headDef.label}`);
 
     try {
+      if (liveMicActive) await toggleLiveMic();
+      else stopPlayback();
+      setStatus(`Switching performer head: ${headDef.label} (voice: ${headDef.voice})…`);
+      log(`Loading performer ${headDef.label}`);
       const isWebGpu = result.renderer === "webgpu";
       stage.head = await loadHeadModel(headDef, stage.headGroup, isWebGpu, stage.camera, stage.controls);
       activeVoiceHead = headDef;
       updateVoiceOptions();
-      els.headUrl.value = headDef.url;
       setNeckStudyAvailable(Boolean(stage.head.neckRig));
       stage.setHeadLighting(headDef.id);
       setStatus(`Performer ${headDef.label} ready.`);
@@ -948,7 +984,11 @@ async function run() {
       setStatus(`Head load failed: ${String(err)}`);
       setNeckStudyAvailable(true);
     } finally {
+      headSwitching = false;
       els.headSelect.disabled = false;
+      els.btnLiveMic.disabled = false;
+      els.voice.disabled = false;
+      setBusy(false);
     }
   });
 

@@ -32,5 +32,26 @@ test("Core-X head exposes a deterministic WebGL fallback", async ({ page }) => {
   expect(result.morphMeshes).toBeGreaterThan(0);
   expect(result.errors).toEqual([]);
   await expect(page.locator("#stage canvas")).toBeVisible();
+  await expect(page.locator("#renderer-status")).toHaveText("WebGL2");
+  await expect(page.locator('#case-nav [aria-current="page"]')).toHaveText("CXH");
+  await expect(page.locator('#case-nav a[href="/musetalk-chat.html"]')).toHaveText("MCH");
+
+  let releaseHead;
+  const headGate = new Promise((resolve) => { releaseHead = resolve; });
+  await page.route("**/avatars/heads/rosalia/rosalia.glb", async (route) => {
+    await headGate;
+    await route.continue();
+  });
+  try {
+    await page.locator("#head-select").selectOption("rosalia");
+    for (const control of ["#speak-stream", "#speak-blob", "#btn-live-mic", "#voice"]) {
+      await expect(page.locator(control)).toBeDisabled();
+    }
+  } finally {
+    releaseHead();
+  }
+  await expect(page.locator("#status")).toHaveText("Performer Rosalia ready.", { timeout: 20_000 });
+  await expect(page.locator("#voice")).toHaveValue("rosa_lia");
+  await expect(page.locator("#speak-stream")).toBeEnabled();
   expect(errors).toEqual([]);
 });
