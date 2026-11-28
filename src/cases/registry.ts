@@ -61,7 +61,7 @@ export const AVATAR_LAB_CASES: AvatarLabCase[] = [
     id: "said-face",
     code: "SAI",
     title: "SAiD Face",
-    description: "Diffusion audio-to-ARKit 51 facial performance via local SAiD UNet1D.",
+    description: "Generate facial motion from audio with local SAiD and play it on a shared Core-X head.",
     href: "/said-face.html",
     icon: "AudioLines",
     status: "verified",

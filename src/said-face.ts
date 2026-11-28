@@ -9,6 +9,7 @@ interface SaidResponse {
   fps: number;
   num_frames: number;
   frames: SaidFrame[];
+  blendshape_classes?: string[];
   timings_ms?: Record<string, number>;
 }
 
@@ -35,6 +36,7 @@ const els = {
   pedestal: element<HTMLElement>("pedestalMetric"),
   service: element<HTMLElement>("serviceMetric"),
   frames: element<HTMLElement>("framesMetric"),
+  channels: element<HTMLElement>("channelsMetric"),
   fps: element<HTMLElement>("fpsMetric"),
   timing: element<HTMLElement>("timingMetric"),
   expressions: element<HTMLOListElement>("expressionList"),
@@ -100,7 +102,10 @@ const stopPlayback = (): void => {
 
 const animatePlayback = (): void => {
   if (!runtime || !audio || !response || audio.paused || audio.ended) {
-    if (audio?.ended) stopPlayback();
+    if (audio?.ended) {
+      stopPlayback();
+      setStatus("Playback complete.");
+    }
     return;
   }
   const index = Math.min(response.frames.length - 1, Math.floor(audio.currentTime * response.fps));
@@ -111,14 +116,29 @@ const animatePlayback = (): void => {
 
 const selectedAudio = (): File | null => els.audioFile.files?.[0] || null;
 
+function clearPerformance(): void {
+  stopPlayback();
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  audioUrl = null;
+  audio = null;
+  response = null;
+  result.frames = 0;
+  els.frames.textContent = "0";
+  els.channels.textContent = "-";
+  els.fps.textContent = "-";
+  els.timing.textContent = "-";
+  els.expressions.replaceChildren();
+  els.play.disabled = true;
+}
+
 const generate = async (): Promise<void> => {
   const file = selectedAudio();
   if (!runtime || !file) return;
-  stopPlayback();
+  clearPerformance();
   requestAbort?.abort();
-  requestAbort = new AbortController();
+  const request = new AbortController();
+  requestAbort = request;
   els.generate.disabled = true;
-  els.play.disabled = true;
   setStatus(`SAiD is generating ${file.name}`);
   const form = new FormData();
   form.append("audio", file, file.name);
@@ -129,42 +149,54 @@ const generate = async (): Promise<void> => {
     const httpResponse = await fetch("/api/said/v1/audio/blendshapes", {
       method: "POST",
       body: form,
-      signal: requestAbort.signal,
+      signal: request.signal,
     });
     if (!httpResponse.ok) {
       const detail = await httpResponse.text().catch(() => "");
       throw new Error(detail || `SAiD request failed (${httpResponse.status}).`);
     }
     const payload = await httpResponse.json() as SaidResponse;
-    if (!Array.isArray(payload.frames) || payload.frames.length === 0 || !Number.isFinite(payload.fps)) {
+    if (request.signal.aborted) return;
+    if (!Array.isArray(payload.frames) || payload.frames.length === 0 || !Number.isFinite(payload.fps) || payload.fps <= 0) {
       throw new Error("SAiD returned no usable facial frames.");
     }
     response = payload;
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
     audioUrl = URL.createObjectURL(file);
     audio = new Audio(audioUrl);
     audio.preload = "auto";
     els.frames.textContent = String(payload.frames.length);
+    els.channels.textContent = String(payload.blendshape_classes?.length ??
+      Object.keys(payload.frames[0]).filter((name) => name !== "frame").length);
     els.fps.textContent = `${payload.fps} fps`;
-    els.timing.textContent = `${Math.round(payload.timings_ms?.total || performance.now() - startedAt)} ms`;
+    els.timing.textContent = `${Math.round(payload.timings_ms?.total ?? performance.now() - startedAt)} ms`;
     renderDominantExpressions(payload.frames);
     result.frames = payload.frames.length;
     els.play.disabled = false;
     setStatus("Facial motion ready. Press Play.");
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return;
+    if (request.signal.aborted) return;
     const message = error instanceof Error ? error.message : String(error);
     result.errors.push(message);
     setStatus(message, true);
   } finally {
-    els.generate.disabled = !selectedAudio();
+    if (requestAbort === request) {
+      requestAbort = null;
+      els.generate.disabled = !selectedAudio();
+    }
   }
 };
 
 const play = async (): Promise<void> => {
   if (!audio || !response) return;
+  const source = audio;
   stopPlayback();
-  await audio.play();
+  try {
+    await source.play();
+  } catch (error) {
+    if (audio === source) setStatus(`Audio playback failed: ${String(error)}`, true);
+    return;
+  }
+  if (audio !== source) return;
   result.playing = true;
   els.stop.disabled = false;
   setStatus("Playing SAiD facial performance");
@@ -208,14 +240,18 @@ const init = async (): Promise<void> => {
 };
 
 els.audioFile.addEventListener("change", () => {
-  response = null;
+  requestAbort?.abort();
+  requestAbort = null;
+  clearPerformance();
   els.generate.disabled = !selectedAudio() || !runtime;
-  els.play.disabled = true;
   setStatus(selectedAudio() ? `${selectedAudio()!.name} selected` : "Choose an audio file");
 });
 els.generate.addEventListener("click", () => void generate());
 els.play.addEventListener("click", () => void play());
-els.stop.addEventListener("click", stopPlayback);
+els.stop.addEventListener("click", () => {
+  stopPlayback();
+  if (response) setStatus("Facial motion ready. Press Play.");
+});
 els.reset.addEventListener("click", () => runtime?.resetExpression());
 els.steps.addEventListener("input", () => { els.stepsValue.textContent = els.steps.value; });
 els.guidance.addEventListener("input", () => { els.guidanceValue.textContent = Number(els.guidance.value).toFixed(1); });

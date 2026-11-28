@@ -12,7 +12,7 @@
       <section class="facial-stage" aria-label="SAiD facial performance stage">
         <div id="portraitStage" class="facial-stage__canvas"></div>
         <output id="stageStatus" class="facial-stage__status">Booting portrait runtime</output>
-        <span class="facial-stage__provenance">Core-X head / physical studio plinth / SAiD 8096</span>
+        <span class="facial-stage__provenance">Core-X head / SAiD via Gateway</span>
       </section>
       <aside class="facial-panel">
         <p class="facial-panel__summary">Generate ARKit facial motion from a local audio file, then inspect it in sync on a camera-aware Core-X head.</p>
@@ -33,14 +33,15 @@
             <button id="stopButton" class="facial-command facial-command--stop" type="button" disabled><i data-lucide="Square"></i>Stop</button>
             <button id="resetButton" class="facial-command" type="button"><i data-lucide="RotateCcw"></i>Reset face</button>
           </div>
-          <label class="facial-field"><span>Diffusion steps <b id="stepsValue">12</b></span><input id="steps" type="range" min="4" max="40" value="12" step="1" /></label>
-          <label class="facial-field"><span>Guidance <b id="guidanceValue">2.0</b></span><input id="guidance" type="range" min="0.5" max="5" value="2" step="0.1" /></label>
+          <label class="facial-field"><span>Diffusion steps <b id="stepsValue">8</b></span><input id="steps" type="range" min="4" max="40" value="8" step="1" /></label>
+          <label class="facial-field"><span>Guidance <b id="guidanceValue">1.8</b></span><input id="guidance" type="range" min="0.5" max="5" value="1.8" step="0.1" /></label>
         </section>
         <section class="facial-section">
           <h2>Run Evidence</h2>
           <dl class="facial-metrics">
             <div class="facial-metric"><dt>Service</dt><dd id="serviceMetric">probing</dd></div>
             <div class="facial-metric"><dt>Frames</dt><dd id="framesMetric">0</dd></div>
+            <div class="facial-metric"><dt>Channels</dt><dd id="channelsMetric">-</dd></div>
             <div class="facial-metric"><dt>Frame rate</dt><dd id="fpsMetric">-</dd></div>
             <div class="facial-metric"><dt>Inference</dt><dd id="timingMetric">-</dd></div>
           </dl>
