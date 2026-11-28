@@ -15,8 +15,6 @@ const LIBRARY_HEAD_NAMES = [
   ["trunks", "Trunks"],
   ["mystery-girl", "Mystery Girl"],
   ["mystery-girl-2", "Mystery Girl 2"],
-  ["me", "Me"],
-  ["me-kid", "Me (Kid)"],
 ] as const;
 
 /**
