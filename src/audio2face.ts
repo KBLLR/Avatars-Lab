@@ -1,92 +1,22 @@
 import {
-  Activity,
-  CircleGauge,
   Cpu,
-  Layers3,
   Play,
   RotateCcw,
-  Sparkles,
   Square,
   createIcons,
 } from "lucide";
 import { FacialPortraitRuntime } from "./facial/portrait-runtime";
 
-export type A2FModalityId = "onnx" | "mps" | "mlx";
-export type EmotionPreset = "neutral" | "happy" | "surprised" | "angry" | "empathic";
+type EmotionPreset = "neutral" | "happy" | "surprised" | "angry" | "empathic";
 
-interface ModalityProfile {
-  id: A2FModalityId;
-  name: string;
-  badge: string;
-  badgeClass: string;
-  targetDevice: string;
-  baseLatencyMs: number;
-  realtimeMultiplier: number;
-  memoryMb: number;
-  description: string;
-  channels: string;
-}
-
-const MODALITY_PROFILES: Record<A2FModalityId, ModalityProfile> = {
-  onnx: {
-    id: "onnx",
-    name: "ONNX CoreML",
-    badge: "CoreML EP",
-    badgeClass: "a2f-badge--onnx",
-    targetDevice: "Apple Neural Engine (ANE) / CPU",
-    baseLatencyMs: 12.2,
-    realtimeMultiplier: 4.8,
-    memoryMb: 159,
-    description:
-      "Universal open-weight ONNX execution graph (Audio2Face-3D-v2.3.1-Claire). Executes deterministic single-pass feedforward linear/conv projections mapped to CoreML Execution Provider on Apple Silicon.",
-    channels: "169 controls -> 52 ARKit blendshapes",
-  },
-  mps: {
-    id: "mps",
-    name: "PyTorch MPS Pipeline",
-    badge: "Metal MPS",
-    badgeClass: "a2f-badge",
-    targetDevice: "Apple Silicon Metal GPU (MPS)",
-    baseLatencyMs: 15.6,
-    realtimeMultiplier: 3.8,
-    memoryMb: 280,
-    description:
-      "Metal Performance Shaders backend integrated with Core-X audio pipeline (port 8096 / Gateway). Batches Wav2Vec2/HuBERT acoustic latent frames into Metal tensor kernels.",
-    channels: "169 controls -> 52 ARKit blendshapes",
-  },
-  mlx: {
-    id: "mlx",
-    name: "Native Apple MLX",
-    badge: "Unified Memory",
-    badgeClass: "a2f-badge--mlx",
-    targetDevice: "Apple Silicon Unified Memory (M-Series)",
-    baseLatencyMs: 7.4,
-    realtimeMultiplier: 7.9,
-    memoryMb: 110,
-    description:
-      "Native MLX port implementing zero-copy shared memory buffers between the macOS audio stream and neural network weights. Eliminates runtime abstraction layers for true sub-10ms streaming.",
-    channels: "169 controls -> 52 ARKit blendshapes",
-  },
-};
-
-interface A2FFrame extends Record<string, number> {
+interface PreviewFrame extends Record<string, number> {
   frame: number;
 }
 
-interface A2FRunPayload {
+interface MotionPreview {
   fps: number;
-  modality: A2FModalityId;
-  emotion: EmotionPreset;
-  intensity: number;
-  num_frames: number;
-  duration_s: number;
-  frames: A2FFrame[];
-  timings_ms: {
-    feature_extraction: number;
-    model_inference: number;
-    kinematic_mapping: number;
-    total: number;
-  };
+  durationSeconds: number;
+  frames: PreviewFrame[];
 }
 
 const MONITORED_CHANNELS = [
@@ -103,16 +33,7 @@ const MONITORED_CHANNELS = [
 ];
 
 createIcons({
-  icons: {
-    Activity,
-    CircleGauge,
-    Cpu,
-    Layers3,
-    Play,
-    RotateCcw,
-    Sparkles,
-    Square,
-  },
+  icons: { Cpu, Play, RotateCcw, Square },
   attrs: { "stroke-width": 1.5 },
 });
 
@@ -128,8 +49,6 @@ const dom = {
   headSelect: byId<HTMLSelectElement>("headSelect"),
   rendererMetric: byId<HTMLElement>("rendererMetric"),
   pedestalMetric: byId<HTMLElement>("pedestalMetric"),
-  modalityTabs: document.querySelectorAll<HTMLButtonElement>(".a2f-modality-tab"),
-  modalityCard: byId<HTMLElement>("modalityCard"),
   emotionBtns: document.querySelectorAll<HTMLButtonElement>(".a2f-emotion-btn"),
   emotionIntensity: byId<HTMLInputElement>("emotionIntensity"),
   emotionIntensityVal: byId<HTMLElement>("emotionIntensityVal"),
@@ -141,34 +60,29 @@ const dom = {
   playButton: byId<HTMLButtonElement>("playButton"),
   stopButton: byId<HTMLButtonElement>("stopButton"),
   resetButton: byId<HTMLButtonElement>("resetButton"),
-  benchmarkAllButton: byId<HTMLButtonElement>("benchmarkAllButton"),
-  benchmarkTableBody: byId<HTMLElement>("benchmarkTableBody"),
   framesMetric: byId<HTMLElement>("framesMetric"),
   durationMetric: byId<HTMLElement>("durationMetric"),
   channelsMetric: byId<HTMLElement>("channelsMetric"),
-  pipelineStatus: byId<HTMLElement>("pipelineStatus"),
+  fpsMetric: byId<HTMLElement>("fpsMetric"),
   channelMeters: byId<HTMLElement>("channelMeters"),
 };
 
 // Global state
-let activeModality: A2FModalityId = "onnx";
 let activeEmotion: EmotionPreset = "neutral";
 let activeIntensity = 0.75;
 let runtime: FacialPortraitRuntime | null = null;
-let currentPayload: A2FRunPayload | null = null;
+let currentPreview: MotionPreview | null = null;
+let previewRevision = 0;
 let playbackRaf = 0;
 let audioElement: HTMLAudioElement | null = null;
 let audioUrl: string | null = null;
 let audioContext: AudioContext | null = null;
-let audioBuffer: AudioBuffer | null = null;
 
 const result = {
   ready: false,
-  activeModality: "onnx",
   head: "",
   framesGenerated: 0,
   isPlaying: false,
-  benchmarkScores: {} as Record<string, number>,
   errors: [] as string[],
 };
 (window as Window & { __a2fLabResult?: typeof result }).__a2fLabResult = result;
@@ -265,14 +179,13 @@ const bufferToWavBlob = (buffer: AudioBuffer): Blob => {
   return new Blob([out.buffer], { type: "audio/wav" });
 };
 
-// Neural synthesis algorithm generating ARKit 52 blendshapes from audio signal
-const inferAudio2FaceFrames = (
+// Approximate facial motion from audio energy and zero crossings.
+const generatePreviewFrames = (
   buffer: AudioBuffer,
-  modality: A2FModalityId,
   emotion: EmotionPreset,
   intensity: number,
   eyeballGaze: boolean
-): A2FRunPayload => {
+): MotionPreview => {
   const fps = 60;
   const duration = buffer.duration;
   const numFrames = Math.max(1, Math.floor(duration * fps));
@@ -280,16 +193,7 @@ const inferAudio2FaceFrames = (
   const sampleRate = buffer.sampleRate;
   const samplesPerFrame = Math.floor(sampleRate / fps);
 
-  const profile = MODALITY_PROFILES[modality];
-  const numChunks = Math.ceil(buffer.length / 8320);
-
-  // Exact hardware latency simulation scaled to chunk count
-  const featureExtLatency = 2.1 * numChunks;
-  const modelInferLatency = profile.baseLatencyMs * numChunks;
-  const kinematicLatency = 1.4 * numChunks;
-  const totalTiming = featureExtLatency + modelInferLatency + kinematicLatency;
-
-  const frames: A2FFrame[] = [];
+  const frames: PreviewFrame[] = [];
 
   // Emotion vectors
   const emotionMap: Record<EmotionPreset, Record<string, number>> = {
@@ -346,11 +250,11 @@ const inferAudio2FaceFrames = (
     const rms = Math.sqrt(sumSq / Math.max(1, endSample - startSample));
     const zcr = zeroCrossings / Math.max(1, endSample - startSample);
 
-    // Audio-driven mouth phoneme mapping
+    // Approximate mouth motion from the audio signal
     const speechOpen = Math.min(1, rms * 4.2);
     const isFricative = zcr > 0.18; // s, sh, f
 
-    const frameData: A2FFrame = {
+    const frameData: PreviewFrame = {
       frame: f,
       jawOpen: speechOpen * 0.78 + (activeEmotionTargets.jawOpen || 0),
       mouthUpperUpLeft: speechOpen * 0.42,
@@ -379,7 +283,7 @@ const inferAudio2FaceFrames = (
       noseSneerRight: activeEmotionTargets.noseSneerRight || 0,
     };
 
-    // Audio2Face Eyeball orientation & blinking
+    // Procedural blinks and gaze
     if (eyeballGaze) {
       // Natural blink cycle (blink every ~150 frames with 8 frame duration)
       const blinkPhase = (f + 40) % 180;
@@ -426,56 +330,7 @@ const inferAudio2FaceFrames = (
     frames.push(frameData);
   }
 
-  return {
-    fps,
-    modality,
-    emotion,
-    intensity,
-    num_frames: numFrames,
-    duration_s: duration,
-    frames,
-    timings_ms: {
-      feature_extraction: Math.round(featureExtLatency * 10) / 10,
-      model_inference: Math.round(modelInferLatency * 10) / 10,
-      kinematic_mapping: Math.round(kinematicLatency * 10) / 10,
-      total: Math.round(totalTiming * 10) / 10,
-    },
-  };
-};
-
-const renderModalityCard = (modalityId: A2FModalityId): void => {
-  const profile = MODALITY_PROFILES[modalityId];
-  dom.modalityCard.innerHTML = `
-    <div class="a2f-modality-card__header">
-      <span class="a2f-modality-card__title">${profile.name}</span>
-      <span class="a2f-badge ${profile.badgeClass}">${profile.badge}</span>
-    </div>
-    <p class="a2f-modality-card__desc">${profile.description}</p>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px; font-family: var(--facial-mono); font-size: 9px;">
-      <div><strong>Target:</strong> ${profile.targetDevice}</div>
-      <div><strong>Output:</strong> ${profile.channels}</div>
-      <div><strong>Base Latency:</strong> ${profile.baseLatencyMs} ms / chunk</div>
-      <div><strong>Speedup:</strong> ${profile.realtimeMultiplier}x Real-time</div>
-    </div>
-  `;
-};
-
-const renderBenchmarkTable = (): void => {
-  const rows = (["onnx", "mps", "mlx"] as A2FModalityId[]).map((id) => {
-    const prof = MODALITY_PROFILES[id];
-    const isSel = id === activeModality;
-    const speedup = `${prof.realtimeMultiplier}x`;
-    return `
-      <tr class="${isSel ? "is-selected" : ""}">
-        <td><strong>${prof.name}</strong></td>
-        <td>${prof.targetDevice.split("/")[0].trim()}</td>
-        <td>${prof.baseLatencyMs.toFixed(1)} ms</td>
-        <td><strong>${speedup}</strong></td>
-      </tr>
-    `;
-  }).join("");
-
-  dom.benchmarkTableBody.innerHTML = rows;
+  return { fps, durationSeconds: duration, frames };
 };
 
 const renderMetersLayout = (): void => {
@@ -490,7 +345,7 @@ const renderMetersLayout = (): void => {
   `).join("");
 };
 
-const updateMeters = (frame: A2FFrame): void => {
+const updateMeters = (frame: PreviewFrame): void => {
   for (const ch of MONITORED_CHANNELS) {
     const rawVal = frame[ch.key] || 0;
     const clamped = Math.max(0, Math.min(1, rawVal));
@@ -510,21 +365,24 @@ const stopPlayback = (): void => {
   playbackRaf = 0;
   result.isPlaying = false;
   dom.stopButton.disabled = true;
-  dom.playButton.disabled = !currentPayload;
+  dom.playButton.disabled = !currentPreview;
   runtime?.resetExpression();
   updateMeters({ frame: 0 });
 };
 
 const animatePlayback = (): void => {
-  if (!runtime || !audioElement || !currentPayload || audioElement.paused || audioElement.ended) {
-    if (audioElement?.ended) stopPlayback();
+  if (!runtime || !audioElement || !currentPreview || audioElement.paused || audioElement.ended) {
+    if (audioElement?.ended) {
+      stopPlayback();
+      setStatus("Preview playback complete.");
+    }
     return;
   }
   const frameIdx = Math.min(
-    currentPayload.frames.length - 1,
-    Math.floor(audioElement.currentTime * currentPayload.fps)
+    currentPreview.frames.length - 1,
+    Math.floor(audioElement.currentTime * currentPreview.fps)
   );
-  const frame = currentPayload.frames[frameIdx];
+  const frame = currentPreview.frames[frameIdx];
   if (frame) {
     runtime.setExpression(frame);
     updateMeters(frame);
@@ -532,100 +390,80 @@ const animatePlayback = (): void => {
   playbackRaf = requestAnimationFrame(animatePlayback);
 };
 
-const generateMotion = async (): Promise<void> => {
+const clearPreview = (): void => {
+  previewRevision++;
+  currentPreview = null;
   stopPlayback();
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  audioUrl = null;
+  audioElement = null;
+  result.framesGenerated = 0;
+  for (const metric of [dom.framesMetric, dom.durationMetric, dom.channelsMetric, dom.fpsMetric]) {
+    metric.textContent = "—";
+  }
+};
+
+const generateMotion = async (): Promise<void> => {
+  clearPreview();
+  const revision = previewRevision;
   dom.generateButton.disabled = true;
-  dom.playButton.disabled = true;
-  setStatus(`Inferring motion via ${MODALITY_PROFILES[activeModality].name}...`);
-  dom.pipelineStatus.textContent = "Inferring...";
+  setStatus("Generating browser preview…");
 
   try {
-    let buf: AudioBuffer;
-
+    let buffer: AudioBuffer;
     if (dom.audioSampleSelect.value === "custom") {
       const file = dom.audioFile.files?.[0];
-      if (!file) throw new Error("Please upload a local audio file.");
-      const arrayBuffer = await file.arrayBuffer();
-      const ctx = audioContext || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      audioContext = ctx;
-      buf = await ctx.decodeAudioData(arrayBuffer);
+      if (!file) throw new Error("Choose a local audio file.");
+      audioContext ??= new AudioContext();
+      buffer = await audioContext.decodeAudioData(await file.arrayBuffer());
     } else {
-      buf = synthesizeProceduralSpeech(dom.audioSampleSelect.value);
+      buffer = synthesizeProceduralSpeech(dom.audioSampleSelect.value);
     }
+    if (revision !== previewRevision) return;
 
-    audioBuffer = buf;
-
-    // Run Audio2Face inference pipeline
-    const payload = inferAudio2FaceFrames(
-      buf,
-      activeModality,
-      activeEmotion,
-      activeIntensity,
-      dom.eyeballToggle.checked
-    );
-
-    currentPayload = payload;
-    result.framesGenerated = payload.frames.length;
-    result.benchmarkScores[activeModality] = payload.timings_ms.total;
-
-    // Create audio player
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
-    const wavBlob = bufferToWavBlob(buf);
-    audioUrl = URL.createObjectURL(wavBlob);
+    const preview = generatePreviewFrames(buffer, activeEmotion, activeIntensity, dom.eyeballToggle.checked);
+    audioUrl = URL.createObjectURL(bufferToWavBlob(buffer));
     audioElement = new Audio(audioUrl);
     audioElement.preload = "auto";
 
-    // Update telemetry
-    dom.framesMetric.textContent = `${payload.num_frames} frames`;
-    dom.durationMetric.textContent = `${payload.duration_s.toFixed(2)} s`;
-    dom.channelsMetric.textContent = `169 -> 52 ARKit`;
-    dom.pipelineStatus.textContent = `${payload.timings_ms.total} ms (${MODALITY_PROFILES[activeModality].realtimeMultiplier}x RT)`;
-
+    currentPreview = preview;
+    result.framesGenerated = preview.frames.length;
+    dom.framesMetric.textContent = String(preview.frames.length);
+    dom.durationMetric.textContent = `${preview.durationSeconds.toFixed(2)} s`;
+    dom.channelsMetric.textContent = String(Object.keys(preview.frames[0]).length - 1);
+    dom.fpsMetric.textContent = `${preview.fps} fps`;
     dom.playButton.disabled = false;
-    setStatus(`Facial motion synthesized (${payload.num_frames} frames, ${payload.timings_ms.total}ms). Ready to Play.`);
+    setStatus("Browser preview ready. Press Play.");
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    result.errors.push(msg);
-    setStatus(msg, true);
-    dom.pipelineStatus.textContent = "Error";
+    if (revision !== previewRevision) return;
+    const message = err instanceof Error ? err.message : String(err);
+    result.errors.push(message);
+    setStatus(message, true);
   } finally {
     dom.generateButton.disabled = false;
   }
 };
 
 const playMotion = async (): Promise<void> => {
-  if (!audioElement || !currentPayload) return;
+  const audio = audioElement;
+  if (!audio || !currentPreview) return;
   stopPlayback();
-  await audioElement.play();
+  dom.playButton.disabled = true;
+  try {
+    await audio.play();
+  } catch (err) {
+    if (audio === audioElement) {
+      dom.playButton.disabled = false;
+      setStatus(`Preview playback failed: ${String(err)}`, true);
+    }
+    return;
+  }
+  if (audio !== audioElement) return;
+
   result.isPlaying = true;
   dom.stopButton.disabled = false;
-  dom.playButton.disabled = true;
-  setStatus(`Playing Audio2Face animation via ${MODALITY_PROFILES[activeModality].name}`);
+  setStatus("Playing browser preview.");
   animatePlayback();
-};
-
-const benchmarkAll = async (): Promise<void> => {
-  stopPlayback();
-  dom.benchmarkAllButton.disabled = true;
-  setStatus("Benchmarking all 3 modalities on current speech sample...");
-
-  const buf = audioBuffer || synthesizeProceduralSpeech(dom.audioSampleSelect.value);
-  audioBuffer = buf;
-
-  const modalities: A2FModalityId[] = ["onnx", "mps", "mlx"];
-  const scores: Record<string, number> = {};
-
-  for (const mod of modalities) {
-    const t0 = performance.now();
-    const res = inferAudio2FaceFrames(buf, mod, activeEmotion, activeIntensity, dom.eyeballToggle.checked);
-    const took = performance.now() - t0;
-    scores[mod] = Math.round(res.timings_ms.total);
-    result.benchmarkScores[mod] = scores[mod];
-  }
-
-  dom.benchmarkAllButton.disabled = false;
-  renderBenchmarkTable();
-  setStatus(`Benchmark complete: MLX (${scores.mlx}ms) > ONNX (${scores.onnx}ms) > MPS (${scores.mps}ms).`);
 };
 
 const populateHeads = (): void => {
@@ -650,8 +488,6 @@ const updateMetrics = (): void => {
 };
 
 const init = async (): Promise<void> => {
-  renderModalityCard(activeModality);
-  renderBenchmarkTable();
   renderMetersLayout();
 
   runtime = await FacialPortraitRuntime.create(dom.stage, "head:kbllr");
@@ -659,63 +495,55 @@ const init = async (): Promise<void> => {
   updateMetrics();
 
   result.ready = true;
-  setStatus(`${runtime.snapshot().headLabel} ready / Audio2Face 3D Multimodal Studio`);
+  dom.generateButton.disabled = false;
+  setStatus(`${runtime.snapshot().headLabel} ready / browser preview`);
 };
-
-// Event handlers
-dom.modalityTabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    dom.modalityTabs.forEach((t) => {
-      t.classList.remove("is-active");
-      t.setAttribute("aria-selected", "false");
-    });
-    tab.classList.add("is-active");
-    tab.setAttribute("aria-selected", "true");
-    activeModality = tab.dataset.modality as A2FModalityId;
-    result.activeModality = activeModality;
-    renderModalityCard(activeModality);
-    renderBenchmarkTable();
-    setStatus(`Active modality switched to: ${MODALITY_PROFILES[activeModality].name}`);
-  });
-});
 
 dom.emotionBtns.forEach((btn) => {
   btn.addEventListener("click", () => {
     dom.emotionBtns.forEach((b) => b.classList.remove("is-active"));
     btn.classList.add("is-active");
     activeEmotion = btn.dataset.emotion as EmotionPreset;
-    setStatus(`Emotion conditioning: ${activeEmotion.toUpperCase()} (weight: ${activeIntensity})`);
+    clearPreview();
+    setStatus("Expression preset changed. Generate a new preview.");
   });
 });
 
 dom.emotionIntensity.addEventListener("input", () => {
   activeIntensity = parseFloat(dom.emotionIntensity.value);
   dom.emotionIntensityVal.textContent = activeIntensity.toFixed(2);
+  clearPreview();
+  setStatus("Intensity changed. Generate a new preview.");
+});
+
+dom.eyeballToggle.addEventListener("change", () => {
+  clearPreview();
+  setStatus("Gaze setting changed. Generate a new preview.");
 });
 
 dom.audioSampleSelect.addEventListener("change", () => {
   const isCustom = dom.audioSampleSelect.value === "custom";
   dom.customAudioContainer.style.display = isCustom ? "block" : "none";
-  stopPlayback();
+  clearPreview();
   setStatus(isCustom ? "Select a local audio file" : `Selected: ${dom.audioSampleSelect.selectedOptions[0].text}`);
 });
 
 dom.audioFile.addEventListener("change", () => {
-  stopPlayback();
+  clearPreview();
   const file = dom.audioFile.files?.[0];
-  if (file) setStatus(`Ready to infer motion for: ${file.name}`);
+  setStatus(file ? `${file.name} selected` : "Choose a local audio file");
 });
 
 dom.generateButton.addEventListener("click", () => void generateMotion());
 dom.playButton.addEventListener("click", () => void playMotion());
-dom.stopButton.addEventListener("click", stopPlayback);
+dom.stopButton.addEventListener("click", () => {
+  stopPlayback();
+  setStatus("Browser preview ready. Press Play.");
+});
 dom.resetButton.addEventListener("click", () => {
   stopPlayback();
-  runtime?.resetExpression();
-  updateMeters({ frame: 0 });
-  setStatus("Face morph targets reset to resting state.");
+  setStatus("Face reset to resting state.");
 });
-dom.benchmarkAllButton.addEventListener("click", () => void benchmarkAll());
 
 dom.headSelect.addEventListener("change", async () => {
   if (!runtime) return;

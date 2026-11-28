@@ -70,6 +70,31 @@ test("SAiD Face generates and plays ARKit frames on a portrait head", async ({ p
   expect(pageErrors).toEqual([]);
 });
 
+test("Audio2Face Lab plays a browser preview without simulated backend benchmarks", async ({ page }) => {
+  await page.goto("/audio2face.html", { waitUntil: "domcontentloaded" });
+  const panel = page.locator(".facial-panel");
+  const generate = page.getByRole("button", { name: "Generate Preview" });
+  const play = page.getByRole("button", { name: "Play", exact: true });
+  await expect(panel).toContainText("NVIDIA Audio2Face inference is unavailable in this case.");
+  await expect(panel).not.toContainText(/benchmark|ONNX|CoreML|PyTorch|Native MLX/i);
+
+  await page.locator("#audioSampleSelect").selectOption("custom");
+  await page.locator("#audioFile").setInputFiles({
+    name: "preview-test.wav",
+    mimeType: "audio/wav",
+    buffer: makeTestWav(),
+  });
+  await generate.click();
+  await expect(page.locator("#framesMetric")).toHaveText("60");
+  await expect(page.locator("#fpsMetric")).toHaveText("60 fps");
+  await play.click();
+  await expect(page.locator("#stageStatus")).toHaveText("Preview playback complete.");
+
+  await page.locator("#audioSampleSelect").selectOption("builtin:intro");
+  await expect(play).toBeDisabled();
+  await expect(page.locator("#framesMetric")).toHaveText("—");
+});
+
 test("Face Mirror loads the local Google model and keeps camera capture opt-in", async ({ page }) => {
   test.setTimeout(120_000);
   const pageErrors = [];
